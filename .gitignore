@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+target/
+
+# Local runtime data
+uploads/
+
+# Logs and crash dumps
+*.log
+hs_err_pid*.log
+replay_pid*.log
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# IDE / editor
+.idea/
+.vscode/
+
+# Local assistant/tooling state
+.claude/
+.superpowers/
+.git-backups/
+
+# OS files
+Thumbs.db
+.DS_Store

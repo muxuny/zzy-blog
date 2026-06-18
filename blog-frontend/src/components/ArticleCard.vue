@@ -1,0 +1,160 @@
+<template>
+  <el-card
+    class="article-card"
+    shadow="hover"
+    role="link"
+    tabindex="0"
+    @click="goArticle"
+    @keydown.enter.prevent="goArticle"
+    @keydown.space.prevent="goArticle"
+  >
+    <div class="card-body">
+      <div class="card-content">
+        <h3 class="card-title">{{ article.title }}</h3>
+        <p class="card-summary">{{ article.summary || truncate(article.content, 120) }}</p>
+        <div class="card-meta">
+          <span>{{ formatDate(article.createdAt) }}</span>
+          <span v-if="article.authorName">{{ article.authorName }}</span>
+          <span>阅读 {{ article.viewCount || 0 }}</span>
+        </div>
+        <div class="card-tags" v-if="article.tags?.length">
+          <router-link
+            v-for="tag in article.tags"
+            :key="tag.id"
+            :to="`/tag/${tag.name}`"
+            class="tag-link"
+            @click.stop
+            @keydown.enter.stop
+            @keydown.space.stop
+          >
+            <el-tag size="small">{{ tag.name }}</el-tag>
+          </router-link>
+        </div>
+      </div>
+      <div class="card-image" v-if="article.coverImage">
+        <img :src="article.coverImage" :alt="article.title" />
+      </div>
+    </div>
+  </el-card>
+</template>
+
+<script setup>
+import { useRouter } from 'vue-router'
+import { formatDate, truncate } from '../utils'
+
+const props = defineProps({ article: { type: Object, required: true } })
+const router = useRouter()
+
+function goArticle() {
+  router.push(`/article/${props.article.id}`)
+}
+
+</script>
+
+<style scoped>
+.article-card {
+  margin-bottom: 18px;
+  cursor: pointer;
+  background: var(--card-bg);
+  border: 1px solid var(--soft-border-color);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.article-card:hover,
+.article-card:focus-visible {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--primary-color) 38%, var(--soft-border-color));
+  box-shadow: var(--shadow-md);
+}
+
+.article-card:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.card-body {
+  display: flex;
+  gap: 20px;
+  align-items: stretch;
+}
+
+.card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-title {
+  margin-bottom: 10px;
+  color: var(--text-color);
+  font-size: 21px;
+  line-height: 1.35;
+  font-weight: 800;
+}
+
+.card-summary {
+  color: var(--muted-text-color);
+  font-size: 14px;
+  line-height: 1.75;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 12px 0;
+  color: var(--muted-text-color);
+  font-size: 13px;
+}
+
+.card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.tag-link {
+  display: inline-flex;
+  border-radius: var(--radius-sm);
+  color: inherit;
+  text-decoration: none;
+}
+
+.tag-link:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.card-image {
+  width: 190px;
+  flex: 0 0 190px;
+}
+
+.card-image img {
+  width: 100%;
+  height: 128px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--soft-border-color);
+}
+
+@media (max-width: 720px) {
+  .card-body {
+    flex-direction: column-reverse;
+  }
+
+  .card-image {
+    width: 100%;
+    flex-basis: auto;
+  }
+
+  .card-image img {
+    height: auto;
+    aspect-ratio: 16 / 9;
+  }
+}
+</style>
