@@ -15,42 +15,45 @@
         <button type="button" class="home-button" @click="router.push('/')">返回首页</button>
       </section>
 
-      <article v-else-if="article" class="article-shell">
-        <header class="article-head">
-          <span class="article-kicker">文章</span>
-          <h1 class="article-title">{{ article.title }}</h1>
-          <div class="article-meta">
-            <span>{{ formatDate(article.createdAt) }}</span>
-            <span>{{ authorName }}</span>
-            <span>阅读 {{ article.viewCount || 0 }}</span>
-            <span>{{ readingStats.readingTimeText }}</span>
+      <article v-else-if="article" class="article-page">
+        <header class="article-hero" :class="{ 'has-cover': article.coverImage }">
+          <div class="article-hero-copy">
+            <span class="eyebrow">文章</span>
+            <h1>{{ article.title }}</h1>
+            <div class="hero-meta">
+              <span>{{ formatDate(article.createdAt) }}</span>
+              <span>{{ authorName }}</span>
+              <span>阅读 {{ article.viewCount || 0 }}</span>
+              <span>{{ readingStats.readingTimeText }}</span>
+            </div>
+            <div v-if="articleTags.length" class="article-tags">
+              <el-tag v-for="tag in articleTags" :key="tag.id" size="small">{{ tag.name }}</el-tag>
+            </div>
           </div>
-          <div v-if="articleTags.length" class="article-tags">
-            <el-tag v-for="tag in articleTags" :key="tag.id" size="small">{{ tag.name }}</el-tag>
-          </div>
+          <figure v-if="article.coverImage" class="article-cover">
+            <img :src="article.coverImage" :alt="article.title" />
+          </figure>
         </header>
 
-        <figure v-if="article.coverImage" class="article-cover">
-          <img :src="article.coverImage" :alt="article.title" />
-        </figure>
+        <section class="reading-summary">
+          <div>
+            <span>字数</span>
+            <strong>{{ readingStats.wordCount }}</strong>
+          </div>
+          <div>
+            <span>预计阅读</span>
+            <strong>{{ readingStats.readingTimeText }}</strong>
+          </div>
+          <div>
+            <span>作者</span>
+            <strong>{{ authorName }}</strong>
+          </div>
+        </section>
 
         <div class="reading-layout">
-          <div class="article-body">
-            <section class="mobile-info">
-              <div class="info-grid">
-                <div>
-                  <span>字数</span>
-                  <strong>{{ readingStats.wordCount }}</strong>
-                </div>
-                <div>
-                  <span>阅读</span>
-                  <strong>{{ readingStats.readingTimeText }}</strong>
-                </div>
-              </div>
-            </section>
-
+          <main class="article-body">
             <nav v-if="toc.length" class="mobile-toc" aria-label="文章目录">
-              <h2>目录</h2>
+              <span class="eyebrow">目录</span>
               <button
                 v-for="item in toc"
                 :key="item.id"
@@ -63,53 +66,29 @@
             </nav>
 
             <MarkdownRenderer :content="article.content" />
-          </div>
+
+            <button type="button" class="top-button" @click="scrollToTop">回到顶部</button>
+          </main>
 
           <aside class="reading-sidebar">
-            <section class="side-panel">
-              <div class="side-label">阅读信息</div>
-              <dl class="article-info">
-                <div>
-                  <dt>作者</dt>
-                  <dd>{{ authorName }}</dd>
-                </div>
-                <div>
-                  <dt>发布</dt>
-                  <dd>{{ formatDate(article.createdAt) }}</dd>
-                </div>
-                <div>
-                  <dt>阅读</dt>
-                  <dd>{{ article.viewCount || 0 }}</dd>
-                </div>
-                <div>
-                  <dt>字数</dt>
-                  <dd>{{ readingStats.wordCount }}</dd>
-                </div>
-                <div>
-                  <dt>预计</dt>
-                  <dd>{{ readingStats.readingTimeText }}</dd>
-                </div>
-              </dl>
-            </section>
-
-            <section v-if="toc.length" class="side-panel toc-panel">
-              <div class="side-label">目录</div>
-              <nav class="toc-list" aria-label="文章目录">
-                <button
-                  v-for="item in toc"
-                  :key="item.id"
-                  type="button"
-                  :class="`toc-link level-${item.level}`"
-                  @click="scrollToHeading(item.id)"
-                >
-                  {{ item.text }}
-                </button>
-              </nav>
+            <nav v-if="toc.length" class="toc-panel" aria-label="文章目录">
+              <span class="eyebrow">目录</span>
+              <button
+                v-for="item in toc"
+                :key="item.id"
+                type="button"
+                :class="`toc-link level-${item.level}`"
+                @click="scrollToHeading(item.id)"
+              >
+                {{ item.text }}
+              </button>
+            </nav>
+            <section class="note-panel">
+              <span class="eyebrow">阅读提示</span>
+              <p>目录会跟随 Markdown 二级和三级标题生成，适合快速回到关键段落。</p>
             </section>
           </aside>
         </div>
-
-        <button type="button" class="top-button" @click="scrollToTop">回到顶部</button>
       </article>
     </el-main>
   </div>
@@ -166,7 +145,7 @@ function scrollToTop() {
 .main {
   width: min(100%, var(--content-width));
   margin: 0 auto;
-  padding: 38px 24px 72px;
+  padding: 34px 24px 72px;
 }
 
 .back-button {
@@ -174,7 +153,7 @@ function scrollToTop() {
   align-items: center;
   gap: 6px;
   min-height: 36px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
   padding: 0 12px;
   border: 1px solid var(--soft-border-color);
   border-radius: var(--radius-sm);
@@ -200,14 +179,6 @@ function scrollToTop() {
   outline-offset: 2px;
 }
 
-.article-shell {
-  padding: 34px;
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-lg);
-  background: var(--panel-bg);
-  box-shadow: var(--shadow-sm);
-}
-
 .empty-state {
   padding: 44px 28px;
   border: 1px solid var(--soft-border-color);
@@ -221,7 +192,6 @@ function scrollToTop() {
   margin-bottom: 10px;
   color: var(--text-color);
   font-size: 24px;
-  line-height: 1.3;
 }
 
 .empty-state p {
@@ -242,40 +212,53 @@ function scrollToTop() {
   cursor: pointer;
 }
 
-.home-button:hover,
-.top-button:hover {
-  background: color-mix(in srgb, var(--primary-color) 88%, #000);
+.article-page {
+  display: grid;
+  gap: 20px;
 }
 
-.article-head {
-  margin-bottom: 24px;
-  padding-bottom: 22px;
-  border-bottom: 1px solid var(--soft-border-color);
+.article-hero {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 26px;
+  align-items: stretch;
+  padding: clamp(24px, 4vw, 44px);
+  border: 1px solid var(--soft-border-color);
+  border-radius: var(--radius-lg);
+  background: var(--panel-bg);
+  box-shadow: var(--shadow-sm);
 }
 
-.article-kicker,
-.side-label {
-  display: inline-block;
-  margin-bottom: 8px;
+.article-hero.has-cover {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
+}
+
+.article-hero-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
+.eyebrow {
   color: var(--accent-color);
   font-size: 12px;
-  font-weight: 800;
-}
-
-.article-title {
-  max-width: 880px;
-  margin-bottom: 14px;
-  color: var(--text-color);
-  font-size: clamp(32px, 5vw, 50px);
-  line-height: 1.12;
   font-weight: 850;
 }
 
-.article-meta {
+.article-hero h1 {
+  max-width: 900px;
+  margin: 12px 0 18px;
+  color: var(--text-color);
+  font-size: clamp(36px, 6vw, 68px);
+  line-height: 1;
+  font-weight: 900;
+}
+
+.hero-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 16px;
-  margin-bottom: 16px;
   color: var(--muted-text-color);
   font-size: 14px;
 }
@@ -284,29 +267,66 @@ function scrollToTop() {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-top: 18px;
 }
 
 .article-cover {
-  margin: 0 0 28px;
+  margin: 0;
+  min-width: 0;
 }
 
 .article-cover img {
   width: 100%;
-  max-height: 420px;
+  height: 100%;
+  min-height: 280px;
   object-fit: cover;
   border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
+}
+
+.reading-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.reading-summary div {
+  padding: 14px 16px;
+  border: 1px solid var(--soft-border-color);
+  border-radius: var(--radius-md);
+  background: var(--panel-bg);
+}
+
+.reading-summary span,
+.reading-summary strong {
+  display: block;
+}
+
+.reading-summary span {
+  color: var(--muted-text-color);
+  font-size: 12px;
+}
+
+.reading-summary strong {
+  margin-top: 6px;
+  color: var(--text-color);
+  font-size: 16px;
 }
 
 .reading-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 260px;
-  gap: 28px;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 30px;
   align-items: start;
 }
 
 .article-body {
   min-width: 0;
+  padding: clamp(22px, 4vw, 38px);
+  border: 1px solid var(--soft-border-color);
+  border-radius: var(--radius-lg);
+  background: var(--panel-bg);
+  box-shadow: var(--shadow-sm);
 }
 
 .reading-sidebar {
@@ -316,57 +336,31 @@ function scrollToTop() {
   gap: 14px;
 }
 
-.side-panel,
-.mobile-info,
+.toc-panel,
+.note-panel,
 .mobile-toc {
   padding: 16px;
   border: 1px solid var(--soft-border-color);
   border-radius: var(--radius-md);
-  background: var(--bg-color);
+  background: var(--panel-bg);
 }
 
-.article-info {
-  display: grid;
-  gap: 12px;
-  margin: 0;
-}
-
-.article-info div,
-.info-grid {
-  display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
-  gap: 10px;
-}
-
-.article-info dt,
-.info-grid span {
-  color: var(--muted-text-color);
-  font-size: 13px;
-}
-
-.article-info dd,
-.info-grid strong {
-  margin: 0;
-  color: var(--text-color);
-  font-size: 13px;
-  font-weight: 750;
-}
-
-.toc-list,
+.toc-panel,
 .mobile-toc {
   display: grid;
   gap: 6px;
 }
 
-.mobile-toc h2 {
-  margin: 0 0 8px;
-  color: var(--text-color);
-  font-size: 16px;
+.note-panel p {
+  margin: 8px 0 0;
+  color: var(--muted-text-color);
+  font-size: 13px;
+  line-height: 1.7;
 }
 
 .toc-link {
   width: 100%;
-  padding: 6px 8px;
+  padding: 7px 8px;
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -387,18 +381,18 @@ function scrollToTop() {
   padding-left: 20px;
 }
 
-.mobile-info,
 .mobile-toc {
   display: none;
-  margin-bottom: 18px;
+  margin-bottom: 22px;
 }
 
 .top-button {
   display: block;
-  margin: 28px 0 0 auto;
+  margin: 30px 0 0 auto;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 980px) {
+  .article-hero,
   .reading-layout {
     grid-template-columns: 1fr;
   }
@@ -407,7 +401,6 @@ function scrollToTop() {
     display: none;
   }
 
-  .mobile-info,
   .mobile-toc {
     display: grid;
   }
@@ -418,14 +411,17 @@ function scrollToTop() {
     padding: 22px 14px 48px;
   }
 
-  .article-shell {
-    padding: 22px 18px;
+  .article-hero,
+  .article-body {
+    padding: 18px;
   }
 
-  .article-info div,
-  .info-grid {
+  .reading-summary {
     grid-template-columns: 1fr;
-    gap: 4px;
+  }
+
+  .article-cover img {
+    min-height: 210px;
   }
 }
 </style>
