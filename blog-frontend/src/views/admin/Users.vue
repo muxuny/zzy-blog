@@ -23,9 +23,15 @@
           <el-button v-if="row.status === 'pending'" size="small" type="success" @click="handleApprove(row.id)">
             审核通过
           </el-button>
-          <el-button v-if="row.status === 'active'" size="small" type="warning" @click="handleDisable(row.id)">
+          <el-button
+            v-if="row.status === 'active' && !isAdminUser(row)"
+            size="small"
+            type="warning"
+            @click="handleDisable(row.id)"
+          >
             禁用
           </el-button>
+          <el-text v-else-if="row.status === 'active'" type="info" size="small">不可禁用</el-text>
         </template>
       </el-table-column>
     </el-table>
@@ -38,6 +44,10 @@ import { getUsers, approveUser, disableUser } from '../../api/user'
 import { ElMessage } from 'element-plus'
 
 const users = ref([])
+
+function isAdminUser(user) {
+  return user.role?.toLowerCase() === 'admin'
+}
 
 onMounted(async () => {
   const r = await getUsers({ size: 100 })

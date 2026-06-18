@@ -82,6 +82,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public void disableUser(Long userId) {
         User user = getById(userId);
         if (user == null) throw new BusinessException("用户不存在");
+        if ("admin".equalsIgnoreCase(user.getRole())) {
+            throw new BusinessException("管理员账号不能被禁用");
+        }
         user.setStatus("disabled");
         updateById(user);
     }
