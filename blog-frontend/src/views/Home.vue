@@ -1,9 +1,9 @@
 <template>
   <div class="layout">
     <AppHeader />
-    <el-main class="main">
-      <section class="home-hero">
-        <div class="hero-copy">
+    <main class="home-shell">
+      <section class="hero-board">
+        <div class="hero-panel">
           <span class="eyebrow">个人写作库</span>
           <h1>把项目经验写成可以回看的路标。</h1>
           <p class="hero-description">
@@ -15,116 +15,149 @@
               v-model="keywordInput"
               clearable
               size="large"
-              placeholder="搜索文章标题"
+              placeholder="搜索问题、方案或文章标题"
               @clear="clearSearch"
             />
-            <el-button type="primary" size="large" native-type="submit">搜索</el-button>
+            <el-button class="search-button" type="primary" size="large" native-type="submit">搜索</el-button>
           </form>
 
           <div class="hero-topics" aria-label="写作方向">
-            <span>前端工程</span>
-            <span>后端实践</span>
-            <span>数据库</span>
-            <span>项目复盘</span>
+            <span v-for="topic in writingTopics" :key="topic">{{ topic }}</span>
           </div>
         </div>
 
         <button
           v-if="featuredArticle"
           type="button"
-          class="featured-card"
+          class="spotlight-card"
           @click="goArticle(featuredArticle)"
         >
-          <span class="featured-label">最近更新</span>
-          <div class="feature-art" :class="{ 'has-image': featuredArticle.coverImage }">
+          <span class="spotlight-label">最近更新</span>
+          <div class="spotlight-visual" :class="{ 'has-image': featuredArticle.coverImage }">
             <img v-if="featuredArticle.coverImage" :src="featuredArticle.coverImage" :alt="featuredArticle.title" />
             <span v-else>{{ featuredInitial }}</span>
           </div>
-          <h2>{{ featuredArticle.title }}</h2>
-          <p>{{ featuredArticle.summary || truncate(featuredArticle.content, 110) }}</p>
-          <div class="featured-meta">
+          <div class="spotlight-meta">
             <span>{{ formatDate(featuredArticle.createdAt) }}</span>
             <span v-if="featuredArticle.authorName">{{ featuredArticle.authorName }}</span>
             <span>阅读 {{ featuredArticle.viewCount || 0 }}</span>
           </div>
+          <h2>{{ featuredArticle.title }}</h2>
+          <p>{{ featuredArticle.summary || truncate(featuredArticle.content, 110) }}</p>
+          <div v-if="featuredTags.length" class="spotlight-tags">
+            <span v-for="tag in featuredTags" :key="tag.id">{{ tag.name }}</span>
+          </div>
         </button>
 
-        <section v-else class="featured-card featured-empty">
-          <span class="featured-label">最近更新</span>
-          <div class="feature-art"><span>B</span></div>
+        <section v-else class="spotlight-card spotlight-empty">
+          <span class="spotlight-label">最近更新</span>
+          <div class="spotlight-visual"><span>B</span></div>
           <h2>还没有公开文章</h2>
           <p>发布第一篇文章后，这里会展示最新内容。</p>
         </section>
       </section>
 
-      <section class="summary-strip">
-        <div>
+      <section class="signal-strip">
+        <div class="signal-card">
           <strong>{{ total }}</strong>
           <span>公开文章</span>
         </div>
-        <div>
+        <div class="signal-card">
           <strong>{{ tags.length }}</strong>
           <span>话题标签</span>
         </div>
-        <p>{{ filterSummary }}</p>
-      </section>
-
-      <section class="topic-nav" aria-label="话题导航">
-        <button
-          class="topic-button"
-          :class="{ active: !activeTag }"
-          :aria-pressed="!activeTag"
-          type="button"
-          @click="clearTag"
-        >
-          全部文章
-        </button>
-        <button
-          v-for="tag in tags"
-          :key="tag.id"
-          class="topic-button"
-          :class="{ active: activeTag === tag.id }"
-          :aria-pressed="activeTag === tag.id"
-          type="button"
-          @click="filterByTag(tag)"
-        >
-          {{ tag.name }}
-        </button>
-      </section>
-
-      <section class="article-section">
-        <div class="section-head">
-          <span class="eyebrow">文章</span>
-          <h2>最近记录</h2>
+        <div class="signal-card wide">
+          <strong>{{ filterSummary }}</strong>
+          <span>当前视图</span>
         </div>
-
-        <el-skeleton v-if="loading" :rows="8" animated />
-
-        <template v-else>
-          <div v-if="listArticles.length" class="article-stream">
-            <ArticleCard v-for="article in listArticles" :key="article.id" :article="article" />
-          </div>
-
-          <el-empty v-if="!articles.length" :description="emptyDescription" />
-
-          <div class="pagination" v-if="total > size">
-            <el-pagination
-              v-model:current-page="page"
-              :total="total"
-              :page-size="size"
-              layout="prev,pager,next"
-              @current-change="load"
-            />
-          </div>
-        </template>
       </section>
+
+      <div class="content-layout">
+        <aside class="home-sidebar" aria-label="首页侧边信息">
+          <section class="side-panel">
+            <div class="panel-head">
+              <span>筛选</span>
+              <h2>话题导航</h2>
+            </div>
+            <div class="topic-list" aria-label="话题导航">
+              <button
+                class="topic-button"
+                :class="{ active: !activeTag }"
+                :aria-pressed="!activeTag"
+                type="button"
+                @click="clearTag"
+              >
+                全部文章
+              </button>
+              <button
+                v-for="tag in topTags"
+                :key="tag.id"
+                class="topic-button"
+                :class="{ active: activeTag === tag.id }"
+                :aria-pressed="activeTag === tag.id"
+                type="button"
+                @click="filterByTag(tag)"
+              >
+                {{ tag.name }}
+              </button>
+            </div>
+          </section>
+
+          <section class="side-panel direction-panel">
+            <div class="panel-head">
+              <span>方向</span>
+              <h2>写作地图</h2>
+            </div>
+            <ul>
+              <li v-for="topic in writingTopics" :key="topic">
+                <span>{{ topic }}</span>
+              </li>
+            </ul>
+          </section>
+
+          <section v-if="featuredArticle" class="side-panel note-panel">
+            <span>最新记录</span>
+            <p>{{ formatDate(featuredArticle.createdAt) }} 更新，适合从这里开始阅读。</p>
+          </section>
+        </aside>
+
+        <section class="article-section">
+          <div class="section-head">
+            <span class="eyebrow">文章流</span>
+            <div>
+              <h2>{{ articleSectionTitle }}</h2>
+              <p>{{ articleSectionSubtitle }}</p>
+            </div>
+          </div>
+
+          <el-skeleton v-if="loading" :rows="8" animated />
+
+          <template v-else>
+            <div v-if="streamArticles.length" class="article-stream">
+              <ArticleCard v-for="article in streamArticles" :key="article.id" :article="article" />
+            </div>
+
+            <el-empty v-if="!articles.length" :description="emptyDescription" />
+
+            <div class="pagination" v-if="total > size">
+              <el-pagination
+                v-model:current-page="page"
+                :total="total"
+                :page-size="size"
+                layout="prev,pager,next"
+                @current-change="load"
+              />
+            </div>
+          </template>
+        </section>
+      </div>
 
       <footer class="site-footer">
         <span>My Blog</span>
         <span>© {{ currentYear }}</span>
         <span>把经验写下来，让下一次开始更轻一点。</span>
       </footer>
-    </el-main>
+    </main>
   </div>
 </template>
 
@@ -149,15 +182,24 @@ const keywordInput = ref('')
 const keyword = ref('')
 const loading = ref(false)
 const currentYear = new Date().getFullYear()
+const writingTopics = ['前端工程', '后端实践', '数据库', '项目复盘']
 
 const featuredArticle = computed(() => articles.value[0] || null)
 const featuredInitial = computed(() => featuredArticle.value?.title?.trim()?.charAt(0) || 'B')
-const listArticles = computed(() => articles.value.slice(1))
+const featuredTags = computed(() => featuredArticle.value?.tags?.slice(0, 3) || [])
+const streamArticles = computed(() => articles.value)
+const topTags = computed(() => tags.value.slice(0, 12))
 const filterSummary = computed(() => {
   const parts = []
   if (activeTagName.value) parts.push(`话题：${activeTagName.value}`)
   if (keyword.value) parts.push(`搜索：${keyword.value}`)
   return parts.length ? parts.join(' / ') : '正在浏览全部公开文章'
+})
+const articleSectionTitle = computed(() => (activeTagName.value || keyword.value ? '筛选结果' : '最近记录'))
+const articleSectionSubtitle = computed(() => {
+  if (keyword.value) return `正在查找与“${keyword.value}”有关的文章`
+  if (activeTagName.value) return `正在查看“${activeTagName.value}”话题下的公开文章`
+  return '按发布时间整理的公开内容'
 })
 const emptyDescription = computed(() => {
   if (keyword.value) return '没有找到匹配文章'
@@ -219,71 +261,115 @@ function goArticle(article) {
 </script>
 
 <style scoped>
-.main {
+.home-shell {
   width: min(100%, var(--content-width));
   margin: 0 auto;
-  padding: 34px 24px 42px;
+  padding: 34px 24px 44px;
 }
 
-.home-hero {
+.hero-board {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 430px);
-  gap: 26px;
+  grid-template-columns: minmax(0, 1.28fr) minmax(340px, 0.72fr);
+  gap: 22px;
   align-items: stretch;
-  min-height: 390px;
+  margin-bottom: 18px;
 }
 
-.hero-copy,
-.featured-card,
-.summary-strip,
-.topic-nav,
-.article-section {
-  border: 1px solid var(--soft-border-color);
-  background: var(--panel-bg);
-  box-shadow: var(--shadow-sm);
-}
-
-.hero-copy {
+.hero-panel {
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: clamp(28px, 5vw, 52px);
+  min-height: 430px;
+  overflow: hidden;
+  padding: clamp(32px, 5vw, 54px);
+  border: 1px solid color-mix(in srgb, var(--primary-color) 30%, #142033);
   border-radius: var(--radius-lg);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px) 0 0 / 46px 46px,
+    linear-gradient(0deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px) 0 0 / 46px 46px,
+    linear-gradient(135deg, #112033 0%, #172a42 52%, #12383c 100%);
+  box-shadow: 0 24px 70px rgba(17, 32, 51, 0.2);
+  color: #f7fbff;
+}
+
+.hero-panel::after {
+  position: absolute;
+  right: clamp(20px, 5vw, 58px);
+  bottom: clamp(16px, 3vw, 32px);
+  color: rgba(255, 255, 255, 0.08);
+  content: "</>";
+  font-family: Consolas, "Liberation Mono", monospace;
+  font-size: clamp(86px, 12vw, 150px);
+  font-weight: 800;
+  line-height: 1;
+  pointer-events: none;
 }
 
 .eyebrow,
-.featured-label {
-  color: var(--accent-color);
+.spotlight-label {
+  color: color-mix(in srgb, var(--accent-color) 86%, white);
   font-size: 12px;
   font-weight: 850;
+  letter-spacing: 0;
 }
 
-.hero-copy h1 {
+.hero-panel .eyebrow {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-panel h1 {
+  position: relative;
+  z-index: 1;
   max-width: 780px;
-  margin: 12px 0 18px;
-  color: var(--text-color);
-  font-size: clamp(38px, 6vw, 72px);
-  line-height: 0.98;
+  margin: 14px 0 18px;
+  color: #ffffff;
+  font-size: clamp(42px, 5.5vw, 72px);
+  line-height: 1.04;
   font-weight: 900;
 }
 
 .hero-description {
+  position: relative;
+  z-index: 1;
   max-width: 680px;
   margin: 0;
-  color: var(--muted-text-color);
+  color: rgba(241, 247, 255, 0.78);
   font-size: 17px;
   line-height: 1.85;
 }
 
 .hero-search {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   max-width: 680px;
   margin-top: 30px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.hero-search :deep(.el-input__wrapper) {
+  min-height: 42px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: none;
+}
+
+.search-button {
+  min-width: 86px;
+  min-height: 42px;
 }
 
 .hero-topics {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -291,123 +377,193 @@ function goArticle(article) {
 }
 
 .hero-topics span {
-  padding: 6px 11px;
-  border: 1px solid var(--soft-border-color);
+  padding: 7px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 999px;
-  color: var(--muted-text-color);
-  background: var(--bg-color);
+  color: rgba(244, 248, 255, 0.78);
+  background: rgba(255, 255, 255, 0.08);
   font-size: 13px;
 }
 
-.featured-card {
+.spotlight-card {
   display: grid;
   align-content: start;
-  gap: 14px;
+  gap: 13px;
   min-width: 0;
-  padding: 22px;
+  padding: 20px;
+  border: 1px solid var(--soft-border-color);
   border-radius: var(--radius-lg);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--panel-bg) 96%, white), var(--panel-bg)),
+    var(--panel-bg);
+  box-shadow: var(--shadow-md);
   color: inherit;
   text-align: left;
   cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
-.featured-card:hover {
-  border-color: color-mix(in srgb, var(--primary-color) 36%, var(--soft-border-color));
-  box-shadow: var(--shadow-md);
+.spotlight-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--primary-color) 40%, var(--soft-border-color));
+  box-shadow: 0 28px 64px rgba(23, 35, 52, 0.16);
 }
 
-.featured-card:focus-visible,
+.spotlight-card:focus-visible,
 .topic-button:focus-visible {
   outline: 2px solid var(--primary-color);
   outline-offset: 2px;
 }
 
-.feature-art {
+.spotlight-visual {
+  position: relative;
   display: grid;
   place-items: center;
-  min-height: 168px;
+  aspect-ratio: 4 / 3;
+  min-height: 0;
   overflow: hidden;
   border-radius: var(--radius-md);
   background:
-    linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 24%, transparent), transparent),
-    color-mix(in srgb, var(--accent-color) 12%, var(--bg-color));
+    linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 24%, transparent), transparent 52%),
+    repeating-linear-gradient(135deg, color-mix(in srgb, var(--accent-color) 18%, transparent) 0 1px, transparent 1px 12px),
+    color-mix(in srgb, var(--accent-color) 10%, var(--bg-color));
 }
 
-.feature-art span {
+.spotlight-visual span {
   color: var(--primary-color);
-  font-size: 82px;
+  font-size: 88px;
   font-weight: 900;
   line-height: 1;
 }
 
-.feature-art.has-image img {
+.spotlight-visual.has-image img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  min-height: 168px;
   object-fit: cover;
 }
 
-.featured-card h2 {
+.spotlight-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  color: var(--muted-text-color);
+  font-size: 13px;
+}
+
+.spotlight-card h2 {
   margin: 0;
   color: var(--text-color);
-  font-size: 27px;
+  font-size: 25px;
   line-height: 1.2;
   font-weight: 880;
 }
 
-.featured-card p {
+.spotlight-card p {
   margin: 0;
   color: var(--muted-text-color);
   line-height: 1.75;
 }
 
-.featured-meta {
+.spotlight-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 14px;
-  color: var(--muted-text-color);
-  font-size: 13px;
+  gap: 8px;
 }
 
-.summary-strip {
+.spotlight-tags span {
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+  color: var(--primary-color);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.signal-strip {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr);
-  gap: 18px;
-  align-items: center;
-  margin: 18px 0;
-  padding: 14px 18px;
+  grid-template-columns: minmax(130px, auto) minmax(130px, auto) minmax(0, 1fr);
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.signal-card {
+  display: grid;
+  gap: 5px;
+  min-height: 84px;
+  padding: 16px 18px;
+  border: 1px solid var(--soft-border-color);
   border-radius: var(--radius-md);
+  background: var(--panel-bg);
+  box-shadow: var(--shadow-sm);
 }
 
-.summary-strip div {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
+.signal-card.wide {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--primary-color) 10%, transparent), transparent),
+    var(--panel-bg);
 }
 
-.summary-strip strong {
+.signal-card strong {
   color: var(--text-color);
-  font-size: 24px;
+  font-size: 25px;
+  line-height: 1.1;
 }
 
-.summary-strip span,
-.summary-strip p {
+.signal-card span {
   color: var(--muted-text-color);
   font-size: 14px;
 }
 
-.summary-strip p {
-  justify-self: end;
-  margin: 0;
+.content-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
 }
 
-.topic-nav {
+.home-sidebar {
+  position: sticky;
+  top: calc(var(--app-header-height) + 22px);
+  display: grid;
+  gap: 14px;
+}
+
+.side-panel,
+.article-section {
+  border: 1px solid var(--soft-border-color);
+  border-radius: var(--radius-lg);
+  background: var(--panel-bg);
+  box-shadow: var(--shadow-sm);
+}
+
+.side-panel {
+  padding: 18px;
+}
+
+.panel-head {
+  margin-bottom: 14px;
+}
+
+.panel-head span,
+.note-panel > span {
+  color: var(--accent-color);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.panel-head h2 {
+  margin: 4px 0 0;
+  color: var(--text-color);
+  font-size: 19px;
+  line-height: 1.25;
+}
+
+.topic-list {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 22px;
-  padding: 14px;
-  border-radius: var(--radius-md);
 }
 
 .topic-button {
@@ -428,17 +584,56 @@ function goArticle(article) {
   background: color-mix(in srgb, var(--primary-color) 8%, transparent);
 }
 
+.direction-panel ul {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+}
+
+.direction-panel li {
+  position: relative;
+  min-height: 36px;
+  padding: 8px 10px 8px 28px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-color);
+  color: var(--text-color);
+  font-weight: 700;
+}
+
+.direction-panel li::before {
+  position: absolute;
+  top: 14px;
+  left: 12px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--accent-color);
+  content: "";
+}
+
+.note-panel {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-color) 12%, transparent), transparent),
+    var(--panel-bg);
+}
+
+.note-panel p {
+  margin: 8px 0 0;
+  color: var(--muted-text-color);
+  line-height: 1.75;
+}
+
 .article-section {
-  padding: 22px;
-  border-radius: var(--radius-lg);
+  min-width: 0;
+  padding: 24px;
 }
 
 .section-head {
   display: flex;
-  align-items: end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 18px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .section-head h2 {
@@ -447,9 +642,15 @@ function goArticle(article) {
   font-size: 28px;
 }
 
+.section-head p {
+  margin: 4px 0 0;
+  color: var(--muted-text-color);
+  font-size: 14px;
+}
+
 .article-stream {
   display: grid;
-  gap: 14px;
+  gap: 16px;
 }
 
 .pagination {
@@ -471,33 +672,51 @@ function goArticle(article) {
 }
 
 @media (max-width: 980px) {
-  .home-hero {
+  .hero-board,
+  .content-layout {
     grid-template-columns: 1fr;
   }
 
-  .summary-strip {
+  .home-sidebar {
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .note-panel {
+    grid-column: 1 / -1;
+  }
+
+  .signal-strip {
     grid-template-columns: 1fr 1fr;
   }
 
-  .summary-strip p {
+  .signal-card.wide {
     grid-column: 1 / -1;
-    justify-self: start;
   }
 }
 
 @media (max-width: 640px) {
-  .main {
+  .home-shell {
     padding: 22px 14px 36px;
   }
 
-  .hero-copy,
-  .featured-card,
+  .hero-panel,
+  .spotlight-card,
   .article-section {
     padding: 18px;
   }
 
+  .hero-panel {
+    min-height: 0;
+  }
+
+  .hero-panel h1 {
+    font-size: 38px;
+  }
+
   .hero-search,
-  .summary-strip {
+  .signal-strip,
+  .home-sidebar {
     grid-template-columns: 1fr;
   }
 }
