@@ -70,12 +70,13 @@
           </main>
 
           <aside class="reading-sidebar">
-            <nav v-if="toc.length" class="toc-panel" aria-label="文章目录">
+            <nav v-if="toc.length" ref="tocPanelRef" class="toc-panel" aria-label="文章目录">
               <span class="eyebrow">目录</span>
               <button
                 v-for="item in toc"
                 :key="item.id"
                 type="button"
+                :data-toc-id="item.id"
                 :class="['toc-link', `level-${item.level}`, { active: activeHeadingId === item.id }]"
                 @click="scrollToHeading(item.id)"
               >
@@ -153,7 +154,7 @@ import { getArticle, getArticleNeighbors, getRelatedArticles } from '../api/arti
 import { formatDate } from '../utils'
 import { shouldUseHistoryBack } from '../utils/navigation'
 import { extractMarkdownToc, getReadingStats } from '../utils/reading'
-import { getActiveHeadingId } from '../utils/scrollSpy'
+import { getActiveHeadingId, getScrollTopForVisibleItem } from '../utils/scrollSpy'
 import AppHeader from '../components/AppHeader.vue'
 import MarkdownRenderer from '../components/MarkdownRenderer.vue'
 
@@ -167,6 +168,7 @@ const relatedArticles = ref([])
 const activeHeadingId = ref('')
 const showBackToTop = ref(false)
 const loadToken = ref(0)
+const tocPanelRef = ref(null)
 
 const articleTags = computed(() => article.value?.tags || [])
 const authorName = computed(() => article.value?.authorName || article.value?.createdBy || '匿名作者')
@@ -250,7 +252,36 @@ function updateScrollState() {
       return el ? { id: item.id, top: el.getBoundingClientRect().top + window.scrollY } : null
     })
     .filter(Boolean)
-  activeHeadingId.value = getActiveHeadingId(headings, window.scrollY, 140)
+  const nextActiveHeadingId = getActiveHeadingId(headings, window.scrollY, 140)
+  if (activeHeadingId.value !== nextActiveHeadingId) {
+    activeHeadingId.value = nextActiveHeadingId
+  }
+  if (nextActiveHeadingId) nextTick(scrollActiveTocItemIntoView)
+}
+
+function scrollActiveTocItemIntoView() {
+  if (!activeHeadingId.value || !tocPanelRef.value) return
+
+  const activeItem = Array.from(tocPanelRef.value.querySelectorAll('[data-toc-id]'))
+    .find(item => item.dataset.tocId === activeHeadingId.value)
+  if (!activeItem) return
+
+  const panelRect = tocPanelRef.value.getBoundingClientRect()
+  const activeRect = activeItem.getBoundingClientRect()
+  const nextScrollTop = getScrollTopForVisibleItem({
+    containerScrollTop: tocPanelRef.value.scrollTop,
+    containerHeight: tocPanelRef.value.clientHeight,
+    itemTop: activeRect.top - panelRect.top + tocPanelRef.value.scrollTop,
+    itemHeight: activeRect.height,
+    padding: 12
+  })
+
+  if (Math.abs(nextScrollTop - tocPanelRef.value.scrollTop) < 1) return
+
+  tocPanelRef.value.scrollTo({
+    top: nextScrollTop,
+    behavior: 'auto'
+  })
 }
 
 function openArticle(id) {
@@ -472,6 +503,13 @@ function scrollToTop(smooth = true) {
 .mobile-toc {
   display: grid;
   gap: 6px;
+}
+
+.toc-panel {
+  max-height: calc(100vh - var(--app-header-height) - 170px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .note-panel p {
