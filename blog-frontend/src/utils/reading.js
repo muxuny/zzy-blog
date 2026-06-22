@@ -52,7 +52,10 @@ export function extractMarkdownToc(markdown = '') {
     const match = /^(#{1,6})\s+(.+?)\s*#*\s*$/.exec(line)
     if (!match) return
 
-    const text = match[2].replace(/[`*_~]/g, '').trim()
+    const text = match[2]
+      .replace(/\\([\\`*{}[\]()#+\-.!_>~|])/g, '$1')
+      .replace(/[`*_~]/g, '')
+      .trim()
     const id = createHeadingId(text, seen)
     const level = match[1].length
     if (level < 2 || level > 4) return

@@ -44,6 +44,18 @@ test('extractMarkdownToc keeps ids aligned and includes level 4 headings', () =>
   ])
 })
 
+test('extractMarkdownToc removes markdown escape markers from visible heading text', () => {
+  const markdown = [
+    '## 3\\. 架构变化',
+    '### 5\\.1 DynamicDataSourceContextHolder\\.java'
+  ].join('\n')
+
+  assert.deepEqual(extractMarkdownToc(markdown), [
+    { id: '3-架构变化', level: 2, text: '3. 架构变化' },
+    { id: '51-dynamicdatasourcecontextholderjava', level: 3, text: '5.1 DynamicDataSourceContextHolder.java' }
+  ])
+})
+
 test('normalizeArticleMarkdown converts body level 1 headings to level 2', () => {
   const markdown = [
     '# 章节',
