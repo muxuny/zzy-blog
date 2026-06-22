@@ -267,6 +267,7 @@ function scrollToTop(smooth = true) {
   width: min(100%, var(--content-width));
   margin: 0 auto;
   padding: 34px 24px 72px;
+  overflow: visible;
 }
 
 .back-button {
