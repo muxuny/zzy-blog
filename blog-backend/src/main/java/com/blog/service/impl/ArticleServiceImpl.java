@@ -10,9 +10,13 @@ import com.blog.dto.ArticleNeighbors;
 import com.blog.dto.ArticlePageQuery;
 import com.blog.dto.ArticleRequest;
 import com.blog.entity.Article;
+import com.blog.entity.ArticleGroup;
+import com.blog.entity.ArticleGroupRelation;
 import com.blog.entity.ArticleTag;
 import com.blog.entity.Tag;
 import com.blog.entity.User;
+import com.blog.mapper.ArticleGroupMapper;
+import com.blog.mapper.ArticleGroupRelationMapper;
 import com.blog.mapper.ArticleMapper;
 import com.blog.mapper.ArticleTagMapper;
 import com.blog.mapper.TagMapper;
@@ -21,9 +25,11 @@ import com.blog.service.UserService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -34,13 +40,19 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     private final ArticleTagMapper articleTagMapper;
     private final TagMapper tagMapper;
     private final UserService userService;
+    private final ArticleGroupMapper articleGroupMapper;
+    private final ArticleGroupRelationMapper articleGroupRelationMapper;
 
     public ArticleServiceImpl(ArticleTagMapper articleTagMapper,
                               TagMapper tagMapper,
-                              UserService userService) {
+                              UserService userService,
+                              ArticleGroupMapper articleGroupMapper,
+                              ArticleGroupRelationMapper articleGroupRelationMapper) {
         this.articleTagMapper = articleTagMapper;
         this.tagMapper = tagMapper;
         this.userService = userService;
+        this.articleGroupMapper = articleGroupMapper;
+        this.articleGroupRelationMapper = articleGroupRelationMapper;
     }
 
     @Override
@@ -132,26 +144,40 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     @Override
     public IPage<Article> getMyPage(ArticlePageQuery query, String username) {
         Page<Article> page = new Page<>(query.getPage(), query.getSize());
-        LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<Article>()
-                .eq(Article::getCreatedBy, username)
-                .orderByDesc(Article::getCreatedAt);
+        Collection<Long> includeArticleIds = null;
+        Collection<Long> excludeArticleIds = null;
 
-        if (query.getStatus() != null && !query.getStatus().isEmpty()) {
-            wrapper.eq(Article::getStatus, query.getStatus());
-        }
-        if (query.getKeyword() != null && !query.getKeyword().isEmpty()) {
-            wrapper.like(Article::getTitle, query.getKeyword());
+        if (query.getGroupId() != null) {
+            ArticleGroup group = findArticleGroupById(query.getGroupId(), username);
+            if (group == null) {
+                return page;
+            }
+            includeArticleIds = listArticleGroupRelationsByGroupId(query.getGroupId()).stream()
+                    .map(ArticleGroupRelation::getArticleId)
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (includeArticleIds.isEmpty()) {
+                return page;
+            }
+        } else if (Boolean.TRUE.equals(query.getUngrouped())) {
+            List<Long> groupIds = listArticleGroupsByOwner(username).stream()
+                    .map(ArticleGroup::getId)
+                    .collect(Collectors.toList());
+            excludeArticleIds = listArticleGroupRelationsByGroupIds(groupIds).stream()
+                    .map(ArticleGroupRelation::getArticleId)
+                    .distinct()
+                    .collect(Collectors.toList());
         }
 
-        IPage<Article> result = baseMapper.selectPage(page, wrapper);
-        result.getRecords().forEach(this::attachTagsAndAuthor);
+        IPage<Article> result = selectMyArticlePage(page, query, username, includeArticleIds, excludeArticleIds);
+        result.getRecords().forEach(this::attachTagsAuthorAndGroups);
         return result;
     }
 
     @Override
     public Article getMyDetail(Long id, String username) {
         Article article = requireOwnedArticle(id, username);
-        attachTagsAndAuthor(article);
+        attachTagsAuthorAndGroups(article);
         return article;
     }
 
@@ -166,7 +192,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         article.setCreatedBy(username);
         save(article);
         replaceArticleTags(article.getId(), request);
-        attachTagsAndAuthor(article);
+        replaceArticleGroups(article.getId(), request, username);
+        attachTagsAuthorAndGroups(article);
         return article;
     }
 
@@ -187,7 +214,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         article.setReviewReason(null);
         updateById(article);
         replaceArticleTags(id, request);
-        attachTagsAndAuthor(article);
+        replaceArticleGroups(id, request, username);
+        attachTagsAuthorAndGroups(article);
         return article;
     }
 
@@ -195,6 +223,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     @Transactional
     public void deleteMyArticle(Long id, String username) {
         requireOwnedArticle(id, username);
+        deleteArticleGroupRelationsByArticleId(id);
         removeById(id);
     }
 
@@ -208,7 +237,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         article.setStatus(ArticleStatus.PENDING);
         article.setReviewReason(null);
         updateById(article);
-        attachTagsAndAuthor(article);
+        attachTagsAuthorAndGroups(article);
         return article;
     }
 
@@ -221,7 +250,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         }
         article.setStatus(ArticleStatus.DRAFT);
         updateById(article);
-        attachTagsAndAuthor(article);
+        attachTagsAuthorAndGroups(article);
         return article;
     }
 
@@ -267,6 +296,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     @Transactional
     public void deleteAdminArticle(Long id) {
         requireArticle(id);
+        deleteArticleGroupRelationsByArticleId(id);
         removeById(id);
     }
 
@@ -422,6 +452,97 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 .eq(Article::getStatus, ArticleStatus.PUBLISHED));
     }
 
+    protected IPage<Article> selectMyArticlePage(Page<Article> page,
+                                                 ArticlePageQuery query,
+                                                 String username,
+                                                 Collection<Long> includeArticleIds,
+                                                 Collection<Long> excludeArticleIds) {
+        LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<Article>()
+                .eq(Article::getCreatedBy, username)
+                .orderByDesc(Article::getCreatedAt);
+
+        if (query.getStatus() != null && !query.getStatus().isEmpty()) {
+            wrapper.eq(Article::getStatus, query.getStatus());
+        }
+        if (query.getKeyword() != null && !query.getKeyword().isEmpty()) {
+            wrapper.like(Article::getTitle, query.getKeyword());
+        }
+        if (includeArticleIds != null) {
+            if (includeArticleIds.isEmpty()) {
+                return page;
+            }
+            wrapper.in(Article::getId, includeArticleIds);
+        }
+        if (excludeArticleIds != null && !excludeArticleIds.isEmpty()) {
+            wrapper.notIn(Article::getId, excludeArticleIds);
+        }
+
+        return baseMapper.selectPage(page, wrapper);
+    }
+
+    protected List<ArticleGroup> listArticleGroupsByIds(Collection<Long> groupIds, String username) {
+        if (groupIds == null || groupIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return articleGroupMapper.selectList(new LambdaQueryWrapper<ArticleGroup>()
+                .in(ArticleGroup::getId, groupIds)
+                .eq(ArticleGroup::getCreatedBy, username));
+    }
+
+    protected ArticleGroup findArticleGroupById(Long groupId, String username) {
+        return articleGroupMapper.selectOne(new LambdaQueryWrapper<ArticleGroup>()
+                .eq(ArticleGroup::getId, groupId)
+                .eq(ArticleGroup::getCreatedBy, username));
+    }
+
+    protected List<ArticleGroup> listArticleGroupsByOwner(String username) {
+        return articleGroupMapper.selectList(new LambdaQueryWrapper<ArticleGroup>()
+                .eq(ArticleGroup::getCreatedBy, username));
+    }
+
+    protected List<ArticleGroup> listArticleGroupsByArticleId(Long articleId) {
+        List<ArticleGroupRelation> relations = articleGroupRelationMapper.selectList(
+                new LambdaQueryWrapper<ArticleGroupRelation>()
+                        .eq(ArticleGroupRelation::getArticleId, articleId)
+                        .orderByAsc(ArticleGroupRelation::getCreatedAt)
+                        .orderByAsc(ArticleGroupRelation::getId));
+        if (relations == null || relations.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> groupIds = relations.stream()
+                .map(ArticleGroupRelation::getGroupId)
+                .collect(Collectors.toList());
+        Map<Long, ArticleGroup> groupById = articleGroupMapper.selectBatchIds(groupIds).stream()
+                .collect(Collectors.toMap(ArticleGroup::getId, group -> group));
+        return groupIds.stream()
+                .map(groupById::get)
+                .filter(group -> group != null)
+                .collect(Collectors.toList());
+    }
+
+    protected List<ArticleGroupRelation> listArticleGroupRelationsByGroupId(Long groupId) {
+        return articleGroupRelationMapper.selectList(new LambdaQueryWrapper<ArticleGroupRelation>()
+                .eq(ArticleGroupRelation::getGroupId, groupId));
+    }
+
+    protected List<ArticleGroupRelation> listArticleGroupRelationsByGroupIds(Collection<Long> groupIds) {
+        if (groupIds == null || groupIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return articleGroupRelationMapper.selectList(new LambdaQueryWrapper<ArticleGroupRelation>()
+                .in(ArticleGroupRelation::getGroupId, groupIds));
+    }
+
+    protected void deleteArticleGroupRelationsByArticleId(Long articleId) {
+        articleGroupRelationMapper.delete(new LambdaQueryWrapper<ArticleGroupRelation>()
+                .eq(ArticleGroupRelation::getArticleId, articleId));
+    }
+
+    protected void insertArticleGroupRelation(ArticleGroupRelation relation) {
+        articleGroupRelationMapper.insert(relation);
+    }
+
     private void replaceArticleTags(Long articleId, ArticleRequest request) {
         articleTagMapper.delete(new LambdaQueryWrapper<ArticleTag>()
                 .eq(ArticleTag::getArticleId, articleId));
@@ -433,6 +554,45 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                 articleTagMapper.insert(at);
             }
         }
+    }
+
+    private void replaceArticleGroups(Long articleId, ArticleRequest request, String username) {
+        List<Long> groupIds = normalizeGroupIds(request.getGroupIds());
+        List<ArticleGroup> groups = listArticleGroupsByIds(groupIds, username);
+        Map<Long, ArticleGroup> groupById = groups.stream()
+                .collect(Collectors.toMap(ArticleGroup::getId, group -> group));
+        for (Long groupId : groupIds) {
+            if (!groupById.containsKey(groupId)) {
+                throw new BusinessException("分组不存在");
+            }
+        }
+
+        deleteArticleGroupRelationsByArticleId(articleId);
+        for (Long groupId : groupIds) {
+            ArticleGroupRelation relation = new ArticleGroupRelation();
+            relation.setArticleId(articleId);
+            relation.setGroupId(groupId);
+            insertArticleGroupRelation(relation);
+        }
+    }
+
+    private List<Long> normalizeGroupIds(List<Long> groupIds) {
+        if (groupIds == null || groupIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        LinkedHashSet<Long> normalized = new LinkedHashSet<>();
+        for (Long groupId : groupIds) {
+            if (groupId == null) {
+                throw new BusinessException("分组不存在");
+            }
+            normalized.add(groupId);
+        }
+        return new ArrayList<>(normalized);
+    }
+
+    private void attachTagsAuthorAndGroups(Article article) {
+        attachTagsAndAuthor(article);
+        article.setGroups(listArticleGroupsByArticleId(article.getId()));
     }
 
     private void attachTagsAndAuthor(Article article) {

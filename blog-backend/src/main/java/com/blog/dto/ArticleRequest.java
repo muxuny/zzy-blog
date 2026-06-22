@@ -15,4 +15,6 @@ public class ArticleRequest {
     private String status;
 
     private List<Long> tagIds;
+
+    private List<Long> groupIds;
 }
