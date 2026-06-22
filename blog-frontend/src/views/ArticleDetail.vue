@@ -139,9 +139,15 @@
       </article>
     </el-main>
 
-    <button v-show="showBackToTop" type="button" class="floating-top-button" @click="scrollToTop()">
+    <button
+      v-show="showBackToTop"
+      type="button"
+      class="floating-top-button"
+      aria-label="返回顶部"
+      title="返回顶部"
+      @click="scrollToTop()"
+    >
       <el-icon><Top /></el-icon>
-      <span>顶部</span>
     </button>
   </div>
 </template>
@@ -634,22 +640,44 @@ function scrollToTop(smooth = true) {
 
 .floating-top-button {
   position: fixed;
-  right: max(22px, calc((100vw - var(--content-width)) / 2 + 18px));
-  bottom: calc(28px + env(safe-area-inset-bottom));
+  right: max(24px, calc((100vw - var(--content-width)) / 2 - 58px));
+  bottom: calc(30px + env(safe-area-inset-bottom));
   z-index: 20;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: 42px;
-  padding: 0 14px;
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-sm);
-  background: var(--panel-bg);
-  color: var(--text-color);
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 34%, transparent);
+  border-radius: 999px;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--primary-color) 92%, white), var(--primary-color));
+  color: #fff;
   font: inherit;
   font-weight: 800;
-  box-shadow: var(--shadow-md);
+  box-shadow:
+    0 14px 34px color-mix(in srgb, var(--primary-color) 28%, transparent),
+    0 6px 16px rgba(15, 23, 42, 0.16);
   cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+
+.floating-top-button:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.05);
+  box-shadow:
+    0 18px 42px color-mix(in srgb, var(--primary-color) 34%, transparent),
+    0 8px 20px rgba(15, 23, 42, 0.2);
+}
+
+.floating-top-button:active {
+  transform: translateY(0) scale(0.96);
+}
+
+.floating-top-button .el-icon {
+  font-size: 18px;
 }
 
 @media (max-width: 980px) {
@@ -664,6 +692,13 @@ function scrollToTop(smooth = true) {
 
   .mobile-toc {
     display: grid;
+  }
+}
+
+@media (min-width: 981px) and (max-width: 1320px) {
+  .floating-top-button {
+    right: 18px;
+    bottom: calc(150px + env(safe-area-inset-bottom));
   }
 }
 
@@ -689,6 +724,8 @@ function scrollToTop(smooth = true) {
   .floating-top-button {
     right: 14px;
     bottom: calc(18px + env(safe-area-inset-bottom));
+    width: 42px;
+    height: 42px;
   }
 
   .article-cover img {
