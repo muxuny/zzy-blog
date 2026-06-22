@@ -20,10 +20,6 @@
             />
             <el-button class="search-button" type="primary" size="large" native-type="submit">搜索</el-button>
           </form>
-
-          <div class="hero-topics" aria-label="写作方向">
-            <span v-for="topic in writingTopics" :key="topic">{{ topic }}</span>
-          </div>
         </div>
 
         <button
@@ -103,21 +99,19 @@
             </div>
           </section>
 
-          <section class="side-panel direction-panel">
+          <section v-if="recentArticles.length" class="side-panel latest-panel">
             <div class="panel-head">
-              <span>方向</span>
-              <h2>写作地图</h2>
+              <span>入口</span>
+              <h2>最近更新</h2>
             </div>
-            <ul>
-              <li v-for="topic in writingTopics" :key="topic">
-                <span>{{ topic }}</span>
+            <ul class="latest-list">
+              <li v-for="article in recentArticles" :key="article.id">
+                <button type="button" @click="goArticle(article)">
+                  <span>{{ formatDate(article.createdAt) }}</span>
+                  <strong>{{ article.title }}</strong>
+                </button>
               </li>
             </ul>
-          </section>
-
-          <section v-if="featuredArticle" class="side-panel note-panel">
-            <span>最新记录</span>
-            <p>{{ formatDate(featuredArticle.createdAt) }} 更新，适合从这里开始阅读。</p>
           </section>
         </aside>
 
@@ -182,12 +176,12 @@ const keywordInput = ref('')
 const keyword = ref('')
 const loading = ref(false)
 const currentYear = new Date().getFullYear()
-const writingTopics = ['前端工程', '后端实践', '数据库', '项目复盘']
 
 const featuredArticle = computed(() => articles.value[0] || null)
 const featuredInitial = computed(() => featuredArticle.value?.title?.trim()?.charAt(0) || 'B')
 const featuredTags = computed(() => featuredArticle.value?.tags?.slice(0, 3) || [])
 const streamArticles = computed(() => articles.value)
+const recentArticles = computed(() => articles.value.slice(0, 3))
 const topTags = computed(() => tags.value.slice(0, 12))
 const filterSummary = computed(() => {
   const parts = []
@@ -381,24 +375,6 @@ function goArticle(article) {
   min-height: 42px;
 }
 
-.hero-topics {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 20px;
-}
-
-.hero-topics span {
-  padding: 7px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 999px;
-  color: rgba(244, 248, 255, 0.78);
-  background: rgba(255, 255, 255, 0.08);
-  font-size: 13px;
-}
-
 .spotlight-card {
   display: grid;
   align-content: start;
@@ -561,7 +537,7 @@ function goArticle(article) {
 }
 
 .panel-head span,
-.note-panel > span {
+.panel-head span {
   color: var(--accent-color);
   font-size: 12px;
   font-weight: 850;
@@ -598,43 +574,47 @@ function goArticle(article) {
   background: color-mix(in srgb, var(--primary-color) 8%, transparent);
 }
 
-.direction-panel ul {
+.latest-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   list-style: none;
 }
 
-.direction-panel li {
-  position: relative;
-  min-height: 36px;
-  padding: 8px 10px 8px 28px;
+.latest-list button {
+  display: grid;
+  width: 100%;
+  gap: 4px;
+  padding: 11px 12px;
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   background: var(--bg-color);
-  color: var(--text-color);
-  font-weight: 700;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
 }
 
-.direction-panel li::before {
-  position: absolute;
-  top: 14px;
-  left: 12px;
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  background: var(--accent-color);
-  content: "";
+.latest-list button:hover {
+  transform: translateX(2px);
+  border-color: color-mix(in srgb, var(--primary-color) 30%, transparent);
+  background: color-mix(in srgb, var(--primary-color) 7%, var(--bg-color));
 }
 
-.note-panel {
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--accent-color) 12%, transparent), transparent),
-    var(--panel-bg);
+.latest-list button:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
 }
 
-.note-panel p {
-  margin: 8px 0 0;
+.latest-list span {
   color: var(--muted-text-color);
-  line-height: 1.75;
+  font-size: 12px;
+}
+
+.latest-list strong {
+  color: var(--text-color);
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 760;
 }
 
 .article-section {
@@ -694,10 +674,6 @@ function goArticle(article) {
   .home-sidebar {
     position: static;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .note-panel {
-    grid-column: 1 / -1;
   }
 
   .signal-strip {
