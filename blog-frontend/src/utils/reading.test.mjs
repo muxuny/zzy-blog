@@ -25,6 +25,20 @@ test('extractMarkdownToc returns level 2 and 3 headings with stable ids', () => 
   ])
 })
 
+test('extractMarkdownToc keeps ids aligned with rendered headings outside toc levels', () => {
+  const markdown = [
+    '# Same',
+    '## Same',
+    '#### Same',
+    '### Same'
+  ].join('\n')
+
+  assert.deepEqual(extractMarkdownToc(markdown), [
+    { id: 'same-2', level: 2, text: 'Same' },
+    { id: 'same-4', level: 3, text: 'Same' }
+  ])
+})
+
 test('createHeadingId keeps duplicate headings stable', () => {
   const seen = new Map()
 

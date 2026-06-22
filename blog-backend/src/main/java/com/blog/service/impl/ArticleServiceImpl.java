@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.blog.common.ArticleStatus;
 import com.blog.common.BusinessException;
+import com.blog.dto.ArticleNeighbors;
 import com.blog.dto.ArticlePageQuery;
 import com.blog.dto.ArticleRequest;
 import com.blog.entity.Article;
@@ -20,7 +21,11 @@ import com.blog.service.UserService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -66,14 +71,62 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     @Override
     public Article getPublicDetail(Long id) {
-        Article article = requireArticle(id);
-        if (!ArticleStatus.isPublic(article.getStatus())) {
-            throw new BusinessException("文章不存在");
-        }
+        Article article = requirePublicArticle(id);
         article.setViewCount(article.getViewCount() == null ? 1 : article.getViewCount() + 1);
         updateById(article);
         attachTagsAndAuthor(article);
         return article;
+    }
+
+    @Override
+    public ArticleNeighbors getPublicNeighbors(Long id) {
+        Article current = requirePublicArticle(id);
+        Article previous = findPreviousPublicArticle(current);
+        Article next = findNextPublicArticle(current);
+        if (previous != null) {
+            attachTagsAndAuthor(previous);
+        }
+        if (next != null) {
+            attachTagsAndAuthor(next);
+        }
+        return new ArticleNeighbors(previous, next);
+    }
+
+    @Override
+    public List<Article> getRelatedArticles(Long id, Integer size) {
+        requirePublicArticle(id);
+        int limit = normalizeRelatedSize(size);
+        List<ArticleTag> currentTags = listArticleTagsByArticleId(id);
+        if (currentTags == null || currentTags.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> currentTagIds = currentTags.stream()
+                .map(ArticleTag::getTagId)
+                .distinct()
+                .collect(Collectors.toList());
+        List<ArticleTag> relatedTagRows = listArticleTagsByTagIds(currentTagIds);
+        Map<Long, Long> sameTagCounts = relatedTagRows.stream()
+                .filter(articleTag -> !id.equals(articleTag.getArticleId()))
+                .collect(Collectors.groupingBy(
+                        ArticleTag::getArticleId,
+                        Collectors.collectingAndThen(
+                                Collectors.mapping(ArticleTag::getTagId, Collectors.toSet()),
+                                tags -> (long) tags.size())));
+        if (sameTagCounts.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Article> related = listPublicArticlesByIds(sameTagCounts.keySet()).stream()
+                .filter(article -> !id.equals(article.getId()))
+                .sorted(Comparator
+                        .comparing((Article article) -> sameTagCounts.getOrDefault(article.getId(), 0L)).reversed()
+                        .thenComparing(Article::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(Article::getId, Comparator.reverseOrder()))
+                .limit(limit)
+                .collect(Collectors.toList());
+        related.forEach(this::attachTagsAndAuthor);
+        return related;
     }
 
     @Override
@@ -266,6 +319,14 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         return result;
     }
 
+    private Article requirePublicArticle(Long id) {
+        Article article = requireArticle(id);
+        if (!ArticleStatus.isPublic(article.getStatus())) {
+            throw new BusinessException("文章不存在");
+        }
+        return article;
+    }
+
     private Article requireArticle(Long id) {
         Article article = getById(id);
         if (article == null || article.getDeleted() != null && article.getDeleted() == 1) {
@@ -304,6 +365,61 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             throw new BusinessException("文章状态不合法");
         }
         return status;
+    }
+
+    private int normalizeRelatedSize(Integer size) {
+        if (size == null || size <= 0) {
+            return 4;
+        }
+        return Math.min(size, 12);
+    }
+
+    protected Article findPreviousPublicArticle(Article current) {
+        return getOne(new LambdaQueryWrapper<Article>()
+                .eq(Article::getStatus, ArticleStatus.PUBLISHED)
+                .and(wrapper -> wrapper
+                        .lt(Article::getCreatedAt, current.getCreatedAt())
+                        .or(orWrapper -> orWrapper
+                                .eq(Article::getCreatedAt, current.getCreatedAt())
+                                .lt(Article::getId, current.getId())))
+                .orderByDesc(Article::getCreatedAt)
+                .orderByDesc(Article::getId)
+                .last("LIMIT 1"));
+    }
+
+    protected Article findNextPublicArticle(Article current) {
+        return getOne(new LambdaQueryWrapper<Article>()
+                .eq(Article::getStatus, ArticleStatus.PUBLISHED)
+                .and(wrapper -> wrapper
+                        .gt(Article::getCreatedAt, current.getCreatedAt())
+                        .or(orWrapper -> orWrapper
+                                .eq(Article::getCreatedAt, current.getCreatedAt())
+                                .gt(Article::getId, current.getId())))
+                .orderByAsc(Article::getCreatedAt)
+                .orderByAsc(Article::getId)
+                .last("LIMIT 1"));
+    }
+
+    protected List<ArticleTag> listArticleTagsByArticleId(Long articleId) {
+        return articleTagMapper.selectList(new LambdaQueryWrapper<ArticleTag>()
+                .eq(ArticleTag::getArticleId, articleId));
+    }
+
+    protected List<ArticleTag> listArticleTagsByTagIds(Collection<Long> tagIds) {
+        if (tagIds == null || tagIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return articleTagMapper.selectList(new LambdaQueryWrapper<ArticleTag>()
+                .in(ArticleTag::getTagId, tagIds));
+    }
+
+    protected List<Article> listPublicArticlesByIds(Collection<Long> articleIds) {
+        if (articleIds == null || articleIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return list(new LambdaQueryWrapper<Article>()
+                .in(Article::getId, articleIds)
+                .eq(Article::getStatus, ArticleStatus.PUBLISHED));
     }
 
     private void replaceArticleTags(Long articleId, ArticleRequest request) {

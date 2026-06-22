@@ -26,13 +26,17 @@ export function extractMarkdownToc(markdown = '') {
     }
     if (inFence) return
 
-    const match = /^(#{2,3})\s+(.+?)\s*#*\s*$/.exec(line)
+    const match = /^(#{1,6})\s+(.+?)\s*#*\s*$/.exec(line)
     if (!match) return
 
     const text = match[2].replace(/[`*_~]/g, '').trim()
+    const id = createHeadingId(text, seen)
+    const level = match[1].length
+    if (level < 2 || level > 3) return
+
     toc.push({
-      id: createHeadingId(text, seen),
-      level: match[1].length,
+      id,
+      level,
       text
     })
   })

@@ -58,7 +58,7 @@
                 v-for="item in toc"
                 :key="item.id"
                 type="button"
-                :class="`toc-link level-${item.level}`"
+                :class="['toc-link', `level-${item.level}`, { active: activeHeadingId === item.id }]"
                 @click="scrollToHeading(item.id)"
               >
                 {{ item.text }}
@@ -67,7 +67,6 @@
 
             <MarkdownRenderer :content="article.content" />
 
-            <button type="button" class="top-button" @click="scrollToTop">回到顶部</button>
           </main>
 
           <aside class="reading-sidebar">
@@ -77,7 +76,7 @@
                 v-for="item in toc"
                 :key="item.id"
                 type="button"
-                :class="`toc-link level-${item.level}`"
+                :class="['toc-link', `level-${item.level}`, { active: activeHeadingId === item.id }]"
                 @click="scrollToHeading(item.id)"
               >
                 {{ item.text }}
@@ -89,19 +88,72 @@
             </section>
           </aside>
         </div>
+
+        <section v-if="hasContinuation" class="continuation-section">
+          <div v-if="neighbors.previous || neighbors.next" class="neighbor-grid">
+            <button
+              v-if="neighbors.previous"
+              type="button"
+              class="neighbor-card previous"
+              @click="openArticle(neighbors.previous.id)"
+            >
+              <span>上一篇</span>
+              <strong>{{ neighbors.previous.title }}</strong>
+              <small>{{ formatDate(neighbors.previous.createdAt) }} · 阅读 {{ neighbors.previous.viewCount || 0 }}</small>
+            </button>
+            <button
+              v-if="neighbors.next"
+              type="button"
+              class="neighbor-card next"
+              @click="openArticle(neighbors.next.id)"
+            >
+              <span>下一篇</span>
+              <strong>{{ neighbors.next.title }}</strong>
+              <small>{{ formatDate(neighbors.next.createdAt) }} · 阅读 {{ neighbors.next.viewCount || 0 }}</small>
+            </button>
+          </div>
+
+          <div v-if="relatedArticles.length" class="related-panel">
+            <div class="section-heading">
+              <span class="eyebrow">继续阅读</span>
+              <h2>相关文章</h2>
+            </div>
+            <div class="related-grid">
+              <button
+                v-for="item in relatedArticles"
+                :key="item.id"
+                type="button"
+                class="related-card"
+                @click="openArticle(item.id)"
+              >
+                <strong>{{ item.title }}</strong>
+                <small>{{ formatDate(item.createdAt) }} · 阅读 {{ item.viewCount || 0 }}</small>
+                <span v-if="item.tags?.length" class="related-tags">
+                  <el-tag v-for="tag in item.tags.slice(0, 2)" :key="tag.id" size="small">{{ tag.name }}</el-tag>
+                </span>
+              </button>
+            </div>
+          </div>
+        </section>
       </article>
     </el-main>
+
+    <button v-show="showBackToTop" type="button" class="floating-top-button" @click="scrollToTop()">
+      <el-icon><Top /></el-icon>
+      <span>顶部</span>
+    </button>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft } from '@element-plus/icons-vue'
-import { getArticle } from '../api/article'
+import { ArrowLeft, Top } from '@element-plus/icons-vue'
+import { getArticle, getArticleNeighbors, getRelatedArticles } from '../api/article'
 import { formatDate } from '../utils'
 import { shouldUseHistoryBack } from '../utils/navigation'
 import { extractMarkdownToc, getReadingStats } from '../utils/reading'
+import { getActiveHeadingId } from '../utils/scrollSpy'
 import AppHeader from '../components/AppHeader.vue'
 import MarkdownRenderer from '../components/MarkdownRenderer.vue'
 
@@ -110,22 +162,72 @@ const router = useRouter()
 const article = ref(null)
 const loading = ref(true)
 const errorMessage = ref('')
+const neighbors = ref({ previous: null, next: null })
+const relatedArticles = ref([])
+const activeHeadingId = ref('')
+const showBackToTop = ref(false)
+const loadToken = ref(0)
 
 const articleTags = computed(() => article.value?.tags || [])
 const authorName = computed(() => article.value?.authorName || article.value?.createdBy || '匿名作者')
 const toc = computed(() => extractMarkdownToc(article.value?.content || ''))
 const readingStats = computed(() => getReadingStats(article.value?.content || ''))
+const hasContinuation = computed(() =>
+  neighbors.value.previous || neighbors.value.next || relatedArticles.value.length
+)
 
-onMounted(async () => {
+onMounted(() => {
+  loadArticle()
+  window.addEventListener('scroll', updateScrollState, { passive: true })
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', updateScrollState)
+})
+
+watch(() => route.params.id, () => {
+  scrollToTop(false)
+  loadArticle()
+})
+
+async function loadArticle() {
+  const token = ++loadToken.value
+  loading.value = true
+  errorMessage.value = ''
+  article.value = null
+  neighbors.value = { previous: null, next: null }
+  relatedArticles.value = []
+  activeHeadingId.value = ''
   try {
     const r = await getArticle(route.params.id)
+    if (token !== loadToken.value) return
     article.value = r.data
+    await nextTick()
+    updateScrollState()
+    loadContinuationData(r.data.id, token)
   } catch {
+    if (token !== loadToken.value) return
     errorMessage.value = '文章不存在或暂不可见'
   } finally {
-    loading.value = false
+    if (token === loadToken.value) loading.value = false
   }
-})
+}
+
+async function loadContinuationData(articleId, token) {
+  try {
+    const [neighborsResult, relatedResult] = await Promise.all([
+      getArticleNeighbors(articleId),
+      getRelatedArticles(articleId, 4)
+    ])
+    if (token !== loadToken.value) return
+    neighbors.value = neighborsResult.data || { previous: null, next: null }
+    relatedArticles.value = relatedResult.data || []
+  } catch {
+    if (token !== loadToken.value) return
+    neighbors.value = { previous: null, next: null }
+    relatedArticles.value = []
+  }
+}
 
 function goBack() {
   if (shouldUseHistoryBack(history.state)) router.back()
@@ -136,8 +238,27 @@ function scrollToHeading(id) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
-function scrollToTop() {
-  window.scrollTo({ top: 0, behavior: 'smooth' })
+function updateScrollState() {
+  showBackToTop.value = window.scrollY > 360
+  if (!toc.value.length) {
+    activeHeadingId.value = ''
+    return
+  }
+  const headings = toc.value
+    .map(item => {
+      const el = document.getElementById(item.id)
+      return el ? { id: item.id, top: el.getBoundingClientRect().top + window.scrollY } : null
+    })
+    .filter(Boolean)
+  activeHeadingId.value = getActiveHeadingId(headings, window.scrollY, 140)
+}
+
+function openArticle(id) {
+  router.push(`/article/${id}`)
+}
+
+function scrollToTop(smooth = true) {
+  window.scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'auto' })
 }
 </script>
 
@@ -174,7 +295,9 @@ function scrollToTop() {
 .back-button:focus-visible,
 .home-button:focus-visible,
 .toc-link:focus-visible,
-.top-button:focus-visible {
+.neighbor-card:focus-visible,
+.related-card:focus-visible,
+.floating-top-button:focus-visible {
   outline: 2px solid var(--primary-color);
   outline-offset: 2px;
 }
@@ -199,8 +322,7 @@ function scrollToTop() {
   color: var(--muted-text-color);
 }
 
-.home-button,
-.top-button {
+.home-button {
   min-height: 38px;
   padding: 0 16px;
   border: 1px solid var(--primary-color);
@@ -377,6 +499,12 @@ function scrollToTop() {
   color: var(--primary-color);
 }
 
+.toc-link.active {
+  background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+  color: var(--primary-color);
+  font-weight: 800;
+}
+
 .toc-link.level-3 {
   padding-left: 20px;
 }
@@ -386,9 +514,103 @@ function scrollToTop() {
   margin-bottom: 22px;
 }
 
-.top-button {
-  display: block;
-  margin: 30px 0 0 auto;
+.continuation-section {
+  display: grid;
+  gap: 18px;
+}
+
+.neighbor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.neighbor-card,
+.related-card {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--soft-border-color);
+  border-radius: var(--radius-md);
+  background: var(--panel-bg);
+  color: var(--text-color);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.neighbor-card:hover,
+.related-card:hover {
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.neighbor-card span,
+.neighbor-card small,
+.related-card small {
+  color: var(--muted-text-color);
+  font-size: 13px;
+}
+
+.neighbor-card strong,
+.related-card strong {
+  min-width: 0;
+  color: var(--text-color);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.related-panel {
+  display: grid;
+  gap: 14px;
+  padding: clamp(20px, 3vw, 28px);
+  border: 1px solid var(--soft-border-color);
+  border-radius: var(--radius-lg);
+  background: var(--panel-bg);
+  box-shadow: var(--shadow-sm);
+}
+
+.section-heading h2 {
+  margin: 6px 0 0;
+  color: var(--text-color);
+  font-size: 24px;
+}
+
+.related-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.related-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.floating-top-button {
+  position: fixed;
+  right: max(22px, calc((100vw - var(--content-width)) / 2 + 18px));
+  bottom: calc(28px + env(safe-area-inset-bottom));
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--soft-border-color);
+  border-radius: var(--radius-sm);
+  background: var(--panel-bg);
+  color: var(--text-color);
+  font: inherit;
+  font-weight: 800;
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
 }
 
 @media (max-width: 980px) {
@@ -418,6 +640,16 @@ function scrollToTop() {
 
   .reading-summary {
     grid-template-columns: 1fr;
+  }
+
+  .neighbor-grid,
+  .related-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .floating-top-button {
+    right: 14px;
+    bottom: calc(18px + env(safe-area-inset-bottom));
   }
 
   .article-cover img {

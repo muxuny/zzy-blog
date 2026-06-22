@@ -2,6 +2,11 @@ import request from './request'
 
 export const getArticles = params => request.get('/articles', { params })
 export const getArticle = id => request.get(`/articles/${id}`)
+export const getArticleNeighbors = id => request.get(`/articles/${id}/neighbors`, { skipErrorMessage: true })
+export const getRelatedArticles = (id, size = 4) => request.get(`/articles/${id}/related`, {
+  params: { size },
+  skipErrorMessage: true
+})
 
 export const getAdminArticles = params => request.get('/admin/articles', { params })
 export const getAdminArticle = id => request.get(`/admin/articles/${id}`)
