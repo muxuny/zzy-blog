@@ -359,7 +359,21 @@ function goArticle(article) {
   min-height: 42px;
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.96);
+  color: #182235;
   box-shadow: none;
+}
+
+.hero-search :deep(.el-input__inner) {
+  color: #182235;
+  caret-color: var(--primary-color);
+}
+
+.hero-search :deep(.el-input__inner::placeholder) {
+  color: #667085;
+}
+
+.hero-search :deep(.el-input__clear) {
+  color: #667085;
 }
 
 .search-button {
