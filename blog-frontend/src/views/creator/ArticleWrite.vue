@@ -97,6 +97,7 @@ import ArticleEditor from '../../components/admin/ArticleEditor.vue'
 import ImageUploader from '../../components/admin/ImageUploader.vue'
 import { getTags } from '../../api/tag'
 import { createMyArticle, getMyArticle, updateMyArticle } from '../../api/myArticle'
+import { normalizeArticleMarkdown } from '../../utils/reading'
 
 const route = useRoute()
 const router = useRouter()
@@ -168,10 +169,15 @@ async function save(status) {
   savingStatus.value = status
   try {
     form.status = status
+    const payload = {
+      ...form,
+      content: normalizeArticleMarkdown(form.content),
+      tagIds: [...form.tagIds]
+    }
     if (isEdit.value) {
-      await updateMyArticle(route.params.id, form)
+      await updateMyArticle(route.params.id, payload)
     } else {
-      await createMyArticle(form)
+      await createMyArticle(payload)
     }
     ElMessage.success(status === 'pending' ? '已提交审核' : '草稿已保存')
     router.push('/creator/articles')

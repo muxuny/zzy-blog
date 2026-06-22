@@ -14,13 +14,36 @@ export function createHeadingId(text, seen = new Map()) {
   return count === 1 ? base : `${base}-${count}`
 }
 
+function isFenceLine(line) {
+  return /^\s*(```|~~~)/.test(line)
+}
+
+export function normalizeArticleMarkdown(markdown = '') {
+  let inFence = false
+
+  return String(markdown || '')
+    .split(/(\r?\n)/)
+    .map(part => {
+      if (/^\r?\n$/.test(part)) return part
+
+      if (isFenceLine(part)) {
+        inFence = !inFence
+        return part
+      }
+
+      if (inFence) return part
+      return part.replace(/^(#)(?!#)(\s+)/, '##$2')
+    })
+    .join('')
+}
+
 export function extractMarkdownToc(markdown = '') {
   const seen = new Map()
   const toc = []
   let inFence = false
 
   String(markdown).split(/\r?\n/).forEach(line => {
-    if (/^\s*```/.test(line)) {
+    if (isFenceLine(line)) {
       inFence = !inFence
       return
     }
@@ -32,7 +55,7 @@ export function extractMarkdownToc(markdown = '') {
     const text = match[2].replace(/[`*_~]/g, '').trim()
     const id = createHeadingId(text, seen)
     const level = match[1].length
-    if (level < 2 || level > 3) return
+    if (level < 2 || level > 4) return
 
     toc.push({
       id,
@@ -46,7 +69,7 @@ export function extractMarkdownToc(markdown = '') {
 
 export function getReadingStats(markdown = '') {
   const plain = String(markdown)
-    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/(^|\n)\s*(```|~~~)[\s\S]*?\n\s*\2/g, ' ')
     .replace(/`[^`]*`/g, ' ')
     .replace(/!\[[^\]]*]\([^)]*\)/g, ' ')
     .replace(/\[([^\]]+)]\([^)]*\)/g, '$1')

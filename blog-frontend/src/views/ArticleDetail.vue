@@ -85,7 +85,7 @@
             </nav>
             <section class="note-panel">
               <span class="eyebrow">阅读提示</span>
-              <p>目录会跟随 Markdown 二级和三级标题生成，适合快速回到关键段落。</p>
+              <p>目录会跟随章节、小节和细分标题生成，适合快速回到关键段落。</p>
             </section>
           </aside>
         </div>
@@ -552,6 +552,11 @@ function scrollToTop(smooth = true) {
 
 .toc-link.level-3 {
   padding-left: 20px;
+}
+
+.toc-link.level-4 {
+  padding-left: 32px;
+  font-size: 12px;
 }
 
 .mobile-toc {
