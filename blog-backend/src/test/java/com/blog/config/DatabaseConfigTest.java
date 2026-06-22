@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,6 +39,23 @@ class DatabaseConfigTest {
         assertEquals("blog_db", usedDatabase);
         assertEquals(createdDatabase, datasourceDatabase);
         assertEquals(usedDatabase, datasourceDatabase);
+    }
+
+    @Test
+    void migrationScriptsMustBeIncrementalAndPreserveExistingData() throws IOException {
+        Path migration = Paths.get("src/main/resources/db/migration/2026-06-22-add-article-groups.sql");
+        String sql = readString(migration);
+        String normalized = sql.toLowerCase(Locale.ROOT);
+
+        assertTrue(normalized.contains("create table if not exists `article_group`"),
+                "Expected migration to create article_group without requiring database rebuild");
+        assertTrue(normalized.contains("create table if not exists `article_group_relation`"),
+                "Expected migration to create article_group_relation without requiring database rebuild");
+        assertTrue(!normalized.contains("drop database"), "Migration must not drop databases");
+        assertTrue(!normalized.contains("drop table"), "Migration must not drop tables");
+        assertTrue(!normalized.contains("truncate table"), "Migration must not truncate tables");
+        assertTrue(!normalized.contains("delete from `article`"), "Migration must not delete articles");
+        assertTrue(!normalized.contains("delete from article"), "Migration must not delete articles");
     }
 
     private static String requireMatch(Pattern pattern, String content, String label) {
