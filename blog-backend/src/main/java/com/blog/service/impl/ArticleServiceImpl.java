@@ -221,6 +221,15 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     @Override
     @Transactional
+    public Article updateMyArticleGroups(Long id, List<Long> groupIds, String username) {
+        Article article = requireOwnedArticle(id, username);
+        replaceArticleGroups(id, groupIds, username);
+        attachTagsAuthorAndGroups(article);
+        return article;
+    }
+
+    @Override
+    @Transactional
     public void deleteMyArticle(Long id, String username) {
         requireOwnedArticle(id, username);
         deleteArticleGroupRelationsByArticleId(id);
@@ -557,7 +566,11 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     }
 
     private void replaceArticleGroups(Long articleId, ArticleRequest request, String username) {
-        List<Long> groupIds = normalizeGroupIds(request.getGroupIds());
+        replaceArticleGroups(articleId, request.getGroupIds(), username);
+    }
+
+    private void replaceArticleGroups(Long articleId, List<Long> requestedGroupIds, String username) {
+        List<Long> groupIds = normalizeGroupIds(requestedGroupIds);
         List<ArticleGroup> groups = listArticleGroupsByIds(groupIds, username);
         Map<Long, ArticleGroup> groupById = groups.stream()
                 .collect(Collectors.toMap(ArticleGroup::getId, group -> group));

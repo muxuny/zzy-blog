@@ -224,6 +224,41 @@ class ArticleServiceImplTest {
     }
 
     @Test
+    void updateMyArticleGroups_shouldKeepPublishedArticlePublished() {
+        articleService.put(article(1L, "alice", ArticleStatus.PUBLISHED));
+        articleService.putGroup(group(10L, "alice", "Published"));
+
+        Article updated = articleService.updateMyArticleGroups(1L, Arrays.asList(10L), "alice");
+
+        assertThat(updated.getStatus()).isEqualTo(ArticleStatus.PUBLISHED);
+        assertThat(articleService.getById(1L).getStatus()).isEqualTo(ArticleStatus.PUBLISHED);
+        assertThat(updated.getGroups()).extracting(ArticleGroup::getId).containsExactly(10L);
+    }
+
+    @Test
+    void updateMyArticleGroups_shouldClearGroupsWithoutChangingStatus() {
+        articleService.put(article(1L, "alice", ArticleStatus.PUBLISHED));
+        articleService.putGroup(group(10L, "alice", "Published"));
+        articleService.linkGroup(1L, 10L);
+
+        Article updated = articleService.updateMyArticleGroups(1L, java.util.Collections.emptyList(), "alice");
+
+        assertThat(updated.getStatus()).isEqualTo(ArticleStatus.PUBLISHED);
+        assertThat(articleService.groupRelations()).isEmpty();
+        assertThat(updated.getGroups()).isEmpty();
+    }
+
+    @Test
+    void updateMyArticleGroups_shouldRejectOtherUsersGroup() {
+        articleService.put(article(1L, "alice", ArticleStatus.PUBLISHED));
+        articleService.putGroup(group(20L, "bob", "Bob group"));
+
+        assertThatThrownBy(() -> articleService.updateMyArticleGroups(1L, Arrays.asList(20L), "alice"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("分组不存在");
+    }
+
+    @Test
     void getMyPage_shouldFilterByGroupAndAttachGroups() {
         articleService.put(article(1L, "alice", ArticleStatus.DRAFT, LocalDateTime.of(2024, 1, 1, 10, 0)));
         articleService.put(article(2L, "alice", ArticleStatus.DRAFT, LocalDateTime.of(2024, 1, 2, 10, 0)));

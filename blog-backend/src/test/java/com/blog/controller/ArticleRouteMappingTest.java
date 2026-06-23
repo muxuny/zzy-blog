@@ -10,6 +10,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.util.Arrays;
+
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -44,6 +46,18 @@ class ArticleRouteMappingTest {
         when(articleService.withdrawMyArticle(1L, "alice")).thenReturn(article);
 
         mockMvc.perform(put("/api/my/articles/1/withdraw").principal(() -> "alice"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void putMyArticleGroupsRouteIsMapped() throws Exception {
+        Article article = articleWithStatus(ArticleStatus.PUBLISHED);
+        when(articleService.updateMyArticleGroups(1L, Arrays.asList(10L), "alice")).thenReturn(article);
+
+        mockMvc.perform(put("/api/my/articles/1/groups")
+                        .principal(() -> "alice")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"groupIds\":[10]}"))
                 .andExpect(status().isOk());
     }
 

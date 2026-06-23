@@ -2,6 +2,7 @@ package com.blog.controller;
 
 import com.blog.common.PageResult;
 import com.blog.common.Result;
+import com.blog.dto.ArticleGroupAssignRequest;
 import com.blog.dto.ArticlePageQuery;
 import com.blog.dto.ArticleRequest;
 import com.blog.entity.Article;
@@ -43,6 +44,13 @@ public class MyArticleController {
                                   @Valid @RequestBody ArticleRequest request,
                                   Principal principal) {
         return Result.success(articleService.updateMyArticle(id, request, principal.getName()));
+    }
+
+    @PutMapping("/{id}/groups")
+    public Result<Article> updateGroups(@PathVariable Long id,
+                                        @RequestBody ArticleGroupAssignRequest request,
+                                        Principal principal) {
+        return Result.success(articleService.updateMyArticleGroups(id, request.getGroupIds(), principal.getName()));
     }
 
     @DeleteMapping("/{id}")

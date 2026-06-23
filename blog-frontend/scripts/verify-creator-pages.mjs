@@ -78,7 +78,10 @@ const myArticleChecks = [
   'page.value = 1',
   'deleteMyArticle',
   'submitMyArticle',
-  'withdrawMyArticle'
+  'withdrawMyArticle',
+  'updateMyArticleGroups',
+  'assignGroup',
+  'groupAssignDialog'
 ]
 
 for (const text of myArticleChecks) {

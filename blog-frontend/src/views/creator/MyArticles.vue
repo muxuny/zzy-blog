@@ -93,8 +93,16 @@
             <el-table-column label="更新时间" width="180">
               <template #default="{ row }">{{ formatDate(row.updatedAt || row.createdAt) }}</template>
             </el-table-column>
-            <el-table-column label="操作" width="320">
+            <el-table-column label="操作" width="380">
               <template #default="{ row }">
+                <el-button
+                  size="small"
+                  :loading="rowAction[row.id] === 'groups'"
+                  :disabled="isRowBusy(row.id)"
+                  @click="openGroupAssign(row)"
+                >
+                  分组
+                </el-button>
                 <el-button
                   v-if="row.status !== 'pending'"
                   size="small"
@@ -155,6 +163,31 @@
           />
         </section>
       </div>
+
+      <el-dialog v-model="groupAssignDialog.visible" title="调整文章分组" width="420px" @closed="closeGroupAssign">
+        <p class="group-assign-intro">
+          这里只调整你自己的文章归类，不会修改文章内容，也不会改变审核状态。
+        </p>
+        <el-select
+          v-model="groupAssignDialog.selectedGroupId"
+          class="group-assign-select"
+          placeholder="未分组"
+          filterable
+          clearable
+        >
+          <el-option label="未分组" :value="''" />
+          <el-option
+            v-for="group in articleGroups"
+            :key="group.id"
+            :label="group.name"
+            :value="group.id"
+          />
+        </el-select>
+        <template #footer>
+          <el-button @click="groupAssignDialog.visible = false">取消</el-button>
+          <el-button type="primary" :loading="groupAssignLoading" @click="assignGroup">保存</el-button>
+        </template>
+      </el-dialog>
     </el-main>
   </div>
 </template>
@@ -164,13 +197,15 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import AppHeader from '../../components/AppHeader.vue'
 import { createArticleGroup, deleteArticleGroup, getArticleGroups, updateArticleGroup } from '../../api/articleGroup'
-import { deleteMyArticle, getMyArticles, submitMyArticle, withdrawMyArticle } from '../../api/myArticle'
+import { deleteMyArticle, getMyArticles, submitMyArticle, updateMyArticleGroups, withdrawMyArticle } from '../../api/myArticle'
 import {
   GROUP_FILTER_ALL,
   GROUP_FILTER_UNGROUPED,
+  buildArticleGroupIds,
   buildMyArticleGroupParams,
   createGroupFilterKey,
   formatArticleGroupNames,
+  getFirstArticleGroupId,
   parseGroupFilterKey
 } from '../../utils/articleGroups'
 import { formatDate } from '../../utils'
@@ -185,6 +220,12 @@ const page = ref(1)
 const size = ref(10)
 const total = ref(0)
 const rowAction = ref({})
+const groupAssignLoading = ref(false)
+const groupAssignDialog = ref({
+  visible: false,
+  article: null,
+  selectedGroupId: ''
+})
 
 const statusMap = {
   draft: { text: '草稿', type: 'info' },
@@ -280,6 +321,43 @@ async function withdraw(id) {
     await withdrawMyArticle(id)
     ElMessage.success('已撤回为草稿')
   })
+}
+
+function openGroupAssign(article) {
+  groupAssignDialog.value = {
+    visible: true,
+    article,
+    selectedGroupId: getFirstArticleGroupId(article.groups)
+  }
+}
+
+function closeGroupAssign() {
+  if (groupAssignLoading.value) return
+  groupAssignDialog.value = {
+    visible: false,
+    article: null,
+    selectedGroupId: ''
+  }
+}
+
+async function assignGroup() {
+  const article = groupAssignDialog.value.article
+  if (!article || groupAssignLoading.value) return
+  groupAssignLoading.value = true
+  try {
+    await runRowAction(article.id, 'groups', async () => {
+      await updateMyArticleGroups(article.id, {
+        groupIds: buildArticleGroupIds(groupAssignDialog.value.selectedGroupId)
+      })
+      groupAssignDialog.value.visible = false
+      ElMessage.success('分组已更新')
+    })
+  } finally {
+    groupAssignLoading.value = false
+    if (!groupAssignDialog.value.visible) {
+      closeGroupAssign()
+    }
+  }
 }
 
 async function createGroup() {
@@ -511,6 +589,17 @@ async function remove(id) {
 
 .article-pagination {
   margin-top: 16px;
+}
+
+.group-assign-intro {
+  margin: 0 0 14px;
+  color: var(--muted-text-color);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.group-assign-select {
+  width: 100%;
 }
 
 @media (max-width: 760px) {

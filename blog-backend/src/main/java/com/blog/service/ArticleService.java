@@ -19,6 +19,7 @@ public interface ArticleService extends IService<Article> {
     Article getMyDetail(Long id, String username);
     Article createMyArticle(ArticleRequest request, String username);
     Article updateMyArticle(Long id, ArticleRequest request, String username);
+    Article updateMyArticleGroups(Long id, List<Long> groupIds, String username);
     void deleteMyArticle(Long id, String username);
     Article submitMyArticle(Long id, String username);
     Article withdrawMyArticle(Long id, String username);
