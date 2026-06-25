@@ -2,11 +2,14 @@ package com.blog.controller;
 
 import com.blog.common.ArticleStatus;
 import com.blog.common.Result;
+import com.blog.dto.ArticleGroupAssignRequest;
 import com.blog.entity.Article;
+import com.blog.entity.ArticleGroup;
 import com.blog.service.ArticleService;
 import org.junit.jupiter.api.Test;
 
 import java.security.Principal;
+import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
@@ -30,5 +33,23 @@ class MyArticleControllerTest {
         assertEquals(200, result.getCode());
         assertEquals(ArticleStatus.PENDING, result.getData().getStatus());
         verify(articleService).submitMyArticle(1L, "alice");
+    }
+
+    @Test
+    void updateGroupsUsesCurrentPrincipal() {
+        Article article = new Article();
+        ArticleGroup group = new ArticleGroup();
+        group.setId(10L);
+        article.setGroups(Arrays.asList(group));
+        Principal principal = () -> "alice";
+        ArticleGroupAssignRequest request = new ArticleGroupAssignRequest();
+        request.setGroupIds(Arrays.asList(10L));
+        when(articleService.updateMyArticleGroups(1L, Arrays.asList(10L), "alice")).thenReturn(article);
+
+        Result<Article> result = myArticleController.updateGroups(1L, request, principal);
+
+        assertEquals(200, result.getCode());
+        assertEquals(10L, result.getData().getGroups().get(0).getId());
+        verify(articleService).updateMyArticleGroups(1L, Arrays.asList(10L), "alice");
     }
 }

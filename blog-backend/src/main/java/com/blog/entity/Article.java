@@ -24,5 +24,8 @@ public class Article extends BaseEntity {
     private List<Tag> tags;
 
     @TableField(exist = false)
+    private List<ArticleGroup> groups;
+
+    @TableField(exist = false)
     private String authorName;
 }

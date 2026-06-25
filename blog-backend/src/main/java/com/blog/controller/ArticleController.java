@@ -2,10 +2,13 @@ package com.blog.controller;
 
 import com.blog.common.PageResult;
 import com.blog.common.Result;
+import com.blog.dto.ArticleNeighbors;
 import com.blog.dto.ArticlePageQuery;
 import com.blog.entity.Article;
 import com.blog.service.ArticleService;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/articles")
@@ -25,5 +28,16 @@ public class ArticleController {
     @GetMapping("/{id}")
     public Result<Article> detail(@PathVariable Long id) {
         return Result.success(articleService.getPublicDetail(id));
+    }
+
+    @GetMapping("/{id}/neighbors")
+    public Result<ArticleNeighbors> neighbors(@PathVariable Long id) {
+        return Result.success(articleService.getPublicNeighbors(id));
+    }
+
+    @GetMapping("/{id}/related")
+    public Result<List<Article>> related(@PathVariable Long id,
+                                         @RequestParam(defaultValue = "4") Integer size) {
+        return Result.success(articleService.getRelatedArticles(id, size));
     }
 }

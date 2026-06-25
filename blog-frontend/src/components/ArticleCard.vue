@@ -9,6 +9,9 @@
     @keydown.space.prevent="goArticle"
   >
     <div class="card-body">
+      <div class="card-marker" aria-hidden="true">
+        <span>{{ articleInitial }}</span>
+      </div>
       <div class="card-content">
         <h3 class="card-title">{{ article.title }}</h3>
         <p class="card-summary">{{ article.summary || truncate(article.content, 120) }}</p>
@@ -40,10 +43,12 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
+import { computed } from 'vue'
 import { formatDate, truncate } from '../utils'
 
 const props = defineProps({ article: { type: Object, required: true } })
 const router = useRouter()
+const articleInitial = computed(() => props.article.title?.trim()?.charAt(0) || 'B')
 
 function goArticle() {
   router.push(`/article/${props.article.id}`)
@@ -53,11 +58,17 @@ function goArticle() {
 
 <style scoped>
 .article-card {
-  margin-bottom: 18px;
+  margin-bottom: 0;
   cursor: pointer;
   background: var(--card-bg);
   border: 1px solid var(--soft-border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.article-card :deep(.el-card__body) {
+  padding: 20px;
 }
 
 .article-card:hover,
@@ -74,8 +85,22 @@ function goArticle() {
 
 .card-body {
   display: flex;
-  gap: 20px;
+  gap: 18px;
   align-items: stretch;
+}
+
+.card-marker {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 18%, transparent), transparent),
+    var(--bg-color);
+  color: var(--primary-color);
+  font-weight: 900;
 }
 
 .card-content {
@@ -84,9 +109,9 @@ function goArticle() {
 }
 
 .card-title {
-  margin-bottom: 10px;
+  margin: 0 0 10px;
   color: var(--text-color);
-  font-size: 21px;
+  font-size: 22px;
   line-height: 1.35;
   font-weight: 800;
 }
@@ -144,7 +169,11 @@ function goArticle() {
 
 @media (max-width: 720px) {
   .card-body {
-    flex-direction: column-reverse;
+    flex-direction: column;
+  }
+
+  .card-marker {
+    display: none;
   }
 
   .card-image {

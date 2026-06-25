@@ -24,6 +24,14 @@
         :closable="false"
         class="form-alert"
       />
+      <el-alert
+        v-if="groupError"
+        :title="groupError"
+        type="warning"
+        show-icon
+        :closable="false"
+        class="form-alert"
+      />
 
       <el-form
         v-loading="pageLoading"
@@ -59,6 +67,27 @@
             <el-option v-for="tag in tags" :key="tag.id" :label="tag.name" :value="tag.id" />
           </el-select>
         </el-form-item>
+        <el-form-item label="文章分组">
+          <div class="group-control">
+            <el-select
+              v-model="form.groupId"
+              clearable
+              placeholder="未分组"
+              class="group-select"
+              :disabled="formDisabled || groupsLoading"
+            >
+              <el-option
+                v-for="group in articleGroups"
+                :key="group.id"
+                :label="group.name"
+                :value="group.id"
+              />
+            </el-select>
+            <el-button :disabled="formDisabled || groupsLoading" @click="createGroupInline">
+              新建分组
+            </el-button>
+          </div>
+        </el-form-item>
         <el-form-item label="内容">
           <div :class="{ 'disabled-control': formDisabled }" class="editor-control">
             <ArticleEditor v-model="form.content" />
@@ -91,24 +120,31 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import AppHeader from '../../components/AppHeader.vue'
 import ArticleEditor from '../../components/admin/ArticleEditor.vue'
 import ImageUploader from '../../components/admin/ImageUploader.vue'
+import { createArticleGroup, getArticleGroups } from '../../api/articleGroup'
 import { getTags } from '../../api/tag'
 import { createMyArticle, getMyArticle, updateMyArticle } from '../../api/myArticle'
+import { buildArticleGroupIdsForSave, getFirstArticleGroupId } from '../../utils/articleGroups'
+import { normalizeArticleMarkdown } from '../../utils/reading'
 
 const route = useRoute()
 const router = useRouter()
 const isEdit = computed(() => !!route.params.id)
 const tags = ref([])
+const articleGroups = ref([])
 const tagsLoading = ref(false)
+const groupsLoading = ref(false)
 const detailLoading = ref(false)
 const detailError = ref('')
 const tagError = ref('')
+const groupError = ref('')
+const existingGroups = ref([])
 const savingStatus = ref('')
 const saving = computed(() => !!savingStatus.value)
-const pageLoading = computed(() => tagsLoading.value || detailLoading.value)
+const pageLoading = computed(() => tagsLoading.value || groupsLoading.value || detailLoading.value)
 const formDisabled = computed(() => pageLoading.value || saving.value || !!detailError.value)
 const form = reactive({
   title: '',
@@ -116,11 +152,13 @@ const form = reactive({
   summary: '',
   coverImage: '',
   status: 'draft',
-  tagIds: []
+  tagIds: [],
+  groupId: ''
 })
 
 onMounted(() => {
   loadTags()
+  loadArticleGroups()
   if (isEdit.value) loadArticle()
 })
 
@@ -134,6 +172,19 @@ async function loadTags() {
     tagError.value = '标签加载失败，你仍可以先编辑文章内容。'
   } finally {
     tagsLoading.value = false
+  }
+}
+
+async function loadArticleGroups() {
+  groupsLoading.value = true
+  groupError.value = ''
+  try {
+    const result = await getArticleGroups()
+    articleGroups.value = result.data || []
+  } catch {
+    groupError.value = '分组加载失败，你仍然可以先编辑文章内容。'
+  } finally {
+    groupsLoading.value = false
   }
 }
 
@@ -154,6 +205,8 @@ async function loadArticle() {
     form.coverImage = article.coverImage || ''
     form.status = article.status || 'draft'
     form.tagIds = (article.tags || []).map(tag => tag.id)
+    existingGroups.value = article.groups || []
+    form.groupId = getFirstArticleGroupId(existingGroups.value)
   } catch {
     detailError.value = '文章详情加载失败，请返回我的文章后重试。'
     ElMessage.error(detailError.value)
@@ -163,15 +216,47 @@ async function loadArticle() {
   }
 }
 
+async function createGroupInline() {
+  try {
+    const prompt = await ElMessageBox.prompt('请输入分组名称', '新建分组', {
+      confirmButtonText: '创建',
+      cancelButtonText: '取消',
+      inputPlaceholder: '例如：技术笔记',
+      inputValidator: value => {
+        if (!value || !value.trim()) return false
+        return true
+      },
+      inputErrorMessage: '分组名称不能为空'
+    })
+    const result = await createArticleGroup({ name: prompt.value.trim() })
+    const group = result.data
+    articleGroups.value = [...articleGroups.value, group]
+    form.groupId = group.id
+    ElMessage.success('分组已创建')
+  } catch (error) {
+    if (error === 'cancel' || error === 'close') return
+    throw error
+  }
+}
+
 async function save(status) {
   if (formDisabled.value || saving.value) return
   savingStatus.value = status
   try {
     form.status = status
+    const payload = {
+      title: form.title,
+      summary: form.summary,
+      coverImage: form.coverImage,
+      status: form.status,
+      content: normalizeArticleMarkdown(form.content),
+      tagIds: [...form.tagIds],
+      groupIds: buildArticleGroupIdsForSave(form.groupId, existingGroups.value)
+    }
     if (isEdit.value) {
-      await updateMyArticle(route.params.id, form)
+      await updateMyArticle(route.params.id, payload)
     } else {
-      await createMyArticle(form)
+      await createMyArticle(payload)
     }
     ElMessage.success(status === 'pending' ? '已提交审核' : '草稿已保存')
     router.push('/creator/articles')
@@ -219,6 +304,17 @@ async function save(status) {
   width: 100%;
 }
 
+.group-control {
+  display: flex;
+  width: 100%;
+  gap: 10px;
+  align-items: center;
+}
+
+.group-select {
+  flex: 1;
+}
+
 .editor-control {
   width: 100%;
 }
@@ -237,6 +333,11 @@ async function save(status) {
 @media (max-width: 760px) {
   .main {
     padding: 24px 14px 48px;
+  }
+
+  .group-control {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 </style>

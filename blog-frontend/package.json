@@ -6,17 +6,19 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test src/**/*.test.mjs"
   },
   "dependencies": {
-    "vue": "^3.4.0",
-    "vue-router": "^4.3.0",
-    "pinia": "^2.1.0",
+    "@toast-ui/editor": "^3.2.2",
+    "@vueuse/core": "^10.7.0",
     "axios": "^1.6.0",
     "element-plus": "^2.5.0",
-    "marked": "^11.0.0",
     "highlight.js": "^11.9.0",
-    "@vueuse/core": "^10.7.0"
+    "marked": "^11.0.0",
+    "pinia": "^2.1.0",
+    "vue": "^3.4.0",
+    "vue-router": "^4.3.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",

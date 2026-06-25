@@ -14,6 +14,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,5 +46,31 @@ class UserServiceTest {
         when(userMapper.selectOne(any())).thenReturn(new User());
 
         assertThrows(BusinessException.class, () -> userService.register(request));
+    }
+
+    @Test
+    void disableUser_shouldRejectAdminUser() {
+        User admin = new User();
+        admin.setId(1L);
+        admin.setRole("admin");
+        admin.setStatus("active");
+
+        userService = new UserServiceImpl(new BCryptPasswordEncoder(), null) {
+            @Override
+            public User getById(java.io.Serializable id) {
+                return admin;
+            }
+
+            @Override
+            public boolean updateById(User entity) {
+                return userMapper.updateById(entity) > 0;
+            }
+        };
+
+        BusinessException exception = assertThrows(BusinessException.class, () -> userService.disableUser(1L));
+
+        assertEquals("管理员账号不能被禁用", exception.getMessage());
+        assertEquals("active", admin.getStatus());
+        verify(userMapper, never()).updateById(any());
     }
 }

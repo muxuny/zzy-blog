@@ -2742,7 +2742,7 @@ export function truncate(text, len = 100) {
 <template>
   <el-header class="app-header">
     <div class="header-inner">
-      <router-link to="/" class="logo">My Blog</router-link>
+      <router-link to="/" class="logo">ZZY Blog</router-link>
       <div class="header-right">
         <ThemeToggle />
         <template v-if="authStore.isLoggedIn">

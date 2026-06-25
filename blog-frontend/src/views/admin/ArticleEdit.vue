@@ -54,6 +54,7 @@ import { getTags } from '../../api/tag'
 import { ElMessage } from 'element-plus'
 import ArticleEditor from '../../components/admin/ArticleEditor.vue'
 import ImageUploader from '../../components/admin/ImageUploader.vue'
+import { normalizeArticleMarkdown } from '../../utils/reading'
 
 const route = useRoute()
 const router = useRouter()
@@ -81,7 +82,11 @@ async function save(status) {
   if (savingStatus.value) return
   savingStatus.value = status
   form.status = status
-  const payload = { ...form, tagIds: [...form.tagIds] }
+  const payload = {
+    ...form,
+    content: normalizeArticleMarkdown(form.content),
+    tagIds: [...form.tagIds]
+  }
   try {
     if (isEdit.value) {
       await updateAdminArticle(route.params.id, payload)

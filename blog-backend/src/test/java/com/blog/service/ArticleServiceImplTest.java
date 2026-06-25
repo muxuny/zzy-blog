@@ -3,10 +3,16 @@ package com.blog.service;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.blog.common.ArticleStatus;
 import com.blog.common.BusinessException;
+import com.blog.dto.ArticleNeighbors;
+import com.blog.dto.ArticlePageQuery;
 import com.blog.dto.ArticleRequest;
 import com.blog.entity.Article;
+import com.blog.entity.ArticleGroup;
+import com.blog.entity.ArticleGroupRelation;
 import com.blog.entity.ArticleTag;
 import com.blog.entity.User;
+import com.blog.mapper.ArticleGroupMapper;
+import com.blog.mapper.ArticleGroupRelationMapper;
 import com.blog.mapper.ArticleTagMapper;
 import com.blog.mapper.TagMapper;
 import com.blog.service.impl.ArticleServiceImpl;
@@ -14,8 +20,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.Serializable;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -32,9 +45,12 @@ class ArticleServiceImplTest {
         ArticleTagMapper articleTagMapper = mock(ArticleTagMapper.class);
         TagMapper tagMapper = mock(TagMapper.class);
         UserService userService = mock(UserService.class);
+        ArticleGroupMapper articleGroupMapper = mock(ArticleGroupMapper.class);
+        ArticleGroupRelationMapper articleGroupRelationMapper = mock(ArticleGroupRelationMapper.class);
         when(articleTagMapper.selectList(any())).thenReturn(java.util.Collections.<ArticleTag>emptyList());
         when(userService.getOne(any(Wrapper.class))).thenReturn(null);
-        articleService = new TestArticleService(articleTagMapper, tagMapper, userService);
+        articleService = new TestArticleService(articleTagMapper, tagMapper, userService,
+                articleGroupMapper, articleGroupRelationMapper);
     }
 
     @Test
@@ -102,7 +118,191 @@ class ArticleServiceImplTest {
                 .hasMessage("只有待审核文章可以驳回");
     }
 
+    @Test
+    void getPublicNeighbors_shouldReturnClosestPublishedArticlesByCreatedAtAndId() {
+        articleService.put(article(1L, "alice", ArticleStatus.PUBLISHED, LocalDateTime.of(2024, 1, 1, 10, 0)));
+        articleService.put(article(2L, "alice", ArticleStatus.PUBLISHED, LocalDateTime.of(2024, 1, 2, 10, 0)));
+        articleService.put(article(3L, "alice", ArticleStatus.PUBLISHED, LocalDateTime.of(2024, 1, 2, 10, 0)));
+        articleService.put(article(4L, "alice", ArticleStatus.PUBLISHED, LocalDateTime.of(2024, 1, 3, 10, 0)));
+        articleService.put(article(5L, "alice", ArticleStatus.DRAFT, LocalDateTime.of(2024, 1, 4, 10, 0)));
+        articleService.put(article(6L, "alice", ArticleStatus.PUBLISHED, LocalDateTime.of(2024, 1, 4, 10, 0), 1));
+
+        ArticleNeighbors neighbors = articleService.getPublicNeighbors(3L);
+
+        assertThat(neighbors.getPrevious().getId()).isEqualTo(2L);
+        assertThat(neighbors.getNext().getId()).isEqualTo(4L);
+    }
+
+    @Test
+    void getPublicNeighbors_shouldRejectNonPublicCurrentArticle() {
+        articleService.put(article(1L, "alice", ArticleStatus.DRAFT, LocalDateTime.of(2024, 1, 1, 10, 0)));
+
+        assertThatThrownBy(() -> articleService.getPublicNeighbors(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("文章不存在");
+    }
+
+    @Test
+    void getRelatedArticles_shouldSortBySharedTagsThenCreatedAtThenIdAndCapSize() {
+        articleService.put(article(1L, "alice", ArticleStatus.PUBLISHED, LocalDateTime.of(2024, 1, 10, 10, 0)));
+        articleService.put(article(2L, "alice", ArticleStatus.PUBLISHED, LocalDateTime.of(2024, 1, 9, 10, 0)));
+        articleService.put(article(3L, "alice", ArticleStatus.PUBLISHED, LocalDateTime.of(2024, 1, 11, 10, 0)));
+        articleService.put(article(4L, "alice", ArticleStatus.PUBLISHED, LocalDateTime.of(2024, 1, 8, 10, 0)));
+        articleService.put(article(5L, "alice", ArticleStatus.DRAFT, LocalDateTime.of(2024, 1, 12, 10, 0)));
+        articleService.put(article(6L, "alice", ArticleStatus.PUBLISHED, LocalDateTime.of(2024, 1, 11, 10, 0)));
+        articleService.put(article(7L, "alice", ArticleStatus.PUBLISHED, LocalDateTime.of(2024, 1, 7, 10, 0)));
+        articleService.put(article(8L, "alice", ArticleStatus.PUBLISHED, LocalDateTime.of(2024, 1, 6, 10, 0)));
+        articleService.put(article(9L, "alice", ArticleStatus.PUBLISHED, LocalDateTime.of(2024, 1, 5, 10, 0)));
+        articleService.put(article(10L, "alice", ArticleStatus.PUBLISHED, LocalDateTime.of(2024, 1, 4, 10, 0)));
+        articleService.put(article(11L, "alice", ArticleStatus.PUBLISHED, LocalDateTime.of(2024, 1, 3, 10, 0)));
+        articleService.put(article(12L, "alice", ArticleStatus.PUBLISHED, LocalDateTime.of(2024, 1, 2, 10, 0)));
+        articleService.put(article(13L, "alice", ArticleStatus.PUBLISHED, LocalDateTime.of(2024, 1, 1, 10, 0)));
+        articleService.put(article(14L, "alice", ArticleStatus.PUBLISHED, LocalDateTime.of(2023, 12, 31, 10, 0)));
+        articleService.put(article(15L, "alice", ArticleStatus.PUBLISHED, LocalDateTime.of(2023, 12, 30, 10, 0)));
+        articleService.linkTags(1L, 1L, 2L, 3L);
+        articleService.linkTags(2L, 1L, 2L);
+        articleService.linkTags(3L, 1L);
+        articleService.linkTags(4L, 2L, 3L);
+        articleService.linkTags(5L, 1L, 2L, 3L);
+        articleService.linkTags(6L, 3L);
+        articleService.linkTags(7L, 1L);
+        articleService.linkTags(8L, 1L);
+        articleService.linkTags(9L, 1L);
+        articleService.linkTags(10L, 1L);
+        articleService.linkTags(11L, 1L);
+        articleService.linkTags(12L, 1L);
+        articleService.linkTags(13L, 1L);
+        articleService.linkTags(14L, 1L);
+        articleService.linkTags(15L, 1L);
+
+        List<Article> related = articleService.getRelatedArticles(1L, 20);
+
+        assertThat(related).extracting(Article::getId)
+                .containsExactly(2L, 4L, 6L, 3L, 7L, 8L, 9L, 10L, 11L, 12L, 13L, 14L);
+    }
+
+    @Test
+    void createMyArticle_shouldSaveMultipleOwnedGroupsAndAttachThem() {
+        articleService.putGroup(group(10L, "alice", "Ideas"));
+        articleService.putGroup(group(11L, "alice", "Drafts"));
+        ArticleRequest request = request("Grouped article", ArticleStatus.DRAFT);
+        request.setGroupIds(Arrays.asList(10L, 11L));
+
+        Article created = articleService.createMyArticle(request, "alice");
+
+        assertThat(articleService.groupRelations()).extracting(ArticleGroupRelation::getArticleId)
+                .containsExactly(created.getId(), created.getId());
+        assertThat(articleService.groupRelations()).extracting(ArticleGroupRelation::getGroupId)
+                .containsExactly(10L, 11L);
+        assertThat(created.getGroups()).extracting(ArticleGroup::getId)
+                .containsExactly(10L, 11L);
+    }
+
+    @Test
+    void createMyArticle_shouldRejectMissingOrOtherUsersGroup() {
+        articleService.putGroup(group(10L, "bob", "Bob group"));
+        ArticleRequest request = request("Grouped article", ArticleStatus.DRAFT);
+        request.setGroupIds(Arrays.asList(10L));
+
+        assertThatThrownBy(() -> articleService.createMyArticle(request, "alice"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("分组不存在");
+    }
+
+    @Test
+    void updateMyArticle_shouldClearGroupsWhenRequestHasNoGroups() {
+        articleService.put(article(1L, "alice", ArticleStatus.DRAFT));
+        articleService.putGroup(group(10L, "alice", "Ideas"));
+        articleService.linkGroup(1L, 10L);
+        ArticleRequest request = request("Updated title", ArticleStatus.DRAFT);
+        request.setGroupIds(java.util.Collections.emptyList());
+
+        Article updated = articleService.updateMyArticle(1L, request, "alice");
+
+        assertThat(articleService.groupRelations()).isEmpty();
+        assertThat(updated.getGroups()).isEmpty();
+    }
+
+    @Test
+    void updateMyArticleGroups_shouldKeepPublishedArticlePublished() {
+        articleService.put(article(1L, "alice", ArticleStatus.PUBLISHED));
+        articleService.putGroup(group(10L, "alice", "Published"));
+
+        Article updated = articleService.updateMyArticleGroups(1L, Arrays.asList(10L), "alice");
+
+        assertThat(updated.getStatus()).isEqualTo(ArticleStatus.PUBLISHED);
+        assertThat(articleService.getById(1L).getStatus()).isEqualTo(ArticleStatus.PUBLISHED);
+        assertThat(updated.getGroups()).extracting(ArticleGroup::getId).containsExactly(10L);
+    }
+
+    @Test
+    void updateMyArticleGroups_shouldClearGroupsWithoutChangingStatus() {
+        articleService.put(article(1L, "alice", ArticleStatus.PUBLISHED));
+        articleService.putGroup(group(10L, "alice", "Published"));
+        articleService.linkGroup(1L, 10L);
+
+        Article updated = articleService.updateMyArticleGroups(1L, java.util.Collections.emptyList(), "alice");
+
+        assertThat(updated.getStatus()).isEqualTo(ArticleStatus.PUBLISHED);
+        assertThat(articleService.groupRelations()).isEmpty();
+        assertThat(updated.getGroups()).isEmpty();
+    }
+
+    @Test
+    void updateMyArticleGroups_shouldRejectOtherUsersGroup() {
+        articleService.put(article(1L, "alice", ArticleStatus.PUBLISHED));
+        articleService.putGroup(group(20L, "bob", "Bob group"));
+
+        assertThatThrownBy(() -> articleService.updateMyArticleGroups(1L, Arrays.asList(20L), "alice"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("分组不存在");
+    }
+
+    @Test
+    void getMyPage_shouldFilterByGroupAndAttachGroups() {
+        articleService.put(article(1L, "alice", ArticleStatus.DRAFT, LocalDateTime.of(2024, 1, 1, 10, 0)));
+        articleService.put(article(2L, "alice", ArticleStatus.DRAFT, LocalDateTime.of(2024, 1, 2, 10, 0)));
+        articleService.put(article(3L, "bob", ArticleStatus.DRAFT, LocalDateTime.of(2024, 1, 3, 10, 0)));
+        articleService.putGroup(group(10L, "alice", "Ideas"));
+        articleService.putGroup(group(20L, "bob", "Bob group"));
+        articleService.linkGroup(2L, 10L);
+        articleService.linkGroup(3L, 20L);
+        ArticlePageQuery query = new ArticlePageQuery();
+        query.setGroupId(10L);
+
+        List<Article> records = articleService.getMyPage(query, "alice").getRecords();
+
+        assertThat(records).extracting(Article::getId).containsExactly(2L);
+        assertThat(records.get(0).getGroups()).extracting(ArticleGroup::getId).containsExactly(10L);
+    }
+
+    @Test
+    void getMyPage_shouldReturnOnlyUngroupedArticlesForCurrentUser() {
+        articleService.put(article(1L, "alice", ArticleStatus.DRAFT, LocalDateTime.of(2024, 1, 1, 10, 0)));
+        articleService.put(article(2L, "alice", ArticleStatus.DRAFT, LocalDateTime.of(2024, 1, 2, 10, 0)));
+        articleService.put(article(3L, "bob", ArticleStatus.DRAFT, LocalDateTime.of(2024, 1, 3, 10, 0)));
+        articleService.putGroup(group(10L, "alice", "Ideas"));
+        articleService.putGroup(group(20L, "bob", "Bob group"));
+        articleService.linkGroup(2L, 10L);
+        articleService.linkGroup(3L, 20L);
+        ArticlePageQuery query = new ArticlePageQuery();
+        query.setUngrouped(true);
+
+        List<Article> records = articleService.getMyPage(query, "alice").getRecords();
+
+        assertThat(records).extracting(Article::getId).containsExactly(1L);
+        assertThat(records.get(0).getGroups()).isEmpty();
+    }
+
     private static Article article(Long id, String createdBy, String status) {
+        return article(id, createdBy, status, null);
+    }
+
+    private static Article article(Long id, String createdBy, String status, LocalDateTime createdAt) {
+        return article(id, createdBy, status, createdAt, 0);
+    }
+
+    private static Article article(Long id, String createdBy, String status, LocalDateTime createdAt, Integer deleted) {
         Article article = new Article();
         article.setId(id);
         article.setCreatedBy(createdBy);
@@ -111,7 +311,8 @@ class ArticleServiceImplTest {
         article.setSummary("Original summary");
         article.setStatus(status);
         article.setViewCount(0);
-        article.setDeleted(0);
+        article.setDeleted(deleted);
+        article.setCreatedAt(createdAt);
         return article;
     }
 
@@ -125,16 +326,56 @@ class ArticleServiceImplTest {
         return request;
     }
 
+    private static ArticleGroup group(Long id, String createdBy, String name) {
+        ArticleGroup group = new ArticleGroup();
+        group.setId(id);
+        group.setCreatedBy(createdBy);
+        group.setName(name);
+        group.setDeleted(0);
+        return group;
+    }
+
     private static class TestArticleService extends ArticleServiceImpl {
         private final Map<Long, Article> articles = new HashMap<>();
+        private final List<ArticleTag> articleTags = new ArrayList<>();
+        private final Map<Long, ArticleGroup> groups = new HashMap<>();
+        private final List<ArticleGroupRelation> articleGroupRelations = new ArrayList<>();
         private long nextId = 100L;
 
-        TestArticleService(ArticleTagMapper articleTagMapper, TagMapper tagMapper, UserService userService) {
-            super(articleTagMapper, tagMapper, userService);
+        TestArticleService(ArticleTagMapper articleTagMapper,
+                           TagMapper tagMapper,
+                           UserService userService,
+                           ArticleGroupMapper articleGroupMapper,
+                           ArticleGroupRelationMapper articleGroupRelationMapper) {
+            super(articleTagMapper, tagMapper, userService, articleGroupMapper, articleGroupRelationMapper);
         }
 
         void put(Article article) {
             articles.put(article.getId(), article);
+        }
+
+        void linkTags(Long articleId, Long... tagIds) {
+            for (Long tagId : tagIds) {
+                ArticleTag articleTag = new ArticleTag();
+                articleTag.setArticleId(articleId);
+                articleTag.setTagId(tagId);
+                articleTags.add(articleTag);
+            }
+        }
+
+        void putGroup(ArticleGroup group) {
+            groups.put(group.getId(), group);
+        }
+
+        void linkGroup(Long articleId, Long groupId) {
+            ArticleGroupRelation relation = new ArticleGroupRelation();
+            relation.setArticleId(articleId);
+            relation.setGroupId(groupId);
+            articleGroupRelations.add(relation);
+        }
+
+        List<ArticleGroupRelation> groupRelations() {
+            return articleGroupRelations;
         }
 
         @Override
@@ -161,6 +402,142 @@ class ArticleServiceImplTest {
         public boolean removeById(Serializable id) {
             articles.remove((Long) id);
             return true;
+        }
+
+        @Override
+        protected Article findPreviousPublicArticle(Article current) {
+            return articles.values().stream()
+                    .filter(article -> ArticleStatus.isPublic(article.getStatus()))
+                    .filter(article -> article.getDeleted() == null || article.getDeleted() == 0)
+                    .filter(article -> isBefore(article, current))
+                    .max(Comparator.comparing(Article::getCreatedAt).thenComparing(Article::getId))
+                    .orElse(null);
+        }
+
+        @Override
+        protected Article findNextPublicArticle(Article current) {
+            return articles.values().stream()
+                    .filter(article -> ArticleStatus.isPublic(article.getStatus()))
+                    .filter(article -> article.getDeleted() == null || article.getDeleted() == 0)
+                    .filter(article -> isBefore(current, article))
+                    .min(Comparator.comparing(Article::getCreatedAt).thenComparing(Article::getId))
+                    .orElse(null);
+        }
+
+        private boolean isBefore(Article left, Article right) {
+            int createdAtCompare = left.getCreatedAt().compareTo(right.getCreatedAt());
+            if (createdAtCompare != 0) {
+                return createdAtCompare < 0;
+            }
+            return left.getId().compareTo(right.getId()) < 0;
+        }
+
+        @Override
+        protected List<ArticleTag> listArticleTagsByArticleId(Long articleId) {
+            return articleTags.stream()
+                    .filter(articleTag -> articleTag.getArticleId().equals(articleId))
+                    .collect(Collectors.toList());
+        }
+
+        @Override
+        protected List<ArticleTag> listArticleTagsByTagIds(Collection<Long> tagIds) {
+            return articleTags.stream()
+                    .filter(articleTag -> tagIds.contains(articleTag.getTagId()))
+                    .collect(Collectors.toList());
+        }
+
+        @Override
+        protected List<Article> listPublicArticlesByIds(Collection<Long> articleIds) {
+            return articles.values().stream()
+                    .filter(article -> articleIds.contains(article.getId()))
+                    .filter(article -> ArticleStatus.isPublic(article.getStatus()))
+                    .filter(article -> article.getDeleted() == null || article.getDeleted() == 0)
+                    .collect(Collectors.toList());
+        }
+
+        @Override
+        protected List<ArticleGroup> listArticleGroupsByIds(Collection<Long> groupIds, String username) {
+            return groups.values().stream()
+                    .filter(group -> groupIds.contains(group.getId()))
+                    .filter(group -> username.equals(group.getCreatedBy()))
+                    .filter(group -> group.getDeleted() == null || group.getDeleted() == 0)
+                    .collect(Collectors.toList());
+        }
+
+        @Override
+        protected ArticleGroup findArticleGroupById(Long groupId, String username) {
+            ArticleGroup group = groups.get(groupId);
+            if (group == null || !username.equals(group.getCreatedBy())
+                    || group.getDeleted() != null && group.getDeleted() == 1) {
+                return null;
+            }
+            return group;
+        }
+
+        @Override
+        protected List<ArticleGroup> listArticleGroupsByOwner(String username) {
+            return groups.values().stream()
+                    .filter(group -> username.equals(group.getCreatedBy()))
+                    .filter(group -> group.getDeleted() == null || group.getDeleted() == 0)
+                    .collect(Collectors.toList());
+        }
+
+        @Override
+        protected List<ArticleGroup> listArticleGroupsByArticleId(Long articleId) {
+            List<Long> groupIds = articleGroupRelations.stream()
+                    .filter(relation -> articleId.equals(relation.getArticleId()))
+                    .map(ArticleGroupRelation::getGroupId)
+                    .collect(Collectors.toList());
+            return groups.values().stream()
+                    .filter(group -> groupIds.contains(group.getId()))
+                    .collect(Collectors.toList());
+        }
+
+        @Override
+        protected List<ArticleGroupRelation> listArticleGroupRelationsByGroupId(Long groupId) {
+            return articleGroupRelations.stream()
+                    .filter(relation -> groupId.equals(relation.getGroupId()))
+                    .collect(Collectors.toList());
+        }
+
+        @Override
+        protected List<ArticleGroupRelation> listArticleGroupRelationsByGroupIds(Collection<Long> groupIds) {
+            return articleGroupRelations.stream()
+                    .filter(relation -> groupIds.contains(relation.getGroupId()))
+                    .collect(Collectors.toList());
+        }
+
+        @Override
+        protected void deleteArticleGroupRelationsByArticleId(Long articleId) {
+            articleGroupRelations.removeIf(relation -> articleId.equals(relation.getArticleId()));
+        }
+
+        @Override
+        protected void insertArticleGroupRelation(ArticleGroupRelation relation) {
+            articleGroupRelations.add(relation);
+        }
+
+        @Override
+        protected com.baomidou.mybatisplus.core.metadata.IPage<Article> selectMyArticlePage(
+                com.baomidou.mybatisplus.extension.plugins.pagination.Page<Article> page,
+                com.blog.dto.ArticlePageQuery query,
+                String username,
+                Collection<Long> includeArticleIds,
+                Collection<Long> excludeArticleIds) {
+            List<Article> records = articles.values().stream()
+                    .filter(article -> username.equals(article.getCreatedBy()))
+                    .filter(article -> article.getDeleted() == null || article.getDeleted() == 0)
+                    .filter(article -> query.getStatus() == null || query.getStatus().isEmpty()
+                            || query.getStatus().equals(article.getStatus()))
+                    .filter(article -> query.getKeyword() == null || query.getKeyword().isEmpty()
+                            || article.getTitle().contains(query.getKeyword()))
+                    .filter(article -> includeArticleIds == null || includeArticleIds.contains(article.getId()))
+                    .filter(article -> excludeArticleIds == null || !excludeArticleIds.contains(article.getId()))
+                    .sorted(Comparator.comparing(Article::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                    .collect(Collectors.toList());
+            page.setRecords(records);
+            page.setTotal(records.size());
+            return page;
         }
     }
 }
