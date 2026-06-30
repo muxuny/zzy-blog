@@ -26,6 +26,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/creator/articles/preview/:id',
+    name: 'CreatorArticlePreview',
+    component: () => import('../views/creator/ArticlePreview.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/admin',
     component: () => import('../components/admin/AdminLayout.vue'),
     meta: { requiresAuth: true, requiresAdmin: true },

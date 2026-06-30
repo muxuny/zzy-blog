@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.blog.common.ArticleStatus;
+import com.blog.common.ArticleVisibility;
 import com.blog.common.BusinessException;
 import com.blog.dto.ArticleNeighbors;
 import com.blog.dto.ArticlePageQuery;
@@ -60,6 +61,9 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         Page<Article> page = new Page<>(query.getPage(), query.getSize());
         LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<Article>()
                 .eq(Article::getStatus, ArticleStatus.PUBLISHED)
+                .and(w -> w.eq(Article::getVisibility, ArticleVisibility.PUBLIC)
+                        .or()
+                        .isNull(Article::getVisibility))
                 .orderByDesc(Article::getCreatedAt);
 
         if (query.getTagId() != null) {
@@ -186,6 +190,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     public Article createMyArticle(ArticleRequest request, String username) {
         Article article = new Article();
         applyArticleFields(article, request);
+        article.setVisibility(normalizeVisibility(request.getVisibility()));
         article.setStatus(normalizeAuthorStatus(request.getStatus()));
         article.setReviewReason(null);
         article.setViewCount(0);
@@ -206,6 +211,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         }
 
         applyArticleFields(article, request);
+        article.setVisibility(normalizeVisibility(request.getVisibility(), article.getVisibility()));
         if (ArticleStatus.PUBLISHED.equals(article.getStatus())) {
             article.setStatus(ArticleStatus.PENDING);
         } else {
@@ -224,6 +230,16 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     public Article updateMyArticleGroups(Long id, List<Long> groupIds, String username) {
         Article article = requireOwnedArticle(id, username);
         replaceArticleGroups(id, groupIds, username);
+        attachTagsAuthorAndGroups(article);
+        return article;
+    }
+
+    @Override
+    @Transactional
+    public Article updateMyArticleVisibility(Long id, String visibility, String username) {
+        Article article = requireOwnedArticle(id, username);
+        article.setVisibility(requireExplicitVisibility(visibility));
+        updateById(article);
         attachTagsAuthorAndGroups(article);
         return article;
     }
@@ -275,6 +291,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     public Article createAdminArticle(ArticleRequest request) {
         Article article = new Article();
         applyArticleFields(article, request);
+        article.setVisibility(normalizeVisibility(request.getVisibility()));
         article.setStatus(normalizeAdminStatus(request.getStatus()));
         if (!ArticleStatus.REJECTED.equals(article.getStatus())) {
             article.setReviewReason(null);
@@ -291,6 +308,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     public Article updateAdminArticle(Long id, ArticleRequest request) {
         Article article = requireArticle(id);
         applyArticleFields(article, request);
+        article.setVisibility(normalizeVisibility(request.getVisibility(), article.getVisibility()));
         article.setStatus(normalizeAdminStatus(request.getStatus()));
         if (!ArticleStatus.REJECTED.equals(article.getStatus())) {
             article.setReviewReason(null);
@@ -346,6 +364,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         if (query.getStatus() != null && !query.getStatus().isEmpty()) {
             wrapper.eq(Article::getStatus, query.getStatus());
         }
+        applyVisibilityFilter(wrapper, query.getVisibility());
         if (query.getKeyword() != null && !query.getKeyword().isEmpty()) {
             wrapper.like(Article::getTitle, query.getKeyword());
         }
@@ -360,7 +379,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     private Article requirePublicArticle(Long id) {
         Article article = requireArticle(id);
-        if (!ArticleStatus.isPublic(article.getStatus())) {
+        if (!ArticleStatus.isPublic(article.getStatus()) || !ArticleVisibility.isPublic(article.getVisibility())) {
             throw new BusinessException("文章不存在");
         }
         return article;
@@ -406,6 +425,30 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         return status;
     }
 
+    private String normalizeVisibility(String visibility) {
+        if (visibility == null || visibility.isEmpty()) {
+            return ArticleVisibility.PUBLIC;
+        }
+        if (!ArticleVisibility.isValid(visibility)) {
+            throw new BusinessException("文章可见性不合法");
+        }
+        return visibility;
+    }
+
+    private String normalizeVisibility(String visibility, String fallbackVisibility) {
+        if (visibility == null || visibility.isEmpty()) {
+            return normalizeVisibility(fallbackVisibility);
+        }
+        return normalizeVisibility(visibility);
+    }
+
+    private String requireExplicitVisibility(String visibility) {
+        if (visibility == null || visibility.isEmpty() || !ArticleVisibility.isValid(visibility)) {
+            throw new BusinessException("文章可见性不合法");
+        }
+        return visibility;
+    }
+
     private int normalizeRelatedSize(Integer size) {
         if (size == null || size <= 0) {
             return 4;
@@ -416,6 +459,10 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     protected Article findPreviousPublicArticle(Article current) {
         return getOne(new LambdaQueryWrapper<Article>()
                 .eq(Article::getStatus, ArticleStatus.PUBLISHED)
+                .and(wrapper -> wrapper
+                        .eq(Article::getVisibility, ArticleVisibility.PUBLIC)
+                        .or()
+                        .isNull(Article::getVisibility))
                 .and(wrapper -> wrapper
                         .lt(Article::getCreatedAt, current.getCreatedAt())
                         .or(orWrapper -> orWrapper
@@ -429,6 +476,10 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     protected Article findNextPublicArticle(Article current) {
         return getOne(new LambdaQueryWrapper<Article>()
                 .eq(Article::getStatus, ArticleStatus.PUBLISHED)
+                .and(wrapper -> wrapper
+                        .eq(Article::getVisibility, ArticleVisibility.PUBLIC)
+                        .or()
+                        .isNull(Article::getVisibility))
                 .and(wrapper -> wrapper
                         .gt(Article::getCreatedAt, current.getCreatedAt())
                         .or(orWrapper -> orWrapper
@@ -458,7 +509,11 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         }
         return list(new LambdaQueryWrapper<Article>()
                 .in(Article::getId, articleIds)
-                .eq(Article::getStatus, ArticleStatus.PUBLISHED));
+                .eq(Article::getStatus, ArticleStatus.PUBLISHED)
+                .and(wrapper -> wrapper
+                        .eq(Article::getVisibility, ArticleVisibility.PUBLIC)
+                        .or()
+                        .isNull(Article::getVisibility)));
     }
 
     protected IPage<Article> selectMyArticlePage(Page<Article> page,
@@ -473,6 +528,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         if (query.getStatus() != null && !query.getStatus().isEmpty()) {
             wrapper.eq(Article::getStatus, query.getStatus());
         }
+        applyVisibilityFilter(wrapper, query.getVisibility());
         if (query.getKeyword() != null && !query.getKeyword().isEmpty()) {
             wrapper.like(Article::getTitle, query.getKeyword());
         }
@@ -487,6 +543,19 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         }
 
         return baseMapper.selectPage(page, wrapper);
+    }
+
+    private void applyVisibilityFilter(LambdaQueryWrapper<Article> wrapper, String visibility) {
+        if (visibility == null || visibility.isEmpty()) {
+            return;
+        }
+        if (ArticleVisibility.PUBLIC.equals(visibility)) {
+            wrapper.and(w -> w.eq(Article::getVisibility, ArticleVisibility.PUBLIC)
+                    .or()
+                    .isNull(Article::getVisibility));
+            return;
+        }
+        wrapper.eq(Article::getVisibility, visibility);
     }
 
     protected List<ArticleGroup> listArticleGroupsByIds(Collection<Long> groupIds, String username) {

@@ -50,6 +50,7 @@ import '@toast-ui/editor/dist/toastui-editor.css'
 import '@toast-ui/editor/dist/theme/toastui-editor-dark.css'
 import '@toast-ui/editor/dist/i18n/zh-cn'
 import { uploadImage } from '../../api/image'
+import { getHeadingLevelFromNode, shouldAppendParagraphAfterCodeBlock } from '../../utils/editorState'
 import { normalizeArticleMarkdown } from '../../utils/reading'
 import { useThemeStore } from '../../stores/theme'
 
@@ -87,9 +88,12 @@ onMounted(() => {
       addImageBlobHook: handleImageBlob
     },
     events: {
-      change: syncContent
+      change: syncContent,
+      caretChange: updateHeadingValue,
+      keyup: updateHeadingValue
     }
   })
+  nextTick(updateHeadingValue)
 })
 
 onBeforeUnmount(() => {
@@ -111,6 +115,7 @@ watch(() => themeStore.isDark, isDark => {
 
 function syncContent() {
   if (!editor) return
+  ensureCodeBlockExitTarget()
   const markdown = editor.getMarkdown()
   const normalizedMarkdown = normalizeArticleMarkdown(markdown)
   syncingFromEditor = true
@@ -126,13 +131,54 @@ function syncContent() {
 function runCommand(command, payload) {
   if (!editor) return
   editor.exec(command, payload)
+  if (command === 'codeBlock') ensureCodeBlockExitTarget()
   editor.focus()
   syncContent()
+  nextTick(updateHeadingValue)
 }
 
 function applyHeading(level) {
   headingValue.value = level
   runCommand('heading', { level })
+}
+
+function updateHeadingValue() {
+  headingValue.value = getHeadingLevelFromNode(getCurrentWysiwygNode())
+}
+
+function getCurrentWysiwygNode() {
+  if (!editor?.isWysiwygMode?.()) return null
+  const node = editor.wwEditor?.view?.state?.selection?.$from?.parent
+  if (!node) return null
+  return {
+    type: node.type?.name,
+    attrs: node.attrs || {}
+  }
+}
+
+function ensureCodeBlockExitTarget() {
+  if (!editor?.isWysiwygMode?.()) return
+
+  const view = editor.wwEditor?.view
+  const state = view?.state
+  const dispatch = view?.dispatch
+  const paragraphNode = state?.schema?.nodes?.paragraph
+  if (!view || !state || !dispatch || !paragraphNode) return
+
+  const $from = state.selection?.$from
+  const currentNode = $from?.parent
+  let insertPos
+  let nextNode
+
+  try {
+    insertPos = $from.after()
+    nextNode = state.doc.resolve(insertPos).nodeAfter
+  } catch {
+    return
+  }
+
+  if (!shouldAppendParagraphAfterCodeBlock(currentNode, nextNode)) return
+  dispatch(state.tr.insert(insertPos, paragraphNode.create()))
 }
 
 function openImagePicker() {

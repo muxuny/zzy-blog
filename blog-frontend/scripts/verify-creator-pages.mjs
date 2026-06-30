@@ -5,6 +5,7 @@ const read = file => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '')
 const files = {
   router: read('src/router/index.js'),
   articleDetail: read('src/views/ArticleDetail.vue'),
+  home: read('src/views/Home.vue'),
   myArticles: read('src/views/creator/MyArticles.vue'),
   articleWrite: read('src/views/creator/ArticleWrite.vue'),
   appHeader: read('src/components/AppHeader.vue')
@@ -80,8 +81,40 @@ const myArticleChecks = [
   'submitMyArticle',
   'withdrawMyArticle',
   'updateMyArticleGroups',
+  'updateMyArticleVisibility',
   'assignGroup',
-  'groupAssignDialog'
+  'groupAssignDialog',
+  'toggleVisibility',
+  'visibility',
+  '全部可见性',
+  '可见性',
+  '仅自己可见',
+  'label="操作"',
+  'width="124"',
+  'fixed="right"',
+  'article-action-column',
+  'article-action-header',
+  'article-actions',
+  'article-primary-action',
+  'article-primary-action--edit',
+  'article-primary-action--view',
+  'article-primary-action--withdraw',
+  'canOpenPublicArticle',
+  'normalizeArticleVisibility',
+  'ARTICLE_VISIBILITY_PUBLIC',
+  '[data-theme="dark"] .article-primary-action',
+  'article-more-button',
+  'handleArticleCommand',
+  'popper-class="article-action-menu"',
+  'command="groups"',
+  'command="edit"',
+  'command="visibility"',
+  'command="delete"',
+  'text-align: center',
+  'color-mix(in srgb, var(--primary-color) 6%, var(--panel-bg))',
+  'color-mix(in srgb, var(--primary-color) 10%, var(--panel-bg))',
+  'background-color: var(--el-table-tr-bg-color) !important',
+  'z-index: 2'
 ]
 
 for (const text of myArticleChecks) {
@@ -119,7 +152,7 @@ const requiredCopy = [
   '编辑',
   '提交审核',
   '撤回',
-  '查看已发布',
+  '查看',
   '删除',
   '保存草稿',
   '取消'
@@ -129,6 +162,10 @@ const copyCorpus = `${files.myArticles}\n${files.articleWrite}\n${files.appHeade
 for (const text of requiredCopy) {
   check(copyCorpus.includes(text), `关键中文文案 -> ${text}`)
 }
+
+const brandCorpus = `${files.home}\n${files.appHeader}`
+check(brandCorpus.includes('ZZY Blog'), '品牌文案 -> ZZY Blog')
+check(!brandCorpus.includes('My Blog'), '品牌文案不应再出现 My Blog')
 
 if (failed) process.exit(1)
 console.log('创作中心页面静态校验通过')

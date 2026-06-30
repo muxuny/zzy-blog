@@ -9,6 +9,7 @@ public class ArticlePageQuery {
     private Long tagId;
     private Long groupId;
     private String status;
+    private String visibility;
     private String keyword;
     private String author;
     private Boolean ungrouped;

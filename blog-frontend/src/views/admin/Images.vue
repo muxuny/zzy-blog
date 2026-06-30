@@ -2,7 +2,6 @@
   <div>
     <div class="page-header">
       <h2>图片管理</h2>
-      <ImageUploader v-model="uploadUrl" @success="load" />
     </div>
 
     <el-table :data="images" stripe class="admin-table">
@@ -14,6 +13,9 @@
       <el-table-column prop="originalName" label="文件名" />
       <el-table-column label="大小" width="100">
         <template #default="{ row }">{{ (row.size / 1024).toFixed(1) }} KB</template>
+      </el-table-column>
+      <el-table-column label="上传者" width="140">
+        <template #default="{ row }">{{ row.createdBy || '未知' }}</template>
       </el-table-column>
       <el-table-column label="上传时间" width="180">
         <template #default="{ row }">{{ formatDate(row.createdAt) }}</template>
@@ -32,10 +34,8 @@ import { ref, onMounted } from 'vue'
 import { getImages, deleteImage } from '../../api/image'
 import { ElMessage } from 'element-plus'
 import { formatDate } from '../../utils'
-import ImageUploader from '../../components/admin/ImageUploader.vue'
 
 const images = ref([])
-const uploadUrl = ref('')
 
 onMounted(() => load())
 

@@ -4,9 +4,13 @@ import path from 'node:path'
 const root = process.cwd()
 const articlesPath = path.join(root, 'src/views/admin/Articles.vue')
 const editPath = path.join(root, 'src/views/admin/ArticleEdit.vue')
+const dashboardPath = path.join(root, 'src/views/admin/Dashboard.vue')
+const imagesPath = path.join(root, 'src/views/admin/Images.vue')
 
 const articles = fs.readFileSync(articlesPath, 'utf8')
 const edit = fs.readFileSync(editPath, 'utf8')
+const dashboard = fs.readFileSync(dashboardPath, 'utf8')
+const images = fs.readFileSync(imagesPath, 'utf8')
 
 const failures = []
 
@@ -37,12 +41,23 @@ includesAll(
 
 includesAll(
   articles,
-  ['全部状态', '草稿', '待审核', '已发布', '已驳回', '驳回原因', '通过', '驳回', '审核通过'],
+  ['全部状态', '草稿', '待审核', '已发布', '已驳回', '全部可见性', '公开', '仅自己可见', '驳回原因', '通过', '驳回', '审核通过'],
   'Articles.vue copy',
+)
+check(!articles.includes("'/admin/articles/create'"), 'Articles.vue should not link to admin article creation')
+check(!articles.includes('写文章'), 'Articles.vue should not show a writing entry in admin article management')
+
+includesAll(
+  articles,
+  ['filter-field', '筛选状态', '筛选可见性', 'placeholder="全部状态"', 'placeholder="全部可见性"', 'clearable'],
+  'Articles.vue filter controls',
 )
 
 check(/v-model="status"|v-model:.*="status"/.test(articles), 'Articles.vue should have a status filter model')
 check(/@change="handleStatusChange"/.test(articles), 'Articles.vue should reset pagination when status changes')
+check(/v-model="visibility"|v-model:.*="visibility"/.test(articles), 'Articles.vue should have a visibility filter model')
+check(/@change="handleVisibilityChange"/.test(articles), 'Articles.vue should reset pagination when visibility changes')
+check(/if \(visibility\.value\) params\.visibility = visibility\.value/.test(articles), 'Articles.vue should pass visibility filter to getAdminArticles')
 check(/statusMap\s*=/.test(articles), 'Articles.vue should define statusMap')
 includesAll(articles, ['draft', 'pending', 'published', 'rejected'], 'Articles.vue statusMap')
 check(/function\s+statusText|const\s+statusText/.test(articles), 'Articles.vue should define statusText')
@@ -106,6 +121,20 @@ check(saveBody.includes('const payload'), 'ArticleEdit.vue save() should copy fo
 check(saveBody.includes('tagIds: [...form.tagIds]'), 'ArticleEdit.vue payload should copy tagIds array')
 check(saveBody.includes('updateAdminArticle(route.params.id, payload)'), 'ArticleEdit.vue update should use copied payload')
 check(saveBody.includes('createAdminArticle(payload)'), 'ArticleEdit.vue create should use copied payload')
+
+includesAll(
+  dashboard,
+  ['公开可见', '仅自己可见', 'publicPublishedArticles', 'privateArticles'],
+  'Dashboard.vue visibility metrics',
+)
+
+includesAll(
+  images,
+  ['图片管理', '上传者', 'createdBy', '未知'],
+  'Images.vue management columns',
+)
+check(!images.includes('ImageUploader'), 'Images.vue should not expose a standalone upload entry')
+check(!images.includes('上传图片'), 'Images.vue should not show a standalone upload button')
 
 if (failures.length) {
   console.error('Admin review UI verification failed:')

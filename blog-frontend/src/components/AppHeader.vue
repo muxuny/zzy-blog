@@ -3,7 +3,7 @@
     <div class="header-inner">
       <router-link to="/" class="logo" aria-label="返回首页">
         <span class="logo-mark">B</span>
-        <span class="logo-text">My Blog</span>
+        <span class="logo-text">ZZY Blog</span>
       </router-link>
       <div class="header-right">
         <ThemeToggle />

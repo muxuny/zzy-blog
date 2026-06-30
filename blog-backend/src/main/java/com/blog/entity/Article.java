@@ -17,6 +17,7 @@ public class Article extends BaseEntity {
     private String summary;
     private String coverImage;
     private String status;
+    private String visibility;
     private String reviewReason;
     private Integer viewCount;
 

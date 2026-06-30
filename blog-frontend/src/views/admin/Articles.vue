@@ -2,14 +2,30 @@
   <div>
     <div class="page-header">
       <h2>文章管理</h2>
-      <el-button type="primary" @click="$router.push('/admin/articles/create')">写文章</el-button>
     </div>
 
     <div class="admin-toolbar">
-      <el-select v-model="status" class="status-filter" @change="handleStatusChange">
-        <el-option label="全部状态" value="" />
-        <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
-      </el-select>
+      <label class="filter-field">
+        <span>筛选状态</span>
+        <el-select v-model="status" class="status-filter" placeholder="全部状态" clearable @change="handleStatusChange">
+          <el-option label="全部状态" value="" />
+          <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+      </label>
+      <label class="filter-field">
+        <span>筛选可见性</span>
+        <el-select
+          v-model="visibility"
+          class="visibility-filter"
+          placeholder="全部可见性"
+          clearable
+          @change="handleVisibilityChange"
+        >
+          <el-option label="全部可见性" value="" />
+          <el-option label="公开" value="public" />
+          <el-option label="仅自己可见" value="private" />
+        </el-select>
+      </label>
     </div>
 
     <el-table :data="articles" stripe class="admin-table">
@@ -19,6 +35,13 @@
         <template #default="{ row }">
           <el-tag :type="statusType(row.status)">
             {{ statusText(row.status) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="visibility" label="可见性" width="130">
+        <template #default="{ row }">
+          <el-tag :type="articleVisibilityType(row.visibility)" effect="plain">
+            {{ articleVisibilityText(row.visibility) }}
           </el-tag>
         </template>
       </el-table-column>
@@ -83,6 +106,7 @@
 import { ref, onMounted } from 'vue'
 import { approveArticle, deleteAdminArticle, getAdminArticles, rejectArticle } from '../../api/article'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { articleVisibilityText, articleVisibilityType } from '../../utils/articleVisibility'
 import { formatDate } from '../../utils'
 
 const statusMap = {
@@ -102,6 +126,7 @@ const page = ref(1)
 const size = ref(10)
 const total = ref(0)
 const status = ref('')
+const visibility = ref('')
 const busyIds = ref(new Set())
 
 onMounted(() => load())
@@ -131,12 +156,18 @@ function setBusy(id, busy) {
 async function load() {
   const params = { page: page.value, size: size.value }
   if (status.value) params.status = status.value
+  if (visibility.value) params.visibility = visibility.value
   const r = await getAdminArticles(params)
   articles.value = r.data || []
   total.value = r.total || 0
 }
 
 function handleStatusChange() {
+  page.value = 1
+  load()
+}
+
+function handleVisibilityChange() {
   page.value = 1
   load()
 }
@@ -199,12 +230,22 @@ async function handleDelete(id) {
 <style scoped>
 .admin-toolbar {
   display: flex;
+  gap: 12px;
   justify-content: flex-end;
   margin-top: 12px;
 }
 
-.status-filter {
-  width: 140px;
+.filter-field {
+  display: grid;
+  gap: 6px;
+  color: var(--muted-text-color);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status-filter,
+.visibility-filter {
+  width: 160px;
 }
 
 .admin-table,

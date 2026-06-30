@@ -13,6 +13,7 @@ public class ArticleRequest {
     private String summary;
     private String coverImage;
     private String status;
+    private String visibility;
 
     private List<Long> tagIds;
 

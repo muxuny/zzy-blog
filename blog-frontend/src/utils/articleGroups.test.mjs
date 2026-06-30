@@ -28,7 +28,14 @@ test('buildMyArticleGroupParams adds ungrouped flag for virtual group', () => {
 test('buildMyArticleGroupParams adds groupId for concrete group', () => {
   assert.deepEqual(
     buildMyArticleGroupParams({ page: 1, size: 10 }, createGroupFilterKey(42)),
-    { page: 1, size: 10, groupId: 42 }
+    { page: 1, size: 10, groupId: '42' }
+  )
+})
+
+test('buildMyArticleGroupParams preserves snowflake group ids as strings', () => {
+  assert.deepEqual(
+    buildMyArticleGroupParams({ page: 1, size: 10 }, createGroupFilterKey('758902345678901301')),
+    { page: 1, size: 10, groupId: '758902345678901301' }
   )
 })
 

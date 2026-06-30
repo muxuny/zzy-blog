@@ -62,6 +62,19 @@ class ArticleRouteMappingTest {
     }
 
     @Test
+    void putMyArticleVisibilityRouteIsMapped() throws Exception {
+        Article article = articleWithStatus(ArticleStatus.PUBLISHED);
+        article.setVisibility("private");
+        when(articleService.updateMyArticleVisibility(1L, "private", "alice")).thenReturn(article);
+
+        mockMvc.perform(put("/api/my/articles/1/visibility")
+                        .principal(() -> "alice")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"visibility\":\"private\"}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void putApproveRouteIsMapped() throws Exception {
         Article article = articleWithStatus(ArticleStatus.PUBLISHED);
         when(articleService.approveArticle(1L)).thenReturn(article);

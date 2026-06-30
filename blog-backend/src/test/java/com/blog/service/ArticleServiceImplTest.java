@@ -2,6 +2,7 @@ package com.blog.service;
 
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.blog.common.ArticleStatus;
+import com.blog.common.ArticleVisibility;
 import com.blog.common.BusinessException;
 import com.blog.dto.ArticleNeighbors;
 import com.blog.dto.ArticlePageQuery;
@@ -56,6 +57,17 @@ class ArticleServiceImplTest {
     @Test
     void publicDetail_shouldRejectNonPublishedArticle() {
         Article article = article(1L, "alice", ArticleStatus.DRAFT);
+        articleService.put(article);
+
+        assertThatThrownBy(() -> articleService.getPublicDetail(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("文章不存在");
+    }
+
+    @Test
+    void publicDetail_shouldRejectPrivatePublishedArticle() {
+        Article article = article(1L, "alice", ArticleStatus.PUBLISHED);
+        article.setVisibility("private");
         articleService.put(article);
 
         assertThatThrownBy(() -> articleService.getPublicDetail(1L))
@@ -199,6 +211,16 @@ class ArticleServiceImplTest {
     }
 
     @Test
+    void createMyArticle_shouldSaveVisibilityPreference() {
+        ArticleRequest request = request("Private note", ArticleStatus.DRAFT);
+        request.setVisibility("private");
+
+        Article created = articleService.createMyArticle(request, "alice");
+
+        assertThat(created.getVisibility()).isEqualTo("private");
+    }
+
+    @Test
     void createMyArticle_shouldRejectMissingOrOtherUsersGroup() {
         articleService.putGroup(group(10L, "bob", "Bob group"));
         ArticleRequest request = request("Grouped article", ArticleStatus.DRAFT);
@@ -221,6 +243,28 @@ class ArticleServiceImplTest {
 
         assertThat(articleService.groupRelations()).isEmpty();
         assertThat(updated.getGroups()).isEmpty();
+    }
+
+    @Test
+    void updateMyArticle_shouldPreserveExistingVisibilityWhenRequestOmitsVisibility() {
+        Article article = article(1L, "alice", ArticleStatus.DRAFT);
+        article.setVisibility(ArticleVisibility.PRIVATE);
+        articleService.put(article);
+
+        Article updated = articleService.updateMyArticle(1L, request("Updated title", ArticleStatus.DRAFT), "alice");
+
+        assertThat(updated.getVisibility()).isEqualTo(ArticleVisibility.PRIVATE);
+    }
+
+    @Test
+    void updateAdminArticle_shouldPreserveExistingVisibilityWhenRequestOmitsVisibility() {
+        Article article = article(1L, "alice", ArticleStatus.PUBLISHED);
+        article.setVisibility(ArticleVisibility.PRIVATE);
+        articleService.put(article);
+
+        Article updated = articleService.updateAdminArticle(1L, request("Admin updated title", ArticleStatus.PUBLISHED));
+
+        assertThat(updated.getVisibility()).isEqualTo(ArticleVisibility.PRIVATE);
     }
 
     @Test
@@ -259,6 +303,40 @@ class ArticleServiceImplTest {
     }
 
     @Test
+    void updateMyArticleVisibility_shouldChangeVisibilityWithoutChangingStatus() {
+        Article article = article(1L, "alice", ArticleStatus.PUBLISHED);
+        article.setVisibility("public");
+        articleService.put(article);
+
+        Article updated = articleService.updateMyArticleVisibility(1L, "private", "alice");
+
+        assertThat(updated.getStatus()).isEqualTo(ArticleStatus.PUBLISHED);
+        assertThat(updated.getVisibility()).isEqualTo("private");
+        assertThat(articleService.getById(1L).getVisibility()).isEqualTo("private");
+    }
+
+    @Test
+    void updateMyArticleVisibility_shouldRejectInvalidVisibility() {
+        articleService.put(article(1L, "alice", ArticleStatus.DRAFT));
+
+        assertThatThrownBy(() -> articleService.updateMyArticleVisibility(1L, "friends", "alice"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("文章可见性不合法");
+    }
+
+    @Test
+    void updateMyArticleVisibility_shouldRejectBlankVisibility() {
+        Article article = article(1L, "alice", ArticleStatus.PUBLISHED);
+        article.setVisibility(ArticleVisibility.PRIVATE);
+        articleService.put(article);
+
+        assertThatThrownBy(() -> articleService.updateMyArticleVisibility(1L, "", "alice"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("文章可见性不合法");
+        assertThat(articleService.getById(1L).getVisibility()).isEqualTo(ArticleVisibility.PRIVATE);
+    }
+
+    @Test
     void getMyPage_shouldFilterByGroupAndAttachGroups() {
         articleService.put(article(1L, "alice", ArticleStatus.DRAFT, LocalDateTime.of(2024, 1, 1, 10, 0)));
         articleService.put(article(2L, "alice", ArticleStatus.DRAFT, LocalDateTime.of(2024, 1, 2, 10, 0)));
@@ -292,6 +370,43 @@ class ArticleServiceImplTest {
 
         assertThat(records).extracting(Article::getId).containsExactly(1L);
         assertThat(records.get(0).getGroups()).isEmpty();
+    }
+
+    @Test
+    void getMyPage_shouldFilterByVisibilityForCurrentUser() {
+        Article publicArticle = article(1L, "alice", ArticleStatus.PUBLISHED, LocalDateTime.of(2024, 1, 1, 10, 0));
+        publicArticle.setVisibility(ArticleVisibility.PUBLIC);
+        Article privateArticle = article(2L, "alice", ArticleStatus.PUBLISHED, LocalDateTime.of(2024, 1, 2, 10, 0));
+        privateArticle.setVisibility(ArticleVisibility.PRIVATE);
+        articleService.put(publicArticle);
+        articleService.put(privateArticle);
+        ArticlePageQuery query = new ArticlePageQuery();
+        query.setVisibility(ArticleVisibility.PRIVATE);
+
+        List<Article> records = articleService.getMyPage(query, "alice").getRecords();
+
+        assertThat(records).extracting(Article::getId).containsExactly(2L);
+    }
+
+    @Test
+    void getMyPage_shouldTreatNullVisibilityAsPublicWhenFilteringPublic() {
+        Article legacyPublicArticle = article(1L, "alice", ArticleStatus.PUBLISHED,
+                LocalDateTime.of(2024, 1, 1, 10, 0));
+        Article explicitPublicArticle = article(2L, "alice", ArticleStatus.PUBLISHED,
+                LocalDateTime.of(2024, 1, 2, 10, 0));
+        explicitPublicArticle.setVisibility(ArticleVisibility.PUBLIC);
+        Article privateArticle = article(3L, "alice", ArticleStatus.PUBLISHED,
+                LocalDateTime.of(2024, 1, 3, 10, 0));
+        privateArticle.setVisibility(ArticleVisibility.PRIVATE);
+        articleService.put(legacyPublicArticle);
+        articleService.put(explicitPublicArticle);
+        articleService.put(privateArticle);
+        ArticlePageQuery query = new ArticlePageQuery();
+        query.setVisibility(ArticleVisibility.PUBLIC);
+
+        List<Article> records = articleService.getMyPage(query, "alice").getRecords();
+
+        assertThat(records).extracting(Article::getId).containsExactly(2L, 1L);
     }
 
     private static Article article(Long id, String createdBy, String status) {
@@ -408,6 +523,7 @@ class ArticleServiceImplTest {
         protected Article findPreviousPublicArticle(Article current) {
             return articles.values().stream()
                     .filter(article -> ArticleStatus.isPublic(article.getStatus()))
+                    .filter(article -> ArticleVisibility.isPublic(article.getVisibility()))
                     .filter(article -> article.getDeleted() == null || article.getDeleted() == 0)
                     .filter(article -> isBefore(article, current))
                     .max(Comparator.comparing(Article::getCreatedAt).thenComparing(Article::getId))
@@ -418,6 +534,7 @@ class ArticleServiceImplTest {
         protected Article findNextPublicArticle(Article current) {
             return articles.values().stream()
                     .filter(article -> ArticleStatus.isPublic(article.getStatus()))
+                    .filter(article -> ArticleVisibility.isPublic(article.getVisibility()))
                     .filter(article -> article.getDeleted() == null || article.getDeleted() == 0)
                     .filter(article -> isBefore(current, article))
                     .min(Comparator.comparing(Article::getCreatedAt).thenComparing(Article::getId))
@@ -451,6 +568,7 @@ class ArticleServiceImplTest {
             return articles.values().stream()
                     .filter(article -> articleIds.contains(article.getId()))
                     .filter(article -> ArticleStatus.isPublic(article.getStatus()))
+                    .filter(article -> ArticleVisibility.isPublic(article.getVisibility()))
                     .filter(article -> article.getDeleted() == null || article.getDeleted() == 0)
                     .collect(Collectors.toList());
         }
@@ -529,6 +647,7 @@ class ArticleServiceImplTest {
                     .filter(article -> article.getDeleted() == null || article.getDeleted() == 0)
                     .filter(article -> query.getStatus() == null || query.getStatus().isEmpty()
                             || query.getStatus().equals(article.getStatus()))
+                    .filter(article -> matchesVisibility(query.getVisibility(), article.getVisibility()))
                     .filter(article -> query.getKeyword() == null || query.getKeyword().isEmpty()
                             || article.getTitle().contains(query.getKeyword()))
                     .filter(article -> includeArticleIds == null || includeArticleIds.contains(article.getId()))
@@ -538,6 +657,16 @@ class ArticleServiceImplTest {
             page.setRecords(records);
             page.setTotal(records.size());
             return page;
+        }
+
+        private boolean matchesVisibility(String requestedVisibility, String articleVisibility) {
+            if (requestedVisibility == null || requestedVisibility.isEmpty()) {
+                return true;
+            }
+            if (ArticleVisibility.PUBLIC.equals(requestedVisibility)) {
+                return ArticleVisibility.isPublic(articleVisibility);
+            }
+            return requestedVisibility.equals(articleVisibility);
         }
     }
 }

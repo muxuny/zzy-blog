@@ -44,6 +44,7 @@ public class ImageServiceImpl extends ServiceImpl<ImageMapper, Image> implements
         image.setSize(file.getSize());
         image.setMimeType(file.getContentType());
         image.setUrl("/uploads/" + filename);
+        image.setCreatedBy(username);
         save(image);
         return image;
     }

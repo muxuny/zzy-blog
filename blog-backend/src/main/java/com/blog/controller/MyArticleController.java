@@ -5,6 +5,7 @@ import com.blog.common.Result;
 import com.blog.dto.ArticleGroupAssignRequest;
 import com.blog.dto.ArticlePageQuery;
 import com.blog.dto.ArticleRequest;
+import com.blog.dto.ArticleVisibilityRequest;
 import com.blog.entity.Article;
 import com.blog.service.ArticleService;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -51,6 +52,13 @@ public class MyArticleController {
                                         @RequestBody ArticleGroupAssignRequest request,
                                         Principal principal) {
         return Result.success(articleService.updateMyArticleGroups(id, request.getGroupIds(), principal.getName()));
+    }
+
+    @PutMapping("/{id}/visibility")
+    public Result<Article> updateVisibility(@PathVariable Long id,
+                                            @RequestBody ArticleVisibilityRequest request,
+                                            Principal principal) {
+        return Result.success(articleService.updateMyArticleVisibility(id, request.getVisibility(), principal.getName()));
     }
 
     @DeleteMapping("/{id}")

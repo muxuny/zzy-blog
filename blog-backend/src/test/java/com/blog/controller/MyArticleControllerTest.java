@@ -3,6 +3,7 @@ package com.blog.controller;
 import com.blog.common.ArticleStatus;
 import com.blog.common.Result;
 import com.blog.dto.ArticleGroupAssignRequest;
+import com.blog.dto.ArticleVisibilityRequest;
 import com.blog.entity.Article;
 import com.blog.entity.ArticleGroup;
 import com.blog.service.ArticleService;
@@ -51,5 +52,21 @@ class MyArticleControllerTest {
         assertEquals(200, result.getCode());
         assertEquals(10L, result.getData().getGroups().get(0).getId());
         verify(articleService).updateMyArticleGroups(1L, Arrays.asList(10L), "alice");
+    }
+
+    @Test
+    void updateVisibilityUsesCurrentPrincipal() {
+        Article article = new Article();
+        article.setVisibility("private");
+        Principal principal = () -> "alice";
+        ArticleVisibilityRequest request = new ArticleVisibilityRequest();
+        request.setVisibility("private");
+        when(articleService.updateMyArticleVisibility(1L, "private", "alice")).thenReturn(article);
+
+        Result<Article> result = myArticleController.updateVisibility(1L, request, principal);
+
+        assertEquals(200, result.getCode());
+        assertEquals("private", result.getData().getVisibility());
+        verify(articleService).updateMyArticleVisibility(1L, "private", "alice");
     }
 }
