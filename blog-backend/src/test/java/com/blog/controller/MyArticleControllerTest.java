@@ -20,6 +20,7 @@ import static org.mockito.Mockito.when;
 class MyArticleControllerTest {
 
     private final ArticleService articleService = mock(ArticleService.class);
+
     private final MyArticleController myArticleController = new MyArticleController(articleService);
 
     @Test

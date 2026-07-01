@@ -14,6 +14,9 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Collections;
 
+/**
+ * 从 Authorization 请求头解析 JWT，并写入 Spring Security 上下文。
+ */
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 

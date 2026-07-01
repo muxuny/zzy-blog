@@ -9,6 +9,9 @@ import javax.crypto.SecretKey;
 import java.util.Base64;
 import java.util.Date;
 
+/**
+ * JWT 生成与解析工具，token 中保存用户名和角色信息。
+ */
 @Component
 public class JwtUtil {
     private final SecretKey secretKey;

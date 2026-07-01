@@ -14,6 +14,9 @@ import org.springframework.web.bind.annotation.*;
 import javax.validation.Valid;
 import java.security.Principal;
 
+/**
+ * 创作者文章管理接口，只操作当前登录用户自己的文章。
+ */
 @RestController
 @RequestMapping("/api/my/articles")
 @PreAuthorize("hasAnyRole('USER', 'ADMIN')")

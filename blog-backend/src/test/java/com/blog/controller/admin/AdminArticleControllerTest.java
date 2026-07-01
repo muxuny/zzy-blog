@@ -15,6 +15,7 @@ import static org.mockito.Mockito.when;
 class AdminArticleControllerTest {
 
     private final ArticleService articleService = mock(ArticleService.class);
+
     private final AdminArticleController adminArticleController = new AdminArticleController(articleService);
 
     @Test

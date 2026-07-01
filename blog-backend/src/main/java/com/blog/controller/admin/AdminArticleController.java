@@ -12,6 +12,9 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 
+/**
+ * 后台文章审核与管理接口。
+ */
 @RestController
 @RequestMapping("/api/admin/articles")
 @PreAuthorize("hasRole('ADMIN')")

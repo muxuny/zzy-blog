@@ -5,6 +5,9 @@ import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilde
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * JSON 序列化配置，避免前端处理 Long 类型 ID 时出现精度丢失。
+ */
 @Configuration
 public class JacksonConfig {
 

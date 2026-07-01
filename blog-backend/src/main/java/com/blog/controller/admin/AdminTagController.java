@@ -8,6 +8,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+/**
+ * 后台标签管理接口。
+ */
 @RestController
 @RequestMapping("/api/admin/tags")
 @PreAuthorize("hasRole('ADMIN')")

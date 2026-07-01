@@ -7,6 +7,9 @@ import com.blog.entity.ArticleGroup;
 
 import java.util.List;
 
+/**
+ * 创作者文章分组服务。
+ */
 public interface ArticleGroupService extends IService<ArticleGroup> {
     List<ArticleGroupSummary> listMyGroups(String username);
 

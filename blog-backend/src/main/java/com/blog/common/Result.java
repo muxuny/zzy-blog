@@ -3,11 +3,16 @@ package com.blog.common;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
+/**
+ * 普通接口统一响应结构。
+ */
 @Data
 @AllArgsConstructor
 public class Result<T> {
     private int code;
+
     private String message;
+
     private T data;
 
     public static <T> Result<T> success(T data) {

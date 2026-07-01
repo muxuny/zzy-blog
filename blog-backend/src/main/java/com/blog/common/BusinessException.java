@@ -1,5 +1,8 @@
 package com.blog.common;
 
+/**
+ * 业务异常，统一交由全局异常处理器转换为接口响应。
+ */
 public class BusinessException extends RuntimeException {
     private final int code;
 
@@ -12,5 +15,7 @@ public class BusinessException extends RuntimeException {
         this(400, message);
     }
 
-    public int getCode() { return code; }
+    public int getCode() {
+        return code;
+    }
 }

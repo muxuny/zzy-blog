@@ -1,9 +1,13 @@
 package com.blog.dto;
 
 import lombok.Data;
+
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
 
+/**
+ * 注册请求参数，注册后仍需后台审核通过才能正常使用。
+ */
 @Data
 public class RegisterRequest {
     @NotBlank(message = "用户名不能为空")
@@ -15,5 +19,6 @@ public class RegisterRequest {
     private String password;
 
     private String nickname;
+
     private String email;
 }

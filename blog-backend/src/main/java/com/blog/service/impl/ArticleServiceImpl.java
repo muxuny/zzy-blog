@@ -35,6 +35,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * 文章核心服务实现，集中处理公开阅读、创作者操作和后台审核流程。
+ */
 @Service
 public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> implements ArticleService {
 
@@ -56,6 +59,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         this.articleGroupRelationMapper = articleGroupRelationMapper;
     }
 
+    // 公开阅读侧：只返回已发布且公开可见的文章。
     @Override
     public IPage<Article> getPublicPage(ArticlePageQuery query) {
         Page<Article> page = new Page<>(query.getPage(), query.getSize());
@@ -145,6 +149,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         return related;
     }
 
+    // 创作者侧：只允许作者操作自己的文章，同时保留草稿、审核和可见性状态。
     @Override
     public IPage<Article> getMyPage(ArticlePageQuery query, String username) {
         Page<Article> page = new Page<>(query.getPage(), query.getSize());
@@ -279,6 +284,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         return article;
     }
 
+    // 后台管理侧：管理员可以查看和审核全站文章。
     @Override
     public Article getAdminDetail(Long id) {
         Article article = requireArticle(id);
@@ -377,6 +383,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         return result;
     }
 
+    // 文章读取与状态校验
     private Article requirePublicArticle(Long id) {
         Article article = requireArticle(id);
         if (!ArticleStatus.isPublic(article.getStatus()) || !ArticleVisibility.isPublic(article.getVisibility())) {
@@ -408,6 +415,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         article.setCoverImage(request.getCoverImage());
     }
 
+    // 状态与可见性归一化
     private String normalizeAuthorStatus(String status) {
         if (ArticleStatus.PENDING.equals(status)) {
             return ArticleStatus.PENDING;
@@ -456,6 +464,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         return Math.min(size, 12);
     }
 
+    // 公开阅读连续性查询
     protected Article findPreviousPublicArticle(Article current) {
         return getOne(new LambdaQueryWrapper<Article>()
                 .eq(Article::getStatus, ArticleStatus.PUBLISHED)
@@ -516,6 +525,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                         .isNull(Article::getVisibility)));
     }
 
+    // 创作者分组过滤查询
     protected IPage<Article> selectMyArticlePage(Page<Article> page,
                                                  ArticlePageQuery query,
                                                  String username,
@@ -558,6 +568,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         wrapper.eq(Article::getVisibility, visibility);
     }
 
+    // 文章分组关系维护
     protected List<ArticleGroup> listArticleGroupsByIds(Collection<Long> groupIds, String username) {
         if (groupIds == null || groupIds.isEmpty()) {
             return Collections.emptyList();
@@ -672,6 +683,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         return new ArrayList<>(normalized);
     }
 
+    // 返回给前端前补齐标签、作者和分组展示信息。
     private void attachTagsAuthorAndGroups(Article article) {
         attachTagsAndAuthor(article);
         article.setGroups(listArticleGroupsByArticleId(article.getId()));

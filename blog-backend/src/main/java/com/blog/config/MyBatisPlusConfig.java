@@ -12,6 +12,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
 
+/**
+ * MyBatis-Plus 分页、乐观锁和公共字段自动填充配置。
+ */
 @Configuration
 public class MyBatisPlusConfig {
 

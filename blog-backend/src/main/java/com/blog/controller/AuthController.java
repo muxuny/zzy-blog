@@ -11,6 +11,9 @@ import javax.validation.Valid;
 import java.security.Principal;
 import java.util.Map;
 
+/**
+ * 登录、注册和当前用户信息接口。
+ */
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
