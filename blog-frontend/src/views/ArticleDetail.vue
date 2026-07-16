@@ -315,6 +315,8 @@ async function handleFavorite() {
 async function initializeFavorite(articleId, token) {
   if (!authStore.isLoggedIn || token !== loadToken.value) return
   if (hasFavoriteIntent(route.query)) {
+    const intentAuthToken = localStorage.getItem('token')
+    if (!intentAuthToken) return
     const intentFullPath = route.fullPath
     const intentPath = route.path
     const intentArticleId = articleId
@@ -329,6 +331,7 @@ async function initializeFavorite(articleId, token) {
         route.path === intentPath &&
         typeof window !== 'undefined' &&
         window.location.pathname === intentPath &&
+        localStorage.getItem('token') === intentAuthToken &&
         hasFavoriteIntent(route.query)
       ) {
         await router.replace({ query: clearFavoriteIntentQuery(route.query) })

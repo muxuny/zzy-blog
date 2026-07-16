@@ -17,6 +17,8 @@ const required = [
   'favoriteOperationId',
   'intentFullPath',
   'intentPath',
+  'intentAuthToken',
+  "localStorage.getItem('token')",
   'window.location.pathname',
   '已收藏',
   '收藏'
@@ -35,7 +37,8 @@ const contracts = [
   ['article load invalidates old favorite work', /async function loadArticle\s*\(\)\s*\{[\s\S]*favoriteStateVersion \+= 1[\s\S]*favoriteOperationId \+= 1[\s\S]*favoriteLoading\.value = false[\s\S]*favorited\.value = false/],
   ['unmount invalidates article and favorite work', /onBeforeUnmount\(\(\) => \{[\s\S]*componentActive = false[\s\S]*loadToken\.value \+= 1[\s\S]*favoriteStateVersion \+= 1[\s\S]*favoriteOperationId \+= 1[\s\S]*removeEventListener/],
   ['favorite intent captures route identity', /const intentFullPath = route\.fullPath[\s\S]*const intentPath = route\.path[\s\S]*const intentArticleId = articleId/],
-  ['favorite intent cleanup validates lifecycle route and browser path', /componentActive[\s\S]*article\.value\?\.id === intentArticleId[\s\S]*route\.fullPath === intentFullPath[\s\S]*route\.path === intentPath[\s\S]*window\.location\.pathname === intentPath[\s\S]*hasFavoriteIntent\(route\.query\)[\s\S]*router\.replace\s*\(\s*\{\s*query:\s*clearFavoriteIntentQuery\(route\.query\)\s*\}\s*\)/]
+  ['favorite intent requires an auth token snapshot', /if \(hasFavoriteIntent\(route\.query\)\) \{[\s\S]*const intentAuthToken = localStorage\.getItem\('token'\)[\s\S]*if \(!intentAuthToken\) return[\s\S]*await setFavorite\(articleId, true, token\)/],
+  ['favorite intent cleanup validates lifecycle route browser path and auth token', /componentActive[\s\S]*article\.value\?\.id === intentArticleId[\s\S]*route\.fullPath === intentFullPath[\s\S]*route\.path === intentPath[\s\S]*window\.location\.pathname === intentPath[\s\S]*localStorage\.getItem\('token'\) === intentAuthToken[\s\S]*hasFavoriteIntent\(route\.query\)[\s\S]*router\.replace\s*\(\s*\{\s*query:\s*clearFavoriteIntentQuery\(route\.query\)\s*\}\s*\)/]
 ]
 
 const missing = required.filter(text => !source.includes(text))
