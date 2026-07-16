@@ -19,6 +19,10 @@ public interface ArticleService extends IService<Article> {
 
     Article getPublicDetail(Long id);
 
+    Article getPublicArticleSummary(Long id);
+
+    List<Article> getPublicArticleSummaries(java.util.Collection<Long> articleIds);
+
     ArticleNeighbors getPublicNeighbors(Long id);
 
     List<Article> getRelatedArticles(Long id, Integer size);

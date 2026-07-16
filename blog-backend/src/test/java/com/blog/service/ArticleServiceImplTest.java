@@ -133,6 +133,32 @@ class ArticleServiceImplTest {
     }
 
     @Test
+    void getPublicArticleSummary_shouldNotIncreaseViewCount() {
+        Article article = article(1L, "alice", ArticleStatus.PUBLISHED);
+        article.setViewCount(7);
+        articleService.put(article);
+
+        Article summary = articleService.getPublicArticleSummary(1L);
+
+        assertThat(summary.getViewCount()).isEqualTo(7);
+        assertThat(articleService.getById(1L).getViewCount()).isEqualTo(7);
+    }
+
+    @Test
+    void getPublicArticleSummaries_shouldFilterUnavailableArticles() {
+        Article visible = article(1L, "alice", ArticleStatus.PUBLISHED);
+        Article privateArticle = article(2L, "alice", ArticleStatus.PUBLISHED);
+        privateArticle.setVisibility(ArticleVisibility.PRIVATE);
+        articleService.put(visible);
+        articleService.put(privateArticle);
+        articleService.put(article(3L, "alice", ArticleStatus.DRAFT));
+
+        List<Article> summaries = articleService.getPublicArticleSummaries(Arrays.asList(1L, 2L, 3L));
+
+        assertThat(summaries).extracting(Article::getId).containsExactly(1L);
+    }
+
+    @Test
     void updateMyArticle_shouldRejectOtherUsersArticle() {
         Article article = article(1L, "alice", ArticleStatus.DRAFT);
         articleService.put(article);

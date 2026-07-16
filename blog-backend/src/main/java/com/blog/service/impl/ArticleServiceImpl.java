@@ -97,6 +97,20 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     }
 
     @Override
+    public Article getPublicArticleSummary(Long id) {
+        Article article = requirePublicArticle(id);
+        attachTagsAndAuthor(article);
+        return article;
+    }
+
+    @Override
+    public List<Article> getPublicArticleSummaries(Collection<Long> articleIds) {
+        List<Article> articles = listPublicArticlesByIds(articleIds);
+        articles.forEach(this::attachTagsAndAuthor);
+        return articles;
+    }
+
+    @Override
     public ArticleNeighbors getPublicNeighbors(Long id) {
         Article current = requirePublicArticle(id);
         Article previous = findPreviousPublicArticle(current);
