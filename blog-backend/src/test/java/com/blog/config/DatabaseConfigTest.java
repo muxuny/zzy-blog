@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -89,6 +90,26 @@ class DatabaseConfigTest {
         assertTrue(!normalized.contains("truncate table"), "Migration must not truncate tables");
         assertTrue(!normalized.contains("delete from `article`"), "Migration must not delete articles");
         assertTrue(!normalized.contains("delete from article"), "Migration must not delete articles");
+    }
+
+    @Test
+    void favoriteSchemaIncludesBusinessAndCommonFields() throws IOException {
+        String migration = readString(Paths.get(
+                "src/main/resources/db/migration/2026-07-16-新增文章收藏.sql"));
+        String normalized = migration.toLowerCase(Locale.ROOT);
+
+        assertTrue(normalized.contains("create table if not exists `article_favorite`"));
+        for (String column : Arrays.asList(
+                "`user_id`", "`article_id`", "`title_snapshot`",
+                "`created_by`", "`created_at`", "`updated_by`", "`updated_at`",
+                "`deleted`", "`version`")) {
+            assertTrue(normalized.contains(column), "Missing favorite column " + column);
+        }
+        assertTrue(normalized.contains("unique key `uk_article_favorite_user_article` (`user_id`, `article_id`)"));
+        assertTrue(normalized.contains("key `idx_article_favorite_user_deleted_created_at`"));
+        assertTrue(normalized.contains("key `idx_article_favorite_article_deleted`"));
+        assertTrue(!normalized.contains("drop table"));
+        assertTrue(!normalized.contains("delete from"));
     }
 
     private static String requireMatch(Pattern pattern, String content, String label) {
