@@ -80,9 +80,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             }
             wrapper.in(Article::getId, articleIds);
         }
-        if (query.getKeyword() != null && !query.getKeyword().isEmpty()) {
-            wrapper.like(Article::getTitle, query.getKeyword());
-        }
+        applyKeywordFilter(wrapper, query.getKeyword());
 
         IPage<Article> result = baseMapper.selectPage(page, wrapper);
         result.getRecords().forEach(this::attachTagsAndAuthor);
@@ -371,9 +369,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             wrapper.eq(Article::getStatus, query.getStatus());
         }
         applyVisibilityFilter(wrapper, query.getVisibility());
-        if (query.getKeyword() != null && !query.getKeyword().isEmpty()) {
-            wrapper.like(Article::getTitle, query.getKeyword());
-        }
+        applyKeywordFilter(wrapper, query.getKeyword());
         if (query.getAuthor() != null && !query.getAuthor().isEmpty()) {
             wrapper.eq(Article::getCreatedBy, query.getAuthor());
         }
@@ -539,9 +535,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             wrapper.eq(Article::getStatus, query.getStatus());
         }
         applyVisibilityFilter(wrapper, query.getVisibility());
-        if (query.getKeyword() != null && !query.getKeyword().isEmpty()) {
-            wrapper.like(Article::getTitle, query.getKeyword());
-        }
+        applyKeywordFilter(wrapper, query.getKeyword());
         if (includeArticleIds != null) {
             if (includeArticleIds.isEmpty()) {
                 return page;
@@ -566,6 +560,16 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             return;
         }
         wrapper.eq(Article::getVisibility, visibility);
+    }
+
+    private void applyKeywordFilter(LambdaQueryWrapper<Article> wrapper, String keyword) {
+        if (keyword == null || keyword.isEmpty()) {
+            return;
+        }
+        wrapper.and(keywordWrapper -> keywordWrapper
+                .like(Article::getTitle, keyword)
+                .or()
+                .like(Article::getSummary, keyword));
     }
 
     // 文章分组关系维护

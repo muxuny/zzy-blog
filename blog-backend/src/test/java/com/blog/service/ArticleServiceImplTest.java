@@ -1,6 +1,9 @@
 package com.blog.service;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.blog.common.ArticleStatus;
 import com.blog.common.ArticleVisibility;
 import com.blog.common.BusinessException;
@@ -14,11 +17,15 @@ import com.blog.entity.ArticleTag;
 import com.blog.entity.User;
 import com.blog.mapper.ArticleGroupMapper;
 import com.blog.mapper.ArticleGroupRelationMapper;
+import com.blog.mapper.ArticleMapper;
 import com.blog.mapper.ArticleTagMapper;
 import com.blog.mapper.TagMapper;
 import com.blog.service.impl.ArticleServiceImpl;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -35,6 +42,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ArticleServiceImplTest {
@@ -52,6 +61,54 @@ class ArticleServiceImplTest {
         when(userService.getOne(any(Wrapper.class))).thenReturn(null);
         articleService = new TestArticleService(articleTagMapper, tagMapper, userService,
                 articleGroupMapper, articleGroupRelationMapper);
+    }
+
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    void keywordSearch_shouldApplyTitleOrSummaryFilterToAllArticleLists() {
+        TableInfoHelper.initTableInfo(
+                new MapperBuilderAssistant(new MybatisConfiguration(), ""),
+                Article.class);
+        ArticleMapper articleMapper = mock(ArticleMapper.class);
+        when(articleMapper.selectPage(any(IPage.class), any(Wrapper.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        ArticleServiceImpl keywordService = new ArticleServiceImpl(
+                mock(ArticleTagMapper.class),
+                mock(TagMapper.class),
+                mock(UserService.class),
+                mock(ArticleGroupMapper.class),
+                mock(ArticleGroupRelationMapper.class));
+        ReflectionTestUtils.setField(keywordService, "baseMapper", articleMapper);
+        ArticlePageQuery query = new ArticlePageQuery();
+        query.setKeyword("architecture");
+        query.setStatus(ArticleStatus.DRAFT);
+        query.setVisibility(ArticleVisibility.PUBLIC);
+        query.setAuthor("alice");
+
+        keywordService.getPublicPage(query);
+        keywordService.getMyPage(query, "alice");
+        keywordService.getAdminPage(query);
+
+        ArgumentCaptor<Wrapper<Article>> wrapperCaptor = ArgumentCaptor.forClass(Wrapper.class);
+        verify(articleMapper, times(3)).selectPage(any(IPage.class), wrapperCaptor.capture());
+        List<Wrapper<Article>> wrappers = wrapperCaptor.getAllValues();
+        assertThat(wrappers.get(0).getSqlSegment())
+                .contains("status =")
+                .contains("visibility =")
+                .contains("AND (title LIKE")
+                .contains("OR summary LIKE");
+        assertThat(wrappers.get(1).getSqlSegment())
+                .contains("created_by =")
+                .contains("status =")
+                .contains("visibility =")
+                .contains("AND (title LIKE")
+                .contains("OR summary LIKE");
+        assertThat(wrappers.get(2).getSqlSegment())
+                .contains("status =")
+                .contains("visibility =")
+                .contains("AND (title LIKE")
+                .contains("OR summary LIKE")
+                .contains("AND created_by =");
     }
 
     @Test
@@ -649,7 +706,8 @@ class ArticleServiceImplTest {
                             || query.getStatus().equals(article.getStatus()))
                     .filter(article -> matchesVisibility(query.getVisibility(), article.getVisibility()))
                     .filter(article -> query.getKeyword() == null || query.getKeyword().isEmpty()
-                            || article.getTitle().contains(query.getKeyword()))
+                            || article.getTitle().contains(query.getKeyword())
+                            || article.getSummary() != null && article.getSummary().contains(query.getKeyword()))
                     .filter(article -> includeArticleIds == null || includeArticleIds.contains(article.getId()))
                     .filter(article -> excludeArticleIds == null || !excludeArticleIds.contains(article.getId()))
                     .sorted(Comparator.comparing(Article::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
