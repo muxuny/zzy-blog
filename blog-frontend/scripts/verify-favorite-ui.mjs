@@ -1,8 +1,46 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 
 const articleDetailPath = new URL('../src/views/ArticleDetail.vue', import.meta.url)
 const source = readFileSync(articleDetailPath, 'utf8')
 const normalizedSource = source.replace(/\s+/g, ' ')
+
+const favoriteFiles = {
+  page: new URL('../src/views/Favorites.vue', import.meta.url),
+  item: new URL('../src/components/FavoriteArticleItem.vue', import.meta.url),
+  router: new URL('../src/router/index.js', import.meta.url),
+  header: new URL('../src/components/AppHeader.vue', import.meta.url)
+}
+
+const missingFiles = Object.entries(favoriteFiles)
+  .filter(([, path]) => !existsSync(path))
+  .map(([name]) => name)
+
+if (missingFiles.length) {
+  console.error('favorite list UI files are missing:')
+  for (const name of missingFiles) console.error(`- file: ${name}`)
+  process.exit(1)
+}
+
+const pageSource = readFileSync(favoriteFiles.page, 'utf8')
+const itemSource = readFileSync(favoriteFiles.item, 'utf8')
+const routerSource = readFileSync(favoriteFiles.router, 'utf8')
+const headerSource = readFileSync(favoriteFiles.header, 'utf8')
+const normalizedPageSource = pageSource.replace(/\s+/g, ' ')
+const normalizedItemSource = itemSource.replace(/\s+/g, ' ')
+
+function extractBraceBlock(fileSource, marker) {
+  const markerIndex = fileSource.indexOf(marker)
+  const start = fileSource.indexOf('{', markerIndex + marker.length)
+  if (markerIndex < 0 || start < 0) return ''
+
+  let depth = 0
+  for (let index = start; index < fileSource.length; index += 1) {
+    if (fileSource[index] === '{') depth += 1
+    if (fileSource[index] === '}') depth -= 1
+    if (depth === 0) return fileSource.slice(start + 1, index)
+  }
+  return ''
+}
 
 const required = [
   'favoriteArticle',
@@ -53,4 +91,80 @@ if (missing.length || failedContracts.length) {
   process.exit(1)
 }
 
-console.log('article detail favorite UI verified')
+const requiredRoutes = ["path: '/favorites'", 'requiresAuth: true']
+const requiredPageText = [
+  'getFavorites',
+  'unfavoriteArticle',
+  'buildFavoriteListParams',
+  '关键词',
+  '标签',
+  '重置',
+  'el-pagination',
+  '尚未收藏文章',
+  '当前筛选无结果'
+]
+const requiredItemText = [
+  'item.available',
+  '该文章暂未公开',
+  'favoritedAt',
+  '取消收藏',
+  'el-tooltip'
+]
+
+const availableTemplateMatch = itemSource.match(/<template v-if="item\.available">([\s\S]*?)<\/template>/)
+const availableTemplate = availableTemplateMatch?.[1] || ''
+const availableTemplateEnd = availableTemplateMatch
+  ? itemSource.indexOf(availableTemplateMatch[0]) + availableTemplateMatch[0].length
+  : -1
+const itemOutsideAvailableTemplate = availableTemplateMatch
+  ? itemSource.replace(availableTemplateMatch[0], '')
+  : itemSource
+const sensitiveItemFields = ['item.summary', 'item.coverImage', 'item.authorName', 'item.viewCount', 'item.tags']
+const loadBlock = extractBraceBlock(pageSource, 'async function load()')
+const submitSearchBlock = extractBraceBlock(pageSource, 'function submitSearch()')
+const tagChangeBlock = extractBraceBlock(pageSource, 'function handleTagChange()')
+const resetFiltersBlock = extractBraceBlock(pageSource, 'function resetFilters()')
+const hasFiltersBlock = extractBraceBlock(pageSource, 'const hasFilters = computed(() =>')
+const loadTagsBlock = extractBraceBlock(pageSource, 'async function loadTags()')
+const removeFavoriteBlock = extractBraceBlock(pageSource, 'async function removeFavorite(item)')
+const openArticleBlock = extractBraceBlock(pageSource, 'function openArticle(item)')
+const favoritesRoutePattern = /\{\s*path:\s*'\/favorites',\s*name:\s*'Favorites',\s*component:\s*\(\)\s*=>\s*import\('\.\.\/views\/Favorites\.vue'\),\s*meta:\s*\{\s*requiresAuth:\s*true\s*\}\s*\}/s
+
+const favoriteContracts = [
+  ['favorites route is protected', requiredRoutes.every(text => routerSource.includes(text)) && favoritesRoutePattern.test(routerSource)],
+  ['favorites header entry', headerSource.includes('我的收藏') && headerSource.includes("$router.push('/favorites')")],
+  ['item declares required prop and events', normalizedItemSource.includes('item: { type: Object, required: true }') && itemSource.includes("defineEmits(['open', 'remove'])")],
+  ['available title opens only when available', normalizedItemSource.includes('<button v-if="item.available"') && normalizedItemSource.includes("@click=\"$emit('open', item)\"")],
+  ['unavailable title uses tooltip', normalizedItemSource.includes('<el-tooltip v-else') && itemSource.includes('content="该文章暂未公开"')],
+  ['sensitive fields stay in available branch', sensitiveItemFields.every(field => availableTemplate.includes(field)) && sensitiveItemFields.every(field => !itemOutsideAvailableTemplate.includes(field))],
+  ['favorite date is always visible', itemSource.includes('<div class="item-foot">') && itemSource.indexOf('formatDate(item.favoritedAt)') > availableTemplateEnd],
+  ['remove is isolated and accessible', itemSource.includes('@click.stop="$emit(\'remove\', item)"') && itemSource.includes('title="取消收藏"') && itemSource.includes('aria-label="取消收藏"')],
+  ['remove button has stable dimensions', /\.remove-button\s*\{[^}]*width:\s*36px;[^}]*height:\s*36px;/s.test(itemSource)],
+  ['favorite page reads PageResult', loadBlock.includes('items.value = result.data || []') && loadBlock.includes('total.value = result.total || 0')],
+  ['favorite load guards stale responses', loadBlock.includes('const requestId = ++loadRequestVersion') && loadBlock.includes('if (requestId !== loadRequestVersion) return') && loadBlock.includes('if (requestId === loadRequestVersion) loading.value = false')],
+  ['filter actions reset pagination', [submitSearchBlock, tagChangeBlock, resetFiltersBlock].every(block => block.includes('page.value = 1'))],
+  ['keyword submission uses list param normalization', submitSearchBlock.includes('keyword.value = buildFavoriteListParams({ keyword: keywordInput.value }).keyword ||')],
+  ['empty state filter detection uses list param normalization', hasFiltersBlock.includes('buildFavoriteListParams({') && hasFiltersBlock.includes('keyword: keyword.value') && hasFiltersBlock.includes('tagId: tagId.value') && hasFiltersBlock.includes("return 'keyword' in params || 'tagId' in params")],
+  ['load errors can be retried', loadBlock.includes('loadError.value =') && pageSource.includes('@click="retryLoad"') && normalizedPageSource.includes('function retryLoad')],
+  ['tag loading does not block favorites', pageSource.includes('void loadTags()') && pageSource.includes('void load()') && loadTagsBlock.includes('catch') && loadTagsBlock.includes('tags.value = []')],
+  ['remove prevents duplicates and repairs pagination', removeFavoriteBlock.includes('if (isRemoving(item.articleId)) return') && removeFavoriteBlock.includes("ElMessage.success('已取消收藏')") && removeFavoriteBlock.includes('items.value.length === 1 && page.value > 1') && removeFavoriteBlock.includes('await load()')],
+  ['article navigation keeps snowflake ids as strings', openArticleBlock.includes('if (!item.available) return') && openArticleBlock.includes("router.push('/article/' + item.articleId)") && !pageSource.includes('Number(item.articleId)') && !pageSource.includes('Number(tagId.value)')],
+  ['favorite layout uses theme variables and responsive rules', itemSource.includes('var(--panel-bg)') && pageSource.includes('var(--content-width)') && itemSource.includes('@media (max-width: 640px)') && pageSource.includes('@media (max-width: 720px)')]
+]
+
+const missingFavoriteText = [
+  ...requiredPageText.filter(text => !pageSource.includes(text)).map(text => `page text: ${text}`),
+  ...requiredItemText.filter(text => !itemSource.includes(text)).map(text => `item text: ${text}`)
+]
+const failedFavoriteContracts = favoriteContracts
+  .filter(([, passed]) => !passed)
+  .map(([name]) => name)
+
+if (missingFavoriteText.length || failedFavoriteContracts.length) {
+  console.error('favorite list UI is missing requirements:')
+  for (const text of missingFavoriteText) console.error(`- ${text}`)
+  for (const name of failedFavoriteContracts) console.error(`- contract: ${name}`)
+  process.exit(1)
+}
+
+console.log('favorite detail and list UI verified')

@@ -8,6 +8,12 @@ const routes = [
   { path: '/login', name: 'Login', component: () => import('../views/Login.vue') },
   { path: '/register', name: 'Register', component: () => import('../views/Register.vue') },
   {
+    path: '/favorites',
+    name: 'Favorites',
+    component: () => import('../views/Favorites.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/creator/articles',
     name: 'CreatorArticles',
     component: () => import('../views/creator/MyArticles.vue'),
