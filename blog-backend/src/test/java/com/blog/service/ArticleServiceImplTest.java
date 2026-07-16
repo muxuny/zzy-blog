@@ -25,6 +25,7 @@ import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.beans.BeanUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.Serializable;
@@ -142,6 +143,7 @@ class ArticleServiceImplTest {
 
         assertThat(detail.getViewCount()).isEqualTo(8);
         assertThat(articleService.getById(1L).getViewCount()).isEqualTo(8);
+        assertThat(articleService.updateByIdCallCount()).isEqualTo(1);
     }
 
     @Test
@@ -154,6 +156,7 @@ class ArticleServiceImplTest {
 
         assertThat(summary.getViewCount()).isEqualTo(7);
         assertThat(articleService.getById(1L).getViewCount()).isEqualTo(7);
+        assertThat(articleService.updateByIdCallCount()).isZero();
     }
 
     @Test
@@ -551,6 +554,7 @@ class ArticleServiceImplTest {
         private final Map<Long, ArticleGroup> groups = new HashMap<>();
         private final List<ArticleGroupRelation> articleGroupRelations = new ArrayList<>();
         private long nextId = 100L;
+        private int updateByIdCallCount;
 
         TestArticleService(ArticleTagMapper articleTagMapper,
                            TagMapper tagMapper,
@@ -561,7 +565,11 @@ class ArticleServiceImplTest {
         }
 
         void put(Article article) {
-            articles.put(article.getId(), article);
+            articles.put(article.getId(), copyArticle(article));
+        }
+
+        int updateByIdCallCount() {
+            return updateByIdCallCount;
         }
 
         void linkTags(Long articleId, Long... tagIds) {
@@ -590,7 +598,7 @@ class ArticleServiceImplTest {
 
         @Override
         public Article getById(Serializable id) {
-            return articles.get((Long) id);
+            return copyArticle(articles.get((Long) id));
         }
 
         @Override
@@ -598,13 +606,14 @@ class ArticleServiceImplTest {
             if (article.getId() == null) {
                 article.setId(nextId++);
             }
-            articles.put(article.getId(), article);
+            articles.put(article.getId(), copyArticle(article));
             return true;
         }
 
         @Override
         public boolean updateById(Article article) {
-            articles.put(article.getId(), article);
+            updateByIdCallCount++;
+            articles.put(article.getId(), copyArticle(article));
             return true;
         }
 
@@ -763,6 +772,15 @@ class ArticleServiceImplTest {
                 return ArticleVisibility.isPublic(articleVisibility);
             }
             return requestedVisibility.equals(articleVisibility);
+        }
+
+        private Article copyArticle(Article article) {
+            if (article == null) {
+                return null;
+            }
+            Article copy = new Article();
+            BeanUtils.copyProperties(article, copy);
+            return copy;
         }
     }
 }
