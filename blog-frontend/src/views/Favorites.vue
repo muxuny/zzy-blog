@@ -48,6 +48,7 @@
       </div>
 
       <div v-if="loading" class="favorite-skeleton" role="status" aria-live="polite">
+        <span class="sr-only">正在加载收藏列表</span>
         <el-skeleton :rows="6" animated />
       </div>
 
@@ -106,7 +107,6 @@ const removingIds = ref(new Set())
 const router = useRouter()
 let componentActive = true
 let loadRequestVersion = 0
-let listContextVersion = 0
 let tagRequestVersion = 0
 let removeRequestSequence = 0
 const removeRequestVersions = new Map()
@@ -128,7 +128,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   componentActive = false
   loadRequestVersion += 1
-  listContextVersion += 1
   tagRequestVersion += 1
   removeRequestVersions.clear()
 })
@@ -154,7 +153,6 @@ async function load() {
     const maxPage = Math.max(1, Math.ceil(nextTotal / size.value))
     if (page.value > maxPage) {
       page.value = maxPage
-      listContextVersion += 1
       return await load()
     }
     items.value = records
@@ -185,7 +183,6 @@ async function loadTags() {
 }
 
 function submitSearch() {
-  listContextVersion += 1
   keyword.value = buildFavoriteListParams({ keyword: keywordInput.value }).keyword || ''
   keywordInput.value = keyword.value
   page.value = 1
@@ -193,13 +190,11 @@ function submitSearch() {
 }
 
 function handleTagChange() {
-  listContextVersion += 1
   page.value = 1
   void load()
 }
 
 function resetFilters() {
-  listContextVersion += 1
   keywordInput.value = ''
   keyword.value = ''
   tagId.value = ''
@@ -212,7 +207,6 @@ function retryLoad() {
 }
 
 function handlePageChange(nextPage) {
-  listContextVersion += 1
   page.value = nextPage
   void load()
 }
@@ -323,6 +317,18 @@ async function removeFavorite(item) {
 
 .favorite-skeleton {
   padding: 18px 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .favorite-list {

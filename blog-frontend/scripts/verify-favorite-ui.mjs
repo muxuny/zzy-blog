@@ -129,7 +129,6 @@ const unmountBlock = extractBraceBlock(pageSource, 'onBeforeUnmount(() =>')
 const submitSearchBlock = extractBraceBlock(pageSource, 'function submitSearch()')
 const tagChangeBlock = extractBraceBlock(pageSource, 'function handleTagChange()')
 const resetFiltersBlock = extractBraceBlock(pageSource, 'function resetFilters()')
-const pageChangeBlock = extractBraceBlock(pageSource, 'function handlePageChange(nextPage)')
 const retryLoadBlock = extractBraceBlock(pageSource, 'function retryLoad()')
 const hasFiltersBlock = extractBraceBlock(pageSource, 'const hasFilters = computed(() =>')
 const loadTagsBlock = extractBraceBlock(pageSource, 'async function loadTags()')
@@ -177,15 +176,16 @@ const favoriteContracts = [
   ['favorite date is always visible', itemSource.includes('<div class="item-foot">') && itemSource.indexOf('formatDate(item.favoritedAt)') > availableTemplateEnd],
   ['remove is isolated and accessible', itemSource.includes('@click.stop="$emit(\'remove\', item)"') && itemSource.includes('title="取消收藏"') && itemSource.includes('aria-label="取消收藏"')],
   ['remove button has stable dimensions', /\.remove-button\s*\{[^}]*width:\s*36px;[^}]*height:\s*36px;/s.test(itemSource)],
-  ['favorites expose busy and live status', pageSource.includes('<main class="favorites-main" :aria-busy="loading">') && pageSource.includes('class="favorite-skeleton" role="status" aria-live="polite"') && pageSource.includes('class="empty-status" role="status" aria-live="polite"')],
+  ['favorites expose busy and live status', pageSource.includes('<main class="favorites-main" :aria-busy="loading">') && pageSource.includes('class="favorite-skeleton" role="status" aria-live="polite"') && pageSource.includes('<span class="sr-only">正在加载收藏列表</span>') && pageSource.includes('class="empty-status" role="status" aria-live="polite"')],
+  ['favorite loading status has local visually hidden style', /\.sr-only\s*\{[^}]*position:\s*absolute;[^}]*width:\s*1px;[^}]*height:\s*1px;[^}]*overflow:\s*hidden;/s.test(pageSource)],
   ['favorite page reads and normalizes PageResult', recordsIndex >= 0 && nextTotalIndex > recordsIndex && loadBlock.includes('items.value = records') && loadBlock.includes('total.value = nextTotal') && !loadBlock.includes('total.value = result.total')],
-  ['favorite load corrects invalid pages before applying records', maxPageIndex > nextTotalIndex && pageCorrectionIndex > maxPageIndex && applyRecordsIndex > pageCorrectionIndex && pageCorrectionBlock.includes('page.value = maxPage') && pageCorrectionBlock.includes('listContextVersion += 1') && pageCorrectionBlock.includes('return await load()')],
+  ['favorite load corrects invalid pages before applying records', maxPageIndex > nextTotalIndex && pageCorrectionIndex > maxPageIndex && applyRecordsIndex > pageCorrectionIndex && pageCorrectionBlock.includes('page.value = maxPage') && pageCorrectionBlock.includes('return await load()')],
   ['favorite load returns only active applied response metadata', loadBlock.includes('const requestPage = page.value') && successStaleGuardIndex >= 0 && recordsIndex > successStaleGuardIndex && appliedMetadataIndex > applyRecordsIndex],
   ['favorite load guards lifecycle and stale responses', pageSource.includes('let componentActive = true') && loadBlock.includes('const requestId = ++loadRequestVersion') && loadBlock.includes(activeLoadGuard) && loadBlock.includes('if (componentActive && requestId === loadRequestVersion) loading.value = false')],
   ['stale load errors cannot mutate current state', errorStaleGuardIndex >= 0 && errorItemsIndex > errorStaleGuardIndex && errorTotalIndex > errorItemsIndex && errorMessageIndex > errorTotalIndex && errorReturnIndex > errorMessageIndex],
-  ['unmount invalidates favorite work', normalizedPageSource.includes("import { computed, onBeforeUnmount, onMounted, ref } from 'vue'") && unmountBlock.includes('componentActive = false') && unmountBlock.includes('loadRequestVersion += 1') && unmountBlock.includes('listContextVersion += 1') && unmountBlock.includes('tagRequestVersion += 1') && unmountBlock.includes('removeRequestVersions.clear()')],
+  ['unmount invalidates favorite work', normalizedPageSource.includes("import { computed, onBeforeUnmount, onMounted, ref } from 'vue'") && unmountBlock.includes('componentActive = false') && unmountBlock.includes('loadRequestVersion += 1') && unmountBlock.includes('tagRequestVersion += 1') && unmountBlock.includes('removeRequestVersions.clear()')],
   ['filter actions reset pagination', [submitSearchBlock, tagChangeBlock, resetFiltersBlock].every(block => block.includes('page.value = 1'))],
-  ['filter and page actions advance list context', pageSource.includes('let listContextVersion = 0') && [submitSearchBlock, tagChangeBlock, resetFiltersBlock, pageChangeBlock].every(block => block.includes('listContextVersion += 1'))],
+  ['unused list context version is removed', !pageSource.includes('listContextVersion')],
   ['keyword submission uses list param normalization', submitSearchBlock.includes('keyword.value = buildFavoriteListParams({ keyword: keywordInput.value }).keyword ||')],
   ['empty state filter detection uses list param normalization', hasFiltersBlock.includes('buildFavoriteListParams({') && hasFiltersBlock.includes('keyword: keyword.value') && hasFiltersBlock.includes('tagId: tagId.value') && hasFiltersBlock.includes("return 'keyword' in params || 'tagId' in params")],
   ['load errors can be retried through generic load', loadBlock.includes('loadError.value =') && pageSource.includes('@click="retryLoad"') && retryLoadBlock.includes('void load()')],

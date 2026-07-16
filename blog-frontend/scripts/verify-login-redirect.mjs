@@ -7,7 +7,21 @@ const cases = [
   [{ role: 'admin' }, undefined, '/admin/dashboard'],
   [{ role: 'admin' }, '/admin/tags', '/admin/tags'],
   [{ role: 'admin' }, 'https://example.com', '/admin/dashboard'],
-  [{ role: 'admin' }, '/login', '/admin/dashboard']
+  [{ role: 'admin' }, '/login', '/admin/dashboard'],
+  [{ role: 'user' }, '//evil.example', '/'],
+  [{ role: 'admin' }, '//evil.example', '/admin/dashboard'],
+  [{ role: 'user' }, '/\\evil.example', '/'],
+  [{ role: 'admin' }, '/\\evil.example', '/admin/dashboard'],
+  [{ role: 'user' }, '/\\\\evil.example', '/'],
+  [{ role: 'admin' }, '/\\\\evil.example', '/admin/dashboard'],
+  [{ role: 'user' }, '///evil.example', '/'],
+  [{ role: 'admin' }, '///evil.example', '/admin/dashboard'],
+  [{ role: 'user' }, '/\t/evil.example', '/'],
+  [{ role: 'admin' }, '/\t/evil.example', '/admin/dashboard'],
+  [{ role: 'user' }, '/\r/evil.example', '/'],
+  [{ role: 'admin' }, '/\r/evil.example', '/admin/dashboard'],
+  [{ role: 'user' }, '/\n/evil.example', '/'],
+  [{ role: 'admin' }, '/\n/evil.example', '/admin/dashboard']
 ]
 
 for (const [user, redirect, expected] of cases) {
