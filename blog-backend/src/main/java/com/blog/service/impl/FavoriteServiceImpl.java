@@ -27,6 +27,8 @@ import java.util.stream.Collectors;
 @Service
 public class FavoriteServiceImpl implements FavoriteService {
 
+    private static final long MAX_PAGE_SIZE = 100;
+
     private final ArticleFavoriteMapper favoriteMapper;
     private final ArticleService articleService;
     private final UserService userService;
@@ -69,6 +71,7 @@ public class FavoriteServiceImpl implements FavoriteService {
 
     @Override
     public IPage<FavoriteArticleItem> getMyFavorites(FavoritePageQuery query, String username) {
+        validateFavoritePage(query);
         User user = requireUser(username);
         Page<FavoriteRelationRow> requestPage = new Page<>(query.getPage(), query.getSize());
         IPage<FavoriteRelationRow> relationPage = favoriteMapper.selectFavoritePage(
@@ -109,6 +112,13 @@ public class FavoriteServiceImpl implements FavoriteService {
         item.setViewCount(article.getViewCount());
         item.setAvailable(true);
         return item;
+    }
+
+    private void validateFavoritePage(FavoritePageQuery query) {
+        if (query == null || query.getPage() < 1
+                || query.getSize() < 1 || query.getSize() > MAX_PAGE_SIZE) {
+            throw new BusinessException("分页参数不合法");
+        }
     }
 
     private User requireUser(String username) {

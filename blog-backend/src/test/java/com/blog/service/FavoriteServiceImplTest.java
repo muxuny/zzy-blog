@@ -13,6 +13,7 @@ import com.blog.mapper.ArticleFavoriteMapper;
 import com.blog.service.impl.FavoriteServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -98,7 +99,7 @@ class FavoriteServiceImplTest {
                 1L, 20L, "Old public title", availableFavoritedAt, true);
         FavoriteRelationRow unavailable = relation(
                 2L, 21L, "Saved private title", unavailableFavoritedAt, false);
-        Page<FavoriteRelationRow> rows = new Page<>(1, 10);
+        Page<FavoriteRelationRow> rows = new Page<>(2, 5);
         rows.setTotal(2);
         rows.setRecords(Arrays.asList(available, unavailable));
         when(favoriteMapper.selectFavoritePage(any(Page.class), eq(10L), eq("architecture"), eq(3L)))
@@ -115,13 +116,15 @@ class FavoriteServiceImplTest {
         when(articleService.getPublicArticleSummaries(Collections.singletonList(20L)))
                 .thenReturn(Collections.singletonList(current));
         FavoritePageQuery query = new FavoritePageQuery();
+        query.setPage(2);
+        query.setSize(5);
         query.setKeyword("architecture");
         query.setTagId(3L);
 
         IPage<FavoriteArticleItem> result = favoriteService.getMyFavorites(query, "alice");
 
-        assertThat(result.getCurrent()).isEqualTo(1);
-        assertThat(result.getSize()).isEqualTo(10);
+        assertThat(result.getCurrent()).isEqualTo(2);
+        assertThat(result.getSize()).isEqualTo(5);
         assertThat(result.getTotal()).isEqualTo(2);
         FavoriteArticleItem visible = result.getRecords().get(0);
         assertThat(visible.isAvailable()).isTrue();
@@ -144,8 +147,11 @@ class FavoriteServiceImplTest {
         assertThat(hidden.getTags()).isEmpty();
         assertThat(hidden.getFavoritedAt()).isEqualTo(unavailableFavoritedAt);
         assertThat(hidden.getUnavailableMessage()).isEqualTo("该文章暂未公开");
-        verify(favoriteMapper).selectFavoritePage(any(Page.class), eq(10L),
+        ArgumentCaptor<Page<FavoriteRelationRow>> pageCaptor = ArgumentCaptor.forClass(Page.class);
+        verify(favoriteMapper).selectFavoritePage(pageCaptor.capture(), eq(10L),
                 eq("architecture"), eq(3L));
+        assertThat(pageCaptor.getValue().getCurrent()).isEqualTo(2);
+        assertThat(pageCaptor.getValue().getSize()).isEqualTo(5);
     }
 
     @Test
@@ -181,6 +187,63 @@ class FavoriteServiceImplTest {
         assertThat(hidden.getViewCount()).isNull();
         assertThat(hidden.getTags()).isEmpty();
         assertThat(hidden.getUnavailableMessage()).isEqualTo("该文章暂未公开");
+    }
+
+    @Test
+    void getMyFavorites_shouldReturnUnavailableOnlyPageWithoutPublicDetails() {
+        when(userService.getCurrentUser("alice")).thenReturn(user(10L, "alice"));
+        LocalDateTime favoritedAt = LocalDateTime.of(2026, 7, 13, 7, 10);
+        FavoriteRelationRow unavailable = relation(
+                1L, 20L, "Saved unavailable title", favoritedAt, false);
+        Page<FavoriteRelationRow> rows = new Page<>(1, 10);
+        rows.setTotal(1);
+        rows.setRecords(Collections.singletonList(unavailable));
+        when(favoriteMapper.selectFavoritePage(any(Page.class), eq(10L), eq(null), eq(null)))
+                .thenReturn(rows);
+        when(articleService.getPublicArticleSummaries(Collections.emptyList()))
+                .thenReturn(Collections.emptyList());
+
+        IPage<FavoriteArticleItem> result = favoriteService.getMyFavorites(
+                new FavoritePageQuery(), "alice");
+
+        assertThat(result.getTotal()).isEqualTo(1);
+        FavoriteArticleItem hidden = result.getRecords().get(0);
+        assertThat(hidden.getTitle()).isEqualTo("Saved unavailable title");
+        assertThat(hidden.getFavoritedAt()).isEqualTo(favoritedAt);
+        assertThat(hidden.isAvailable()).isFalse();
+        assertThat(hidden.getTags()).isEmpty();
+        assertThat(Arrays.asList(hidden.getSummary(), hidden.getCoverImage(),
+                hidden.getAuthorName(), hidden.getViewCount())).containsOnlyNulls();
+        verify(articleService).getPublicArticleSummaries(Collections.emptyList());
+    }
+
+    @Test
+    void getMyFavorites_shouldRejectNullQueryBeforeUsingDependencies() {
+        assertInvalidFavoritePage(null);
+    }
+
+    @Test
+    void getMyFavorites_shouldRejectPageBeforeFirstPage() {
+        FavoritePageQuery query = new FavoritePageQuery();
+        query.setPage(0);
+
+        assertInvalidFavoritePage(query);
+    }
+
+    @Test
+    void getMyFavorites_shouldRejectNonPositivePageSize() {
+        FavoritePageQuery query = new FavoritePageQuery();
+        query.setSize(0);
+
+        assertInvalidFavoritePage(query);
+    }
+
+    @Test
+    void getMyFavorites_shouldRejectPageSizeAboveLimit() {
+        FavoritePageQuery query = new FavoritePageQuery();
+        query.setSize(101);
+
+        assertInvalidFavoritePage(query);
     }
 
     @Test
@@ -232,5 +295,12 @@ class FavoriteServiceImplTest {
         tag.setId(id);
         tag.setName(name);
         return tag;
+    }
+
+    private void assertInvalidFavoritePage(FavoritePageQuery query) {
+        assertThatThrownBy(() -> favoriteService.getMyFavorites(query, "alice"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("分页参数不合法");
+        verifyNoInteractions(userService, favoriteMapper, articleService);
     }
 }

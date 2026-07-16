@@ -166,6 +166,35 @@ class DatabaseConfigTest {
                 extractMapperStatement(xml, "select", "countActiveFavorite"));
     }
 
+    @Test
+    void favoritePageMapperQueryPreservesVisibilityAndFilteringContract() throws IOException {
+        String xml = readString(Paths.get("src/main/resources/mapper/ArticleFavoriteMapper.xml"));
+        String query = extractMapperStatement(xml, "select", "selectFavoritePage");
+
+        assertTrue(query.contains(normalizeWhitespace(
+                "WHERE f.user_id = #{userId} AND f.deleted = 0")),
+                "Favorite page must only include the current user's active favorites");
+        assertTrue(query.contains(normalizeWhitespace(
+                "a.id IS NOT NULL AND a.deleted = 0 AND a.status = 'published' "
+                        + "AND (a.visibility = 'public' OR a.visibility IS NULL) "
+                        + "AND (a.title LIKE CONCAT('%', #{keyword}, '%') "
+                        + "OR a.summary LIKE CONCAT('%', #{keyword}, '%'))")),
+                "Available favorites must search the current public title and summary");
+        assertTrue(query.contains(normalizeWhitespace(
+                "(a.id IS NULL OR a.deleted != 0 OR a.status != 'published' "
+                        + "OR (a.visibility != 'public' AND a.visibility IS NOT NULL)) "
+                        + "AND f.title_snapshot LIKE CONCAT('%', #{keyword}, '%')")),
+                "Unavailable favorites must search only the saved title snapshot");
+        assertTrue(query.contains(normalizeWhitespace(
+                "SELECT 1 FROM article_tag at "
+                        + "INNER JOIN `tag` t ON t.id = at.tag_id AND t.deleted = 0 "
+                        + "WHERE at.article_id = f.article_id AND at.tag_id = #{tagId} "
+                        + "AND at.deleted = 0")),
+                "Tag filtering must require both an active tag and an active article-tag relation");
+        assertTrue(query.contains("ORDER BY f.created_at DESC, f.id DESC"),
+                "Favorite page ordering must be stable and newest-first");
+    }
+
     private static String extractMapperStatement(String xml, String element, String id) {
         String withoutComments = xml.replaceAll("(?s)<!--.*?-->", "");
         Pattern pattern = Pattern.compile(
