@@ -12,24 +12,31 @@ import com.blog.entity.Article;
 import com.blog.service.ArticleService;
 import com.blog.service.FavoriteService;
 import org.junit.jupiter.api.Test;
+import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Arrays;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = {
@@ -46,8 +53,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 class ArticleRouteMappingTest {
 
+    private static final long ARTICLE_ID = 1986429356912345088L;
+    private static final long TAG_ID = 1986429356912345089L;
+
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private FavoriteController favoriteController;
 
     @MockBean
     private ArticleService articleService;
@@ -130,11 +143,11 @@ class ArticleRouteMappingTest {
     void anonymousFavoriteRequestsAreForbidden() throws Exception {
         mockMvc.perform(get("/api/my/favorites"))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(get("/api/my/favorites/20/status"))
+        mockMvc.perform(get("/api/my/favorites/{articleId}/status", ARTICLE_ID))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(put("/api/my/favorites/20"))
+        mockMvc.perform(put("/api/my/favorites/{articleId}", ARTICLE_ID))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(delete("/api/my/favorites/20"))
+        mockMvc.perform(delete("/api/my/favorites/{articleId}", ARTICLE_ID))
                 .andExpect(status().isForbidden());
     }
 
@@ -148,44 +161,82 @@ class ArticleRouteMappingTest {
                         .param("page", "2")
                         .param("size", "5")
                         .param("keyword", "spring")
-                        .param("tagId", "3"))
-                .andExpect(status().isOk());
+                        .param("tagId", Long.toString(TAG_ID)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.page").value(2))
+                .andExpect(jsonPath("$.size").value(5));
 
         verify(favoriteService).getMyFavorites(argThat(query ->
                 query.getPage() == 2
                         && query.getSize() == 5
                         && "spring".equals(query.getKeyword())
-                        && Long.valueOf(3L).equals(query.getTagId())), eq("alice"));
+                        && Long.valueOf(TAG_ID).equals(query.getTagId())), eq("alice"));
     }
 
     @Test
     void getFavoriteStatusRouteUsesAuthenticatedUserAndArticleId() throws Exception {
-        when(favoriteService.getFavoriteStatus(20L, "alice"))
+        when(favoriteService.getFavoriteStatus(ARTICLE_ID, "alice"))
                 .thenReturn(new FavoriteStatus(true));
 
-        mockMvc.perform(get("/api/my/favorites/20/status")
+        mockMvc.perform(get("/api/my/favorites/{articleId}/status", ARTICLE_ID)
                         .with(user("alice").roles("USER")))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.favorited").value(true));
 
-        verify(favoriteService).getFavoriteStatus(20L, "alice");
+        verify(favoriteService).getFavoriteStatus(ARTICLE_ID, "alice");
     }
 
     @Test
     void putFavoriteRouteUsesAuthenticatedUserAndArticleId() throws Exception {
-        mockMvc.perform(put("/api/my/favorites/20")
+        mockMvc.perform(put("/api/my/favorites/{articleId}", ARTICLE_ID)
                         .with(user("alice").roles("USER")))
                 .andExpect(status().isOk());
 
-        verify(favoriteService).favoriteArticle(20L, "alice");
+        verify(favoriteService).favoriteArticle(ARTICLE_ID, "alice");
     }
 
     @Test
     void deleteFavoriteRouteUsesAuthenticatedUserAndArticleId() throws Exception {
-        mockMvc.perform(delete("/api/my/favorites/20")
+        mockMvc.perform(delete("/api/my/favorites/{articleId}", ARTICLE_ID)
                         .with(user("alice").roles("USER")))
                 .andExpect(status().isOk());
 
-        verify(favoriteService).unfavoriteArticle(20L, "alice");
+        verify(favoriteService).unfavoriteArticle(ARTICLE_ID, "alice");
+    }
+
+    @Test
+    void adminCanReachFavoriteController() throws Exception {
+        when(favoriteService.getFavoriteStatus(ARTICLE_ID, "admin"))
+                .thenReturn(new FavoriteStatus(true));
+
+        mockMvc.perform(get("/api/my/favorites/{articleId}/status", ARTICLE_ID)
+                        .with(user("admin").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.favorited").value(true));
+
+        verify(favoriteService).getFavoriteStatus(ARTICLE_ID, "admin");
+    }
+
+    @Test
+    void auditorCannotReachFavoriteController() throws Exception {
+        mockMvc.perform(get("/api/my/favorites/{articleId}/status", ARTICLE_ID)
+                        .with(user("auditor").roles("AUDITOR")))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(favoriteService);
+    }
+
+    @Test
+    @WithMockUser(username = "auditor", roles = "AUDITOR")
+    void favoriteControllerProxyEnforcesMethodRole() {
+        assertTrue(AopUtils.isAopProxy(favoriteController));
+
+        assertThrows(AccessDeniedException.class,
+                () -> favoriteController.status(ARTICLE_ID, () -> "auditor"));
+
+        verifyNoInteractions(favoriteService);
     }
 
     private Article articleWithStatus(String status) {

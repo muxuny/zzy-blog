@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 class FavoriteControllerTest {
@@ -26,22 +27,42 @@ class FavoriteControllerTest {
     private final Principal principal = () -> "alice";
 
     @Test
-    void endpointsUseCurrentPrincipal() {
+    void listUsesCurrentPrincipal() {
         FavoritePageQuery query = new FavoritePageQuery();
         Page<FavoriteArticleItem> page = new Page<>(1, 10);
         when(favoriteService.getMyFavorites(query, "alice")).thenReturn(page);
+
+        assertEquals(200, controller.list(query, principal).getCode());
+
+        verify(favoriteService).getMyFavorites(query, "alice");
+        verifyNoMoreInteractions(favoriteService);
+    }
+
+    @Test
+    void statusUsesCurrentPrincipal() {
         when(favoriteService.getFavoriteStatus(20L, "alice"))
                 .thenReturn(new FavoriteStatus(true));
 
-        assertEquals(200, controller.list(query, principal).getCode());
         assertTrue(controller.status(20L, principal).getData().isFavorited());
+
+        verify(favoriteService).getFavoriteStatus(20L, "alice");
+        verifyNoMoreInteractions(favoriteService);
+    }
+
+    @Test
+    void favoriteUsesCurrentPrincipal() {
         assertEquals(200, controller.favorite(20L, principal).getCode());
+
+        verify(favoriteService).favoriteArticle(20L, "alice");
+        verifyNoMoreInteractions(favoriteService);
+    }
+
+    @Test
+    void unfavoriteUsesCurrentPrincipal() {
         assertEquals(200, controller.unfavorite(20L, principal).getCode());
 
-        verify(favoriteService).getMyFavorites(query, "alice");
-        verify(favoriteService).getFavoriteStatus(20L, "alice");
-        verify(favoriteService).favoriteArticle(20L, "alice");
         verify(favoriteService).unfavoriteArticle(20L, "alice");
+        verifyNoMoreInteractions(favoriteService);
     }
 
     @Test
