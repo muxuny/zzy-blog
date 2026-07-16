@@ -10,7 +10,12 @@
         >
           {{ item.title }}
         </button>
-        <el-tooltip v-else content="该文章暂未公开" placement="top">
+        <el-tooltip
+          v-else
+          content="该文章暂未公开"
+          placement="top"
+          :trigger="['hover', 'focus']"
+        >
           <span class="title-snapshot" tabindex="0">{{ item.title }}</span>
         </el-tooltip>
       </h2>

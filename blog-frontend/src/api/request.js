@@ -21,7 +21,8 @@ request.interceptors.response.use(
   error => {
     if (error.response?.status === 401 && !error.config?.skipAuthRedirect) {
       localStorage.removeItem('token')
-      window.location.href = '/login'
+      const currentFullPath = `${window.location.pathname}${window.location.search}${window.location.hash}`
+      window.location.href = `/login?redirect=${encodeURIComponent(currentFullPath)}`
     }
     if (!error.config?.skipErrorMessage) {
       ElMessage.error(error.response?.data?.message || error.message || '网络错误')

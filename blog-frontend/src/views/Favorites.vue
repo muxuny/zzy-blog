@@ -1,7 +1,7 @@
 <template>
   <div class="layout">
     <AppHeader />
-    <main class="favorites-main">
+    <main class="favorites-main" :aria-busy="loading">
       <header class="page-heading">
         <div>
           <span class="page-kicker">阅读清单</span>
@@ -47,7 +47,9 @@
         <el-button :icon="Refresh" @click="retryLoad">重试</el-button>
       </div>
 
-      <el-skeleton v-if="loading" class="favorite-skeleton" :rows="6" animated />
+      <div v-if="loading" class="favorite-skeleton" role="status" aria-live="polite">
+        <el-skeleton :rows="6" animated />
+      </div>
 
       <template v-else-if="!loadError">
         <div v-if="items.length" class="favorite-list">
@@ -61,7 +63,9 @@
           />
         </div>
 
-        <el-empty v-else :description="emptyDescription" />
+        <div v-else class="empty-status" role="status" aria-live="polite">
+          <el-empty :description="emptyDescription" />
+        </div>
 
         <div v-if="total > size" class="pagination">
           <el-pagination
@@ -78,7 +82,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Refresh, Search } from '@element-plus/icons-vue'
@@ -100,8 +104,12 @@ const loading = ref(false)
 const loadError = ref('')
 const removingIds = ref(new Set())
 const router = useRouter()
+let componentActive = true
 let loadRequestVersion = 0
 let listContextVersion = 0
+let tagRequestVersion = 0
+let removeRequestSequence = 0
+const removeRequestVersions = new Map()
 
 const hasFilters = computed(() => {
   const params = buildFavoriteListParams({
@@ -117,7 +125,16 @@ onMounted(() => {
   void load()
 })
 
+onBeforeUnmount(() => {
+  componentActive = false
+  loadRequestVersion += 1
+  listContextVersion += 1
+  tagRequestVersion += 1
+  removeRequestVersions.clear()
+})
+
 async function load() {
+  if (!componentActive) return null
   const requestId = ++loadRequestVersion
   const requestPage = page.value
   loading.value = true
@@ -131,27 +148,38 @@ async function load() {
 
   try {
     const result = await getFavorites(params)
-    if (requestId !== loadRequestVersion) return null
+    if (!componentActive || requestId !== loadRequestVersion) return null
     const records = result.data || []
+    const nextTotal = Number(result.total) || 0
+    const maxPage = Math.max(1, Math.ceil(nextTotal / size.value))
+    if (page.value > maxPage) {
+      page.value = maxPage
+      listContextVersion += 1
+      return await load()
+    }
     items.value = records
-    total.value = result.total || 0
+    total.value = nextTotal
     return { applied: true, page: requestPage, recordCount: records.length }
   } catch (error) {
-    if (requestId !== loadRequestVersion) return null
+    if (!componentActive || requestId !== loadRequestVersion) return null
     items.value = []
     total.value = 0
     loadError.value = error.response?.data?.message || error.message || '收藏列表加载失败，请重试'
     return null
   } finally {
-    if (requestId === loadRequestVersion) loading.value = false
+    if (componentActive && requestId === loadRequestVersion) loading.value = false
   }
 }
 
 async function loadTags() {
+  if (!componentActive) return
+  const requestId = ++tagRequestVersion
   try {
     const result = await getTags()
+    if (!componentActive || requestId !== tagRequestVersion) return
     tags.value = result.data || []
   } catch {
+    if (!componentActive || requestId !== tagRequestVersion) return
     tags.value = []
   }
 }
@@ -191,40 +219,38 @@ function handlePageChange(nextPage) {
 
 function openArticle(item) {
   if (!item.available) return
-  router.push('/article/' + item.articleId)
+  void router.push('/article/' + item.articleId).catch(() => {})
 }
 
 function isRemoving(articleId) {
   return removingIds.value.has(articleId)
 }
 
+function isRemoveRequestCurrent(articleId, requestId) {
+  return componentActive && removeRequestVersions.get(articleId) === requestId
+}
+
 async function removeFavorite(item) {
-  if (isRemoving(item.articleId)) return
-  const removalPage = page.value
-  const removalContextVersion = listContextVersion
+  if (isRemoving(item.articleId) || !componentActive) return
+  const requestId = ++removeRequestSequence
+  removeRequestVersions.set(item.articleId, requestId)
   removingIds.value = new Set(removingIds.value).add(item.articleId)
 
   try {
     await unfavoriteArticle(item.articleId)
+    if (!isRemoveRequestCurrent(item.articleId, requestId)) return
     ElMessage.success('已取消收藏')
-    const refreshed = await load()
-    if (
-      refreshed?.applied === true &&
-      refreshed.recordCount === 0 &&
-      refreshed.page === removalPage &&
-      refreshed.page === page.value &&
-      removalContextVersion === listContextVersion &&
-      page.value > 1
-    ) {
-      page.value -= 1
-      await load()
-    }
+    await load()
+    if (!isRemoveRequestCurrent(item.articleId, requestId)) return
   } catch {
     // The shared request interceptor presents the request failure.
   } finally {
-    const nextRemovingIds = new Set(removingIds.value)
-    nextRemovingIds.delete(item.articleId)
-    removingIds.value = nextRemovingIds
+    if (isRemoveRequestCurrent(item.articleId, requestId)) {
+      removeRequestVersions.delete(item.articleId)
+      const nextRemovingIds = new Set(removingIds.value)
+      nextRemovingIds.delete(item.articleId)
+      removingIds.value = nextRemovingIds
+    }
   }
 }
 </script>
