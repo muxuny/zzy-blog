@@ -133,6 +133,18 @@ class ArticleServiceImplTest {
     }
 
     @Test
+    void getPublicDetail_shouldIncreaseAndPersistViewCount() {
+        Article article = article(1L, "alice", ArticleStatus.PUBLISHED);
+        article.setViewCount(7);
+        articleService.put(article);
+
+        Article detail = articleService.getPublicDetail(1L);
+
+        assertThat(detail.getViewCount()).isEqualTo(8);
+        assertThat(articleService.getById(1L).getViewCount()).isEqualTo(8);
+    }
+
+    @Test
     void getPublicArticleSummary_shouldNotIncreaseViewCount() {
         Article article = article(1L, "alice", ArticleStatus.PUBLISHED);
         article.setViewCount(7);
