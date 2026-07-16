@@ -121,14 +121,34 @@ const itemOutsideAvailableTemplate = availableTemplateMatch
   : itemSource
 const sensitiveItemFields = ['item.summary', 'item.coverImage', 'item.authorName', 'item.viewCount', 'item.tags']
 const loadBlock = extractBraceBlock(pageSource, 'async function load()')
+const loadErrorBlock = extractBraceBlock(loadBlock, 'catch (error)')
 const submitSearchBlock = extractBraceBlock(pageSource, 'function submitSearch()')
 const tagChangeBlock = extractBraceBlock(pageSource, 'function handleTagChange()')
 const resetFiltersBlock = extractBraceBlock(pageSource, 'function resetFilters()')
+const pageChangeBlock = extractBraceBlock(pageSource, 'function handlePageChange(nextPage)')
 const hasFiltersBlock = extractBraceBlock(pageSource, 'const hasFilters = computed(() =>')
 const loadTagsBlock = extractBraceBlock(pageSource, 'async function loadTags()')
 const removeFavoriteBlock = extractBraceBlock(pageSource, 'async function removeFavorite(item)')
 const openArticleBlock = extractBraceBlock(pageSource, 'function openArticle(item)')
 const favoritesRoutePattern = /\{\s*path:\s*'\/favorites',\s*name:\s*'Favorites',\s*component:\s*\(\)\s*=>\s*import\('\.\.\/views\/Favorites\.vue'\),\s*meta:\s*\{\s*requiresAuth:\s*true\s*\}\s*\}/s
+const firstRemovalReload = 'const refreshed = await load()'
+const firstRemovalReloadIndex = removeFavoriteBlock.indexOf(firstRemovalReload)
+const removalFallbackPredicateIndex = removeFavoriteBlock.indexOf('refreshed?.applied === true')
+const removalFallbackBodyStart = removeFavoriteBlock.indexOf('{', removalFallbackPredicateIndex)
+const removalFallbackCondition = removeFavoriteBlock.slice(
+  removalFallbackPredicateIndex,
+  removalFallbackBodyStart
+)
+const removalFallbackBlock = extractBraceBlock(removeFavoriteBlock, 'refreshed?.applied === true')
+const successStaleGuardIndex = loadBlock.indexOf('if (requestId !== loadRequestVersion) return null')
+const recordsIndex = loadBlock.indexOf('const records = result.data || []')
+const applyRecordsIndex = loadBlock.indexOf('items.value = records')
+const appliedMetadataIndex = loadBlock.indexOf('return { applied: true, page: requestPage, recordCount: records.length }')
+const errorStaleGuardIndex = loadErrorBlock.indexOf('if (requestId !== loadRequestVersion) return null')
+const errorItemsIndex = loadErrorBlock.indexOf('items.value = []')
+const errorTotalIndex = loadErrorBlock.indexOf('total.value = 0')
+const errorMessageIndex = loadErrorBlock.indexOf('loadError.value =')
+const errorReturnIndex = loadErrorBlock.lastIndexOf('return null')
 
 const favoriteContracts = [
   ['favorites route is protected', requiredRoutes.every(text => routerSource.includes(text)) && favoritesRoutePattern.test(routerSource)],
@@ -140,14 +160,19 @@ const favoriteContracts = [
   ['favorite date is always visible', itemSource.includes('<div class="item-foot">') && itemSource.indexOf('formatDate(item.favoritedAt)') > availableTemplateEnd],
   ['remove is isolated and accessible', itemSource.includes('@click.stop="$emit(\'remove\', item)"') && itemSource.includes('title="取消收藏"') && itemSource.includes('aria-label="取消收藏"')],
   ['remove button has stable dimensions', /\.remove-button\s*\{[^}]*width:\s*36px;[^}]*height:\s*36px;/s.test(itemSource)],
-  ['favorite page reads PageResult', loadBlock.includes('items.value = result.data || []') && loadBlock.includes('total.value = result.total || 0')],
-  ['favorite load guards stale responses', loadBlock.includes('const requestId = ++loadRequestVersion') && loadBlock.includes('if (requestId !== loadRequestVersion) return') && loadBlock.includes('if (requestId === loadRequestVersion) loading.value = false')],
+  ['favorite page reads PageResult', loadBlock.includes('const records = result.data || []') && loadBlock.includes('items.value = records') && loadBlock.includes('total.value = result.total || 0')],
+  ['favorite load returns only applied response metadata', loadBlock.includes('const requestPage = page.value') && (loadBlock.match(/return null/g) || []).length >= 3 && successStaleGuardIndex >= 0 && recordsIndex > successStaleGuardIndex && applyRecordsIndex > recordsIndex && appliedMetadataIndex > applyRecordsIndex],
+  ['favorite load guards stale responses', loadBlock.includes('const requestId = ++loadRequestVersion') && loadBlock.includes('if (requestId !== loadRequestVersion) return null') && loadBlock.includes('if (requestId === loadRequestVersion) loading.value = false')],
+  ['stale load errors cannot mutate current state', errorStaleGuardIndex >= 0 && errorItemsIndex > errorStaleGuardIndex && errorTotalIndex > errorItemsIndex && errorMessageIndex > errorTotalIndex && errorReturnIndex > errorMessageIndex],
   ['filter actions reset pagination', [submitSearchBlock, tagChangeBlock, resetFiltersBlock].every(block => block.includes('page.value = 1'))],
+  ['filter and page actions advance list context', pageSource.includes('let listContextVersion = 0') && [submitSearchBlock, tagChangeBlock, resetFiltersBlock, pageChangeBlock].every(block => block.includes('listContextVersion += 1'))],
   ['keyword submission uses list param normalization', submitSearchBlock.includes('keyword.value = buildFavoriteListParams({ keyword: keywordInput.value }).keyword ||')],
   ['empty state filter detection uses list param normalization', hasFiltersBlock.includes('buildFavoriteListParams({') && hasFiltersBlock.includes('keyword: keyword.value') && hasFiltersBlock.includes('tagId: tagId.value') && hasFiltersBlock.includes("return 'keyword' in params || 'tagId' in params")],
   ['load errors can be retried', loadBlock.includes('loadError.value =') && pageSource.includes('@click="retryLoad"') && normalizedPageSource.includes('function retryLoad')],
   ['tag loading does not block favorites', pageSource.includes('void loadTags()') && pageSource.includes('void load()') && loadTagsBlock.includes('catch') && loadTagsBlock.includes('tags.value = []')],
-  ['remove prevents duplicates and repairs pagination', removeFavoriteBlock.includes('if (isRemoving(item.articleId)) return') && removeFavoriteBlock.includes("ElMessage.success('已取消收藏')") && removeFavoriteBlock.includes('items.value.length === 1 && page.value > 1') && removeFavoriteBlock.includes('await load()')],
+  ['remove captures immutable page and list context', removeFavoriteBlock.includes('const removalPage = page.value') && removeFavoriteBlock.includes('const removalContextVersion = listContextVersion') && !removeFavoriteBlock.includes('items.value.length')],
+  ['remove fallback predicates guard page decrement', firstRemovalReloadIndex >= 0 && removalFallbackPredicateIndex > firstRemovalReloadIndex && ['refreshed?.applied === true', 'refreshed.recordCount === 0', 'refreshed.page === removalPage', 'refreshed.page === page.value', 'removalContextVersion === listContextVersion', 'page.value > 1'].every(predicate => removalFallbackCondition.includes(predicate)) && removalFallbackBlock.includes('page.value -= 1') && removalFallbackBlock.indexOf('await load()') > removalFallbackBlock.indexOf('page.value -= 1')],
+  ['remove keeps duplicate guard and success feedback', removeFavoriteBlock.includes('if (isRemoving(item.articleId)) return') && removeFavoriteBlock.includes("ElMessage.success('已取消收藏')")],
   ['article navigation keeps snowflake ids as strings', openArticleBlock.includes('if (!item.available) return') && openArticleBlock.includes("router.push('/article/' + item.articleId)") && !pageSource.includes('Number(item.articleId)') && !pageSource.includes('Number(tagId.value)')],
   ['favorite layout uses theme variables and responsive rules', itemSource.includes('var(--panel-bg)') && pageSource.includes('var(--content-width)') && itemSource.includes('@media (max-width: 640px)') && pageSource.includes('@media (max-width: 720px)')]
 ]

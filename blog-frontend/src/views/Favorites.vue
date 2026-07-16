@@ -101,6 +101,7 @@ const loadError = ref('')
 const removingIds = ref(new Set())
 const router = useRouter()
 let loadRequestVersion = 0
+let listContextVersion = 0
 
 const hasFilters = computed(() => {
   const params = buildFavoriteListParams({
@@ -118,10 +119,11 @@ onMounted(() => {
 
 async function load() {
   const requestId = ++loadRequestVersion
+  const requestPage = page.value
   loading.value = true
   loadError.value = ''
   const params = buildFavoriteListParams({
-    page: page.value,
+    page: requestPage,
     size: size.value,
     keyword: keyword.value,
     tagId: tagId.value
@@ -129,14 +131,17 @@ async function load() {
 
   try {
     const result = await getFavorites(params)
-    if (requestId !== loadRequestVersion) return
-    items.value = result.data || []
+    if (requestId !== loadRequestVersion) return null
+    const records = result.data || []
+    items.value = records
     total.value = result.total || 0
+    return { applied: true, page: requestPage, recordCount: records.length }
   } catch (error) {
-    if (requestId !== loadRequestVersion) return
+    if (requestId !== loadRequestVersion) return null
     items.value = []
     total.value = 0
     loadError.value = error.response?.data?.message || error.message || '收藏列表加载失败，请重试'
+    return null
   } finally {
     if (requestId === loadRequestVersion) loading.value = false
   }
@@ -152,6 +157,7 @@ async function loadTags() {
 }
 
 function submitSearch() {
+  listContextVersion += 1
   keyword.value = buildFavoriteListParams({ keyword: keywordInput.value }).keyword || ''
   keywordInput.value = keyword.value
   page.value = 1
@@ -159,11 +165,13 @@ function submitSearch() {
 }
 
 function handleTagChange() {
+  listContextVersion += 1
   page.value = 1
   void load()
 }
 
 function resetFilters() {
+  listContextVersion += 1
   keywordInput.value = ''
   keyword.value = ''
   tagId.value = ''
@@ -176,6 +184,7 @@ function retryLoad() {
 }
 
 function handlePageChange(nextPage) {
+  listContextVersion += 1
   page.value = nextPage
   void load()
 }
@@ -191,13 +200,25 @@ function isRemoving(articleId) {
 
 async function removeFavorite(item) {
   if (isRemoving(item.articleId)) return
+  const removalPage = page.value
+  const removalContextVersion = listContextVersion
   removingIds.value = new Set(removingIds.value).add(item.articleId)
 
   try {
     await unfavoriteArticle(item.articleId)
     ElMessage.success('已取消收藏')
-    if (items.value.length === 1 && page.value > 1) page.value -= 1
-    await load()
+    const refreshed = await load()
+    if (
+      refreshed?.applied === true &&
+      refreshed.recordCount === 0 &&
+      refreshed.page === removalPage &&
+      refreshed.page === page.value &&
+      removalContextVersion === listContextVersion &&
+      page.value > 1
+    ) {
+      page.value -= 1
+      await load()
+    }
   } catch {
     // The shared request interceptor presents the request failure.
   } finally {
