@@ -136,36 +136,51 @@ class DatabaseConfigTest {
     }
 
     @Test
-    void favoriteMapperSupportsIdempotentCancelAndRestore() throws IOException {
+    void favoriteMapperStatementsMatchIdempotentCancelAndRestoreContract() throws IOException {
         String xml = readString(Paths.get("src/main/resources/mapper/ArticleFavoriteMapper.xml"));
-        String normalized = xml.trim().replaceAll("\\s+", " ");
 
-        assertTrue(normalized.contains(
-                "(id, user_id, article_id, title_snapshot, created_by, created_at, "
-                        + "updated_by, updated_at, deleted, version)"));
-        assertTrue(normalized.contains(
-                "(#{id}, #{userId}, #{articleId}, #{titleSnapshot}, #{username}, #{now}, "
-                        + "#{username}, #{now}, 0, 0)"));
-        assertTrue(xml.contains("ON DUPLICATE KEY UPDATE"));
-        assertTrue(xml.contains("IF(deleted = 1, VALUES(title_snapshot), title_snapshot)"));
-        assertTrue(normalized.contains(
-                "created_by = IF(deleted = 1, VALUES(created_by), created_by), "
+        assertEquals(normalizeWhitespace(
+                "INSERT INTO article_favorite "
+                        + "(id, user_id, article_id, title_snapshot, created_by, created_at, "
+                        + "updated_by, updated_at, deleted, version) "
+                        + "VALUES (#{id}, #{userId}, #{articleId}, #{titleSnapshot}, #{username}, #{now}, "
+                        + "#{username}, #{now}, 0, 0) "
+                        + "ON DUPLICATE KEY UPDATE "
+                        + "title_snapshot = IF(deleted = 1, VALUES(title_snapshot), title_snapshot), "
+                        + "created_by = IF(deleted = 1, VALUES(created_by), created_by), "
                         + "created_at = IF(deleted = 1, VALUES(created_at), created_at), "
                         + "updated_by = IF(deleted = 1, VALUES(updated_by), updated_by), "
                         + "updated_at = IF(deleted = 1, VALUES(updated_at), updated_at), "
-                        + "version = IF(deleted = 1, version + 1, version), deleted = 0"));
+                        + "version = IF(deleted = 1, version + 1, version), "
+                        + "deleted = 0"),
+                extractMapperStatement(xml, "insert", "upsertFavorite"));
+        assertEquals(normalizeWhitespace(
+                "UPDATE article_favorite "
+                        + "SET deleted = 1, updated_by = #{username}, updated_at = #{now}, "
+                        + "version = version + 1 "
+                        + "WHERE user_id = #{userId} AND article_id = #{articleId} AND deleted = 0"),
+                extractMapperStatement(xml, "update", "cancelFavorite"));
+        assertEquals(normalizeWhitespace(
+                "SELECT COUNT(1) FROM article_favorite "
+                        + "WHERE user_id = #{userId} AND article_id = #{articleId} AND deleted = 0"),
+                extractMapperStatement(xml, "select", "countActiveFavorite"));
+    }
 
-        assertTrue(normalized.contains(
-                "<update id=\"cancelFavorite\"> UPDATE article_favorite SET deleted = 1, "
-                        + "updated_by = #{username}, updated_at = #{now}, version = version + 1 "
-                        + "WHERE user_id = #{userId} AND article_id = #{articleId} AND deleted = 0 "
-                        + "</update>"));
-        assertTrue(normalized.contains(
-                "<select id=\"countActiveFavorite\" resultType=\"long\"> SELECT COUNT(1) "
-                        + "FROM article_favorite WHERE user_id = #{userId} "
-                        + "AND article_id = #{articleId} AND deleted = 0 </select>"));
-        assertTrue(xml.contains("AND deleted = 0"));
-        assertTrue(xml.contains("version = version + 1"));
+    private static String extractMapperStatement(String xml, String element, String id) {
+        String withoutComments = xml.replaceAll("(?s)<!--.*?-->", "");
+        Pattern pattern = Pattern.compile(
+                "<" + Pattern.quote(element) + "\\s+id\\s*=\\s*\"" + Pattern.quote(id)
+                        + "\"[^>]*>(.*?)</" + Pattern.quote(element) + ">",
+                Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+        Matcher matcher = pattern.matcher(withoutComments);
+        assertTrue(matcher.find(), "Expected mapper statement " + id);
+        String statement = matcher.group(1);
+        assertTrue(!matcher.find(), "Expected exactly one mapper statement " + id);
+        return normalizeWhitespace(statement);
+    }
+
+    private static String normalizeWhitespace(String content) {
+        return content.trim().replaceAll("\\s+", " ");
     }
 
     private static String extractFavoriteTableDefinition(String sql, String source) {

@@ -16,8 +16,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 class FavoriteServiceImplTest {
@@ -45,8 +46,11 @@ class FavoriteServiceImplTest {
 
         favoriteService.favoriteArticle(20L, "alice");
 
+        verify(userService).getCurrentUser("alice");
+        verify(articleService).getPublicArticleSummary(20L);
         verify(favoriteMapper).upsertFavorite(
                 anyLong(), eq(10L), eq(20L), eq("Visible title"), eq("alice"), any(LocalDateTime.class));
+        verifyNoMoreInteractions(userService, articleService, favoriteMapper);
     }
 
     @Test
@@ -58,17 +62,35 @@ class FavoriteServiceImplTest {
         assertThatThrownBy(() -> favoriteService.favoriteArticle(20L, "alice"))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("文章不存在或暂不可收藏");
+        verify(userService).getCurrentUser("alice");
+        verify(articleService).getPublicArticleSummary(20L);
+        verifyNoInteractions(favoriteMapper);
+        verifyNoMoreInteractions(userService, articleService);
     }
 
     @Test
-    void favoriteStatusAndCancel_shouldUseOnlyCurrentUserId() {
+    void getFavoriteStatus_shouldCountOnlyCurrentUserFavorites() {
         when(userService.getCurrentUser("alice")).thenReturn(user(10L, "alice"));
         when(favoriteMapper.countActiveFavorite(10L, 20L)).thenReturn(1L);
 
         assertThat(favoriteService.getFavoriteStatus(20L, "alice").isFavorited()).isTrue();
+
+        verify(userService).getCurrentUser("alice");
+        verify(favoriteMapper).countActiveFavorite(10L, 20L);
+        verifyNoInteractions(articleService);
+        verifyNoMoreInteractions(userService, favoriteMapper);
+    }
+
+    @Test
+    void unfavoriteArticle_shouldCancelOnlyCurrentUserFavorite() {
+        when(userService.getCurrentUser("alice")).thenReturn(user(10L, "alice"));
+
         favoriteService.unfavoriteArticle(20L, "alice");
 
+        verify(userService).getCurrentUser("alice");
         verify(favoriteMapper).cancelFavorite(eq(10L), eq(20L), eq("alice"), any(LocalDateTime.class));
+        verifyNoInteractions(articleService);
+        verifyNoMoreInteractions(userService, favoriteMapper);
     }
 
     @Test
@@ -78,7 +100,9 @@ class FavoriteServiceImplTest {
         assertThatThrownBy(() -> favoriteService.favoriteArticle(20L, "missing"))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("用户不存在");
-        verify(articleService, never()).getPublicArticleSummary(anyLong());
+        verify(userService).getCurrentUser("missing");
+        verifyNoInteractions(articleService, favoriteMapper);
+        verifyNoMoreInteractions(userService);
     }
 
     private static User user(Long id, String username) {
