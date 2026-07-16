@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.blog.mapper.ArticleFavoriteMapper">
+    <insert id="upsertFavorite">
+        INSERT INTO article_favorite
+            (id, user_id, article_id, title_snapshot, created_by, created_at,
+             updated_by, updated_at, deleted, version)
+        VALUES
+            (#{id}, #{userId}, #{articleId}, #{titleSnapshot}, #{username}, #{now},
+             #{username}, #{now}, 0, 0)
+        ON DUPLICATE KEY UPDATE
+            title_snapshot = IF(deleted = 1, VALUES(title_snapshot), title_snapshot),
+            created_by = IF(deleted = 1, VALUES(created_by), created_by),
+            created_at = IF(deleted = 1, VALUES(created_at), created_at),
+            updated_by = IF(deleted = 1, VALUES(updated_by), updated_by),
+            updated_at = IF(deleted = 1, VALUES(updated_at), updated_at),
+            version = IF(deleted = 1, version + 1, version),
+            deleted = 0
+    </insert>
+
+    <update id="cancelFavorite">
+        UPDATE article_favorite
+        SET deleted = 1,
+            updated_by = #{username},
+            updated_at = #{now},
+            version = version + 1
+        WHERE user_id = #{userId}
+          AND article_id = #{articleId}
+          AND deleted = 0
+    </update>
+
+    <select id="countActiveFavorite" resultType="long">
+        SELECT COUNT(1)
+        FROM article_favorite
+        WHERE user_id = #{userId}
+          AND article_id = #{articleId}
+          AND deleted = 0
+    </select>
+</mapper>
