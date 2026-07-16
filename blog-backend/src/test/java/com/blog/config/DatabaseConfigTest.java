@@ -96,20 +96,59 @@ class DatabaseConfigTest {
     void favoriteSchemaIncludesBusinessAndCommonFields() throws IOException {
         String migration = readString(Paths.get(
                 "src/main/resources/db/migration/2026-07-16-新增文章收藏.sql"));
-        String normalized = migration.toLowerCase(Locale.ROOT);
+        String initSql = readString(Paths.get("src/main/resources/db/init.sql"));
+        String migrationDefinition = normalizeSql(extractFavoriteTableDefinition(migration, "migration"));
+        String initDefinition = normalizeSql(extractFavoriteTableDefinition(initSql, "init.sql"));
 
-        assertTrue(normalized.contains("create table if not exists `article_favorite`"));
-        for (String column : Arrays.asList(
-                "`id`", "`user_id`", "`article_id`", "`title_snapshot`",
-                "`created_by`", "`created_at`", "`updated_by`", "`updated_at`",
-                "`deleted`", "`version`")) {
-            assertTrue(normalized.contains(column), "Missing favorite column " + column);
+        assertEquals(migrationDefinition, initDefinition,
+                "init.sql and migration must use the same article_favorite table definition");
+        for (String columnDefinition : Arrays.asList(
+                "`id` bigint not null comment '雪花id',",
+                "`user_id` bigint not null comment '收藏用户id',",
+                "`article_id` bigint not null comment '文章id',",
+                "`title_snapshot` varchar(200) not null comment '收藏时公开标题快照',",
+                "`created_by` varchar(50) default null comment '创建人',",
+                "`created_at` datetime default null comment '创建时间',",
+                "`updated_by` varchar(50) default null comment '更新人',",
+                "`updated_at` datetime default null comment '更新时间',",
+                "`deleted` tinyint(1) not null default 0 comment '逻辑删除：0未删除，1已删除',",
+                "`version` int not null default 0 comment '乐观锁版本号',")) {
+            assertTrue(migrationDefinition.contains(columnDefinition),
+                    "Missing favorite column definition " + columnDefinition);
         }
-        assertTrue(normalized.contains("unique key `uk_article_favorite_user_article` (`user_id`, `article_id`)"));
-        assertTrue(normalized.contains("key `idx_article_favorite_user_deleted_created_at`"));
-        assertTrue(normalized.contains("key `idx_article_favorite_article_deleted`"));
-        assertTrue(!normalized.contains("drop table"));
-        assertTrue(!normalized.contains("delete from"));
+        assertTrue(migrationDefinition.contains("primary key (`id`)"));
+        assertTrue(migrationDefinition.contains(
+                "unique key `uk_article_favorite_user_article` (`user_id`, `article_id`)"));
+        assertTrue(migrationDefinition.contains(
+                "key `idx_article_favorite_user_deleted_created_at` (`user_id`, `deleted`, `created_at`)"));
+        assertTrue(migrationDefinition.contains(
+                "key `idx_article_favorite_article_deleted` (`article_id`, `deleted`)"));
+        assertTrue(migrationDefinition.contains(
+                "constraint `fk_article_favorite_user` foreign key (`user_id`) references `user` (`id`) "
+                        + "on delete cascade on update cascade"));
+        assertTrue(migrationDefinition.contains(
+                "constraint `fk_article_favorite_article` foreign key (`article_id`) references `article` (`id`) "
+                        + "on delete cascade on update cascade"));
+
+        String normalizedMigration = normalizeSql(migration);
+        assertTrue(!normalizedMigration.contains("drop table"));
+        assertTrue(!normalizedMigration.contains("delete from"));
+    }
+
+    private static String extractFavoriteTableDefinition(String sql, String source) {
+        Pattern pattern = Pattern.compile(
+                "CREATE\\s+TABLE\\s+IF\\s+NOT\\s+EXISTS\\s+`article_favorite`\\s*"
+                        + "\\(.*?\\)\\s*ENGINE\\s*=\\s*InnoDB\\s+DEFAULT\\s+CHARSET\\s*=\\s*utf8mb4\\s+"
+                        + "COLLATE\\s*=\\s*utf8mb4_unicode_ci\\s+COMMENT\\s*=\\s*'文章收藏关系表'\\s*;",
+                Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+        Matcher matcher = pattern.matcher(sql);
+        assertTrue(matcher.find(),
+                "Expected to find complete article_favorite CREATE TABLE block in " + source);
+        return matcher.group();
+    }
+
+    private static String normalizeSql(String sql) {
+        return sql.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
     }
 
     private static String requireMatch(Pattern pattern, String content, String label) {
