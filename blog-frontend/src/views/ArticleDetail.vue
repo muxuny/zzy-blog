@@ -200,6 +200,9 @@ const activeHeadingId = ref('')
 const showBackToTop = ref(false)
 const loadToken = ref(0)
 const tocPanelRef = ref(null)
+let componentActive = true
+let favoriteStateVersion = 0
+let favoriteOperationId = 0
 
 const articleTags = computed(() => article.value?.tags || [])
 const authorName = computed(() => article.value?.authorName || article.value?.createdBy || '匿名作者')
@@ -215,6 +218,10 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  componentActive = false
+  loadToken.value += 1
+  favoriteStateVersion += 1
+  favoriteOperationId += 1
   window.removeEventListener('scroll', updateScrollState)
 })
 
@@ -225,6 +232,9 @@ watch(() => route.params.id, () => {
 
 async function loadArticle() {
   const token = ++loadToken.value
+  favoriteStateVersion += 1
+  favoriteOperationId += 1
+  favoriteLoading.value = false
   loading.value = true
   errorMessage.value = ''
   article.value = null
@@ -248,35 +258,45 @@ async function loadArticle() {
   }
 }
 
+function isCurrentFavoriteContext(articleId, token, stateVersion) {
+  return componentActive &&
+    token === loadToken.value &&
+    article.value?.id === articleId &&
+    stateVersion === favoriteStateVersion
+}
+
 async function loadFavoriteState(articleId, token) {
+  const stateVersion = favoriteStateVersion
   if (!authStore.isLoggedIn) {
-    if (token === loadToken.value) favorited.value = false
+    if (isCurrentFavoriteContext(articleId, token, stateVersion)) favorited.value = false
     return
   }
   try {
     const result = await getFavoriteStatus(articleId)
-    if (token !== loadToken.value || article.value?.id !== articleId) return
+    if (!isCurrentFavoriteContext(articleId, token, stateVersion)) return
     favorited.value = !!result.data?.favorited
   } catch {
-    if (token !== loadToken.value || article.value?.id !== articleId) return
+    if (!isCurrentFavoriteContext(articleId, token, stateVersion)) return
     favorited.value = false
   }
 }
 
 async function setFavorite(articleId, nextValue, token = loadToken.value) {
-  if (favoriteLoading.value) return false
+  if (favoriteLoading.value || !componentActive) return false
+  const stateVersion = ++favoriteStateVersion
+  const operationId = ++favoriteOperationId
   favoriteLoading.value = true
   try {
     if (nextValue) await favoriteArticle(articleId)
     else await unfavoriteArticle(articleId)
-    if (token !== loadToken.value || article.value?.id !== articleId) return false
+    if (!isCurrentFavoriteContext(articleId, token, stateVersion)) return false
     favorited.value = nextValue
     ElMessage.success(nextValue ? '已收藏' : '已取消收藏')
     return true
   } catch {
     return false
   } finally {
-    favoriteLoading.value = false
+    if (operationId === favoriteOperationId) favoriteLoading.value = false
   }
 }
 
@@ -295,10 +315,22 @@ async function handleFavorite() {
 async function initializeFavorite(articleId, token) {
   if (!authStore.isLoggedIn || token !== loadToken.value) return
   if (hasFavoriteIntent(route.query)) {
+    const intentFullPath = route.fullPath
+    const intentPath = route.path
+    const intentArticleId = articleId
     try {
       await setFavorite(articleId, true, token)
     } finally {
-      if (token === loadToken.value) {
+      if (
+        componentActive &&
+        token === loadToken.value &&
+        article.value?.id === intentArticleId &&
+        route.fullPath === intentFullPath &&
+        route.path === intentPath &&
+        typeof window !== 'undefined' &&
+        window.location.pathname === intentPath &&
+        hasFavoriteIntent(route.query)
+      ) {
         await router.replace({ query: clearFavoriteIntentQuery(route.query) })
       }
     }
