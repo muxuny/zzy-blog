@@ -16,6 +16,7 @@ import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -55,6 +56,7 @@ class ArticleRouteMappingTest {
 
     private static final long ARTICLE_ID = 1986429356912345088L;
     private static final long TAG_ID = 1986429356912345089L;
+    private static final String INVALID_JWT = "expired.jwt.token";
 
     @Autowired
     private MockMvc mockMvc;
@@ -140,15 +142,29 @@ class ArticleRouteMappingTest {
     }
 
     @Test
-    void anonymousFavoriteRequestsAreForbidden() throws Exception {
+    void anonymousFavoriteRequestsAreUnauthorized() throws Exception {
         mockMvc.perform(get("/api/my/favorites"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/my/favorites/{articleId}/status", ARTICLE_ID))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
         mockMvc.perform(put("/api/my/favorites/{articleId}", ARTICLE_ID))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
         mockMvc.perform(delete("/api/my/favorites/{articleId}", ARTICLE_ID))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(favoriteService);
+    }
+
+    @Test
+    void invalidJwtFavoriteWriteIsUnauthorized() throws Exception {
+        when(jwtUtil.validateToken(INVALID_JWT)).thenReturn(false);
+
+        mockMvc.perform(put("/api/my/favorites/{articleId}", ARTICLE_ID)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + INVALID_JWT))
+                .andExpect(status().isUnauthorized());
+
+        verify(jwtUtil).validateToken(INVALID_JWT);
+        verifyNoInteractions(favoriteService);
     }
 
     @Test
