@@ -324,7 +324,7 @@ async function setFavorite(articleId, nextValue, token = loadToken.value) {
       isCurrentFavoriteRequest(articleId, token, stateVersion, requestAuthToken)
     ) {
       authStore.logout()
-      await navigateToFavoriteLogin(articleId)
+      await navigateToFavoriteLogin(articleId, nextValue)
     }
     return false
   } finally {
@@ -332,11 +332,11 @@ async function setFavorite(articleId, nextValue, token = loadToken.value) {
   }
 }
 
-async function navigateToFavoriteLogin(articleId) {
+async function navigateToFavoriteLogin(articleId, nextValue = true) {
   try {
     await router.push({
       path: '/login',
-      query: { redirect: buildFavoriteLoginRedirect(articleId) }
+      query: { redirect: buildFavoriteLoginRedirect(articleId, nextValue) }
     })
   } catch {
     // The current page remains usable when a navigation guard rejects the redirect.

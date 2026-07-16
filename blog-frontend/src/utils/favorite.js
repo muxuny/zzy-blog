@@ -1,5 +1,7 @@
-export function buildFavoriteLoginRedirect(articleId) {
-  return `/article/${articleId}?favorite=1`
+export function buildFavoriteLoginRedirect(articleId, shouldFavorite = true) {
+  return shouldFavorite
+    ? `/article/${articleId}?favorite=1`
+    : `/article/${articleId}`
 }
 
 export function hasFavoriteIntent(query = {}) {

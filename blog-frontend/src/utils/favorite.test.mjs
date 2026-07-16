@@ -44,6 +44,11 @@ test('favorite login intent returns to article and is consumed once', () => {
   assert.deepEqual(clearFavoriteIntentQuery({ favorite: '1', from: 'home' }), { from: 'home' })
 })
 
+test('unfavorite login redirect returns to article without favorite intent', () => {
+  assert.equal(buildFavoriteLoginRedirect('758902345678901401', false),
+    '/article/758902345678901401')
+})
+
 test('clearing favorite intent does not mutate the original query', () => {
   const query = { favorite: '1', from: 'home' }
 
