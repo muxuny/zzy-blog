@@ -100,7 +100,7 @@ class DatabaseConfigTest {
 
         assertTrue(normalized.contains("create table if not exists `article_favorite`"));
         for (String column : Arrays.asList(
-                "`user_id`", "`article_id`", "`title_snapshot`",
+                "`id`", "`user_id`", "`article_id`", "`title_snapshot`",
                 "`created_by`", "`created_at`", "`updated_by`", "`updated_at`",
                 "`deleted`", "`version`")) {
             assertTrue(normalized.contains(column), "Missing favorite column " + column);
