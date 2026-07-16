@@ -147,7 +147,7 @@
       </div>
 
       <footer class="site-footer">
-        <span>My Blog</span>
+        <span>ZZY Blog</span>
         <span>© {{ currentYear }}</span>
         <span>把经验写下来，让下一次开始更轻一点。</span>
       </footer>

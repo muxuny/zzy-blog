@@ -14,12 +14,26 @@ function percent(count, total) {
   return Math.round((count / total) * 100)
 }
 
+function isPrivateArticle(article) {
+  return article?.visibility === 'private'
+}
+
+function isPublicPublishedArticle(article) {
+  return article?.status === 'published' && !isPrivateArticle(article)
+}
+
+function isPrivatePublishedArticle(article) {
+  return article?.status === 'published' && isPrivateArticle(article)
+}
+
 export function buildDashboardStats(payload = {}) {
   const allArticles = list(payload.allArticles)
   const tags = list(payload.tags)
   const users = list(payload.users)
   const pendingUsers = users.filter(user => user.status === 'pending')
   const totalArticles = allArticles.length
+  const publicPublishedArticles = allArticles.filter(isPublicPublishedArticle).length
+  const privateArticles = allArticles.filter(isPrivatePublishedArticle).length
 
   const articleStatus = ARTICLE_STATUS.map(item => {
     const count = allArticles.filter(article => article.status === item.key).length
@@ -38,6 +52,8 @@ export function buildDashboardStats(payload = {}) {
     metrics: {
       totalArticles,
       publishedArticles: articleStatus.find(item => item.key === 'published')?.count || 0,
+      publicPublishedArticles,
+      privateArticles,
       pendingArticles: articleStatus.find(item => item.key === 'pending')?.count || 0,
       pendingUsers: pendingUsers.length
     },

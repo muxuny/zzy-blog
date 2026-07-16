@@ -19,7 +19,9 @@ import static org.mockito.Mockito.when;
 class ArticleGroupControllerTest {
 
     private final ArticleGroupService articleGroupService = mock(ArticleGroupService.class);
+
     private final ArticleGroupController articleGroupController = new ArticleGroupController(articleGroupService);
+
     private final Principal principal = () -> "alice";
 
     @Test

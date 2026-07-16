@@ -17,6 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * 创作者文章分组服务实现，负责分组归属校验和分组下文章数量统计。
+ */
 @Service
 public class ArticleGroupServiceImpl extends ServiceImpl<ArticleGroupMapper, ArticleGroup>
         implements ArticleGroupService {

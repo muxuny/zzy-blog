@@ -11,9 +11,13 @@ import com.blog.mapper.UserMapper;
 import com.blog.service.UserService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * 用户服务实现，负责登录鉴权、注册和后台用户状态管理。
+ */
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
 
@@ -73,7 +77,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public void approveUser(Long userId) {
         User user = getById(userId);
-        if (user == null) throw new BusinessException("用户不存在");
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
         user.setStatus("active");
         updateById(user);
     }
@@ -81,7 +87,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public void disableUser(Long userId) {
         User user = getById(userId);
-        if (user == null) throw new BusinessException("用户不存在");
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
         if ("admin".equalsIgnoreCase(user.getRole())) {
             throw new BusinessException("管理员账号不能被禁用");
         }

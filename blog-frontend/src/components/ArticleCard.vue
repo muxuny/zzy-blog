@@ -147,6 +147,24 @@ function goArticle() {
   border-radius: var(--radius-sm);
   color: inherit;
   text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.16s ease;
+}
+
+.tag-link:hover {
+  transform: translateY(-1px);
+}
+
+.tag-link :deep(.el-tag) {
+  cursor: pointer;
+  transition: border-color 0.16s ease, background-color 0.16s ease, color 0.16s ease;
+}
+
+.tag-link:hover :deep(.el-tag),
+.tag-link:focus-visible :deep(.el-tag) {
+  border-color: var(--primary-color);
+  background: color-mix(in srgb, var(--primary-color) 14%, transparent);
+  color: var(--primary-color);
 }
 
 .tag-link:focus-visible {

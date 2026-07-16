@@ -17,6 +17,12 @@
           <el-option v-for="t in tags" :key="t.id" :label="t.name" :value="t.id" />
         </el-select>
       </el-form-item>
+      <el-form-item label="可见性">
+        <el-radio-group v-model="form.visibility">
+          <el-radio-button label="public">公开</el-radio-button>
+          <el-radio-button label="private">仅自己可见</el-radio-button>
+        </el-radio-group>
+      </el-form-item>
       <el-form-item label="内容">
         <ArticleEditor v-model="form.content" />
       </el-form-item>
@@ -54,6 +60,7 @@ import { getTags } from '../../api/tag'
 import { ElMessage } from 'element-plus'
 import ArticleEditor from '../../components/admin/ArticleEditor.vue'
 import ImageUploader from '../../components/admin/ImageUploader.vue'
+import { normalizeArticleVisibility } from '../../utils/articleVisibility'
 import { normalizeArticleMarkdown } from '../../utils/reading'
 
 const route = useRoute()
@@ -61,7 +68,15 @@ const router = useRouter()
 const isEdit = computed(() => !!route.params.id)
 const tags = ref([])
 const savingStatus = ref('')
-const form = reactive({ title: '', content: '', summary: '', coverImage: '', status: 'draft', tagIds: [] })
+const form = reactive({
+  title: '',
+  content: '',
+  summary: '',
+  coverImage: '',
+  status: 'draft',
+  visibility: 'public',
+  tagIds: []
+})
 
 onMounted(async () => {
   const tr = await getTags()
@@ -74,6 +89,7 @@ onMounted(async () => {
     form.summary = a.summary || ''
     form.coverImage = a.coverImage || ''
     form.status = a.status || 'draft'
+    form.visibility = normalizeArticleVisibility(a.visibility)
     form.tagIds = (a.tags || []).map(t => t.id)
   }
 })

@@ -71,10 +71,20 @@
               <el-option label="已发布" value="published" />
               <el-option label="已驳回" value="rejected" />
             </el-select>
+            <el-select v-model="visibility" placeholder="全部可见性" clearable @change="handleVisibilityChange">
+              <el-option label="公开" value="public" />
+              <el-option label="仅自己可见" value="private" />
+            </el-select>
           </div>
 
           <el-table v-loading="loading" :data="articles" stripe class="article-table">
-            <el-table-column prop="title" label="标题" min-width="220" />
+            <el-table-column prop="title" label="标题" min-width="220">
+              <template #default="{ row }">
+                <button type="button" class="article-title-button" @click="openPreview(row)">
+                  {{ row.title }}
+                </button>
+              </template>
+            </el-table-column>
             <el-table-column label="分组" min-width="130">
               <template #default="{ row }">
                 <span class="group-cell" :class="{ 'is-empty': !row.groups?.length }">
@@ -87,66 +97,70 @@
                 <el-tag :type="statusType(row.status)">{{ statusText(row.status) }}</el-tag>
               </template>
             </el-table-column>
+            <el-table-column prop="visibility" label="可见性" width="130">
+              <template #default="{ row }">
+                <el-tag :type="articleVisibilityType(row.visibility)" effect="plain">
+                  {{ articleVisibilityText(row.visibility) }}
+                </el-tag>
+              </template>
+            </el-table-column>
             <el-table-column prop="reviewReason" label="审核反馈" min-width="180">
               <template #default="{ row }">{{ row.reviewReason || '-' }}</template>
             </el-table-column>
             <el-table-column label="更新时间" width="180">
               <template #default="{ row }">{{ formatDate(row.updatedAt || row.createdAt) }}</template>
             </el-table-column>
-            <el-table-column label="操作" width="380">
+            <el-table-column
+              label="操作"
+              width="124"
+              fixed="right"
+              class-name="article-action-column"
+              header-class-name="article-action-header"
+            >
               <template #default="{ row }">
-                <el-button
-                  size="small"
-                  :loading="rowAction[row.id] === 'groups'"
-                  :disabled="isRowBusy(row.id)"
-                  @click="openGroupAssign(row)"
-                >
-                  分组
-                </el-button>
-                <el-button
-                  v-if="row.status !== 'pending'"
-                  size="small"
-                  :disabled="isRowBusy(row.id)"
-                  @click="$router.push(`/creator/articles/edit/${row.id}`)"
-                >
-                  编辑
-                </el-button>
-                <el-button
-                  v-if="row.status === 'draft' || row.status === 'rejected'"
-                  size="small"
-                  type="success"
-                  :loading="rowAction[row.id] === 'submit'"
-                  :disabled="isRowBusy(row.id)"
-                  @click="submit(row.id)"
-                >
-                  提交审核
-                </el-button>
-                <el-button
-                  v-if="row.status === 'pending'"
-                  size="small"
-                  :loading="rowAction[row.id] === 'withdraw'"
-                  :disabled="isRowBusy(row.id)"
-                  @click="withdraw(row.id)"
-                >
-                  撤回
-                </el-button>
-                <el-button
-                  v-if="row.status === 'published'"
-                  size="small"
-                  :disabled="isRowBusy(row.id)"
-                  @click="$router.push(`/article/${row.id}`)"
-                >
-                  查看已发布
-                </el-button>
-                <el-button
-                  size="small"
-                  type="danger"
-                  :loading="rowAction[row.id] === 'delete'"
-                  :disabled="isRowBusy(row.id)"
-                  @click="remove(row.id)"
-                >
-                  删除
-                </el-button>
+                <div class="article-actions">
+                  <el-button
+                    size="small"
+                    class="article-primary-action"
+                    :class="`article-primary-action--${primaryAction(row).tone}`"
+                    :loading="rowAction[row.id] === primaryAction(row).loading"
+                    :disabled="isRowBusy(row.id)"
+                    @click="handlePrimaryAction(row)"
+                  >
+                    {{ primaryAction(row).text }}
+                  </el-button>
+                  <el-dropdown
+                    trigger="click"
+                    popper-class="article-action-menu"
+                    :disabled="isRowBusy(row.id)"
+                    @command="command => handleArticleCommand(row, command)"
+                  >
+                    <button
+                      type="button"
+                      class="article-more-button"
+                      :disabled="isRowBusy(row.id)"
+                      aria-label="更多操作"
+                    >
+                      <el-icon><MoreFilled /></el-icon>
+                    </button>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item command="groups">分组</el-dropdown-item>
+                        <el-dropdown-item v-if="row.status === 'published'" command="edit">编辑</el-dropdown-item>
+                        <el-dropdown-item
+                          v-if="row.status === 'draft' || row.status === 'rejected'"
+                          command="submit"
+                        >
+                          提交审核
+                        </el-dropdown-item>
+                        <el-dropdown-item command="visibility">
+                          {{ nextVisibilityText(row.visibility) }}
+                        </el-dropdown-item>
+                        <el-dropdown-item command="delete" class="danger-command">删除</el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
+                </div>
               </template>
             </el-table-column>
           </el-table>
@@ -194,10 +208,20 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { MoreFilled } from '@element-plus/icons-vue'
 import AppHeader from '../../components/AppHeader.vue'
 import { createArticleGroup, deleteArticleGroup, getArticleGroups, updateArticleGroup } from '../../api/articleGroup'
-import { deleteMyArticle, getMyArticles, submitMyArticle, updateMyArticleGroups, withdrawMyArticle } from '../../api/myArticle'
+import { deleteMyArticle, getMyArticles, submitMyArticle, updateMyArticleGroups, updateMyArticleVisibility, withdrawMyArticle } from '../../api/myArticle'
+import { getCreatorPreviewRoute } from '../../utils/creatorPreview'
+import {
+  ARTICLE_VISIBILITY_PUBLIC,
+  articleVisibilityText,
+  articleVisibilityType,
+  normalizeArticleVisibility,
+  nextArticleVisibility
+} from '../../utils/articleVisibility'
 import {
   GROUP_FILTER_ALL,
   GROUP_FILTER_UNGROUPED,
@@ -215,12 +239,14 @@ const articleGroups = ref([])
 const loading = ref(false)
 const groupsLoading = ref(false)
 const status = ref('')
+const visibility = ref('')
 const selectedGroup = ref(GROUP_FILTER_ALL)
 const page = ref(1)
 const size = ref(10)
 const total = ref(0)
 const rowAction = ref({})
 const groupAssignLoading = ref(false)
+const router = useRouter()
 const groupAssignDialog = ref({
   visible: false,
   article: null,
@@ -262,6 +288,7 @@ async function load() {
     const baseParams = { page: page.value, size: size.value }
     const params = buildMyArticleGroupParams(baseParams, selectedGroup.value)
     if (status.value) params.status = status.value
+    if (visibility.value) params.visibility = visibility.value
     const result = await getMyArticles(params)
     articles.value = result.data || []
     total.value = result.total || 0
@@ -285,6 +312,11 @@ function handleStatusChange() {
   load()
 }
 
+function handleVisibilityChange() {
+  page.value = 1
+  load()
+}
+
 function selectGroup(groupKey) {
   selectedGroup.value = groupKey
   page.value = 1
@@ -293,6 +325,53 @@ function selectGroup(groupKey) {
 
 function isRowBusy(id) {
   return !!rowAction.value[id]
+}
+
+function primaryAction(row) {
+  if (row.status === 'pending') {
+    return { text: '撤回', tone: 'withdraw', loading: 'withdraw', command: 'withdraw' }
+  }
+  if (canOpenPublicArticle(row)) {
+    return { text: '查看', tone: 'view', loading: '', command: 'view' }
+  }
+  return { text: '编辑', tone: 'edit', loading: '', command: 'edit' }
+}
+
+function canOpenPublicArticle(row) {
+  return row.status === 'published' && normalizeArticleVisibility(row.visibility) === ARTICLE_VISIBILITY_PUBLIC
+}
+
+function openPreview(row) {
+  const target = getCreatorPreviewRoute(row)
+  if (target) router.push(target)
+}
+
+async function handlePrimaryAction(row) {
+  await handleArticleCommand(row, primaryAction(row).command)
+}
+
+async function handleArticleCommand(row, command) {
+  if (command === 'groups') {
+    openGroupAssign(row)
+  }
+  if (command === 'edit') {
+    router.push(`/creator/articles/edit/${row.id}`)
+  }
+  if (command === 'submit') {
+    await submit(row.id)
+  }
+  if (command === 'withdraw') {
+    await withdraw(row.id)
+  }
+  if (command === 'view') {
+    router.push(`/article/${row.id}`)
+  }
+  if (command === 'visibility') {
+    await toggleVisibility(row)
+  }
+  if (command === 'delete') {
+    await remove(row.id)
+  }
 }
 
 async function runRowAction(id, action, request) {
@@ -320,6 +399,18 @@ async function withdraw(id) {
   await runRowAction(id, 'withdraw', async () => {
     await withdrawMyArticle(id)
     ElMessage.success('已撤回为草稿')
+  })
+}
+
+function nextVisibilityText(currentVisibility) {
+  return nextArticleVisibility(currentVisibility) === 'private' ? '设为私密' : '设为公开'
+}
+
+async function toggleVisibility(row) {
+  const nextVisibility = nextArticleVisibility(row.visibility)
+  await runRowAction(row.id, 'visibility', async () => {
+    await updateMyArticleVisibility(row.id, { visibility: nextVisibility })
+    ElMessage.success(nextVisibility === 'private' ? '已设为仅自己可见' : '已设为公开')
   })
 }
 
@@ -577,6 +668,203 @@ async function remove(id) {
 
 .article-table {
   margin-top: 12px;
+}
+
+.article-title-button {
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-color);
+  font: inherit;
+  font-weight: 750;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.article-title-button:hover,
+.article-title-button:focus-visible {
+  color: var(--primary-color);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.article-title-button:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.article-table :deep(th.el-table__cell) {
+  text-align: center;
+}
+
+.article-table :deep(.article-action-header.el-table-fixed-column--right) {
+  background-color: color-mix(in srgb, var(--primary-color) 6%, var(--panel-bg)) !important;
+  box-shadow: -12px 0 22px -20px rgba(15, 23, 42, 0.5);
+  z-index: 2;
+}
+
+.article-table :deep(.article-action-column.el-table-fixed-column--right) {
+  background-color: var(--el-table-tr-bg-color) !important;
+  box-shadow: -12px 0 22px -20px rgba(15, 23, 42, 0.5);
+  z-index: 2;
+}
+
+.article-table :deep(.el-table__body tr.hover-row > .article-action-column.el-table-fixed-column--right),
+.article-table :deep(.el-table__body tr:hover > .article-action-column.el-table-fixed-column--right) {
+  background-color: color-mix(in srgb, var(--primary-color) 10%, var(--panel-bg)) !important;
+}
+
+.article-table :deep(.article-action-header),
+.article-table :deep(.article-action-column) {
+  border-left: 1px solid var(--soft-border-color);
+}
+
+.article-actions {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 92px;
+  margin: 0 auto;
+  padding: 3px;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 12%, var(--soft-border-color));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-bg) 92%, var(--primary-color));
+  box-shadow: 0 8px 20px -18px rgba(15, 23, 42, 0.55);
+}
+
+.article-actions :deep(.el-button + .el-button) {
+  margin-left: 0;
+}
+
+.article-primary-action {
+  min-width: 50px;
+  height: 28px;
+  padding: 0 10px;
+  border-color: var(--action-border-color);
+  border-radius: 999px;
+  background: var(--action-bg-color);
+  color: var(--action-text-color);
+  font-weight: 700;
+}
+
+.article-primary-action.article-primary-action--edit,
+.article-primary-action.article-primary-action--edit:hover,
+.article-primary-action.article-primary-action--edit:focus {
+  --action-border-color: color-mix(in srgb, #7c5cff 54%, transparent);
+  --action-bg-color: color-mix(in srgb, #7c5cff 13%, var(--panel-bg));
+  --action-text-color: #5d42d6;
+}
+
+.article-primary-action.article-primary-action--view,
+.article-primary-action.article-primary-action--view:hover,
+.article-primary-action.article-primary-action--view:focus {
+  --action-border-color: color-mix(in srgb, #2f80ed 52%, transparent);
+  --action-bg-color: color-mix(in srgb, #2f80ed 12%, var(--panel-bg));
+  --action-text-color: #1f6fd8;
+}
+
+.article-primary-action.article-primary-action--withdraw,
+.article-primary-action.article-primary-action--withdraw:hover,
+.article-primary-action.article-primary-action--withdraw:focus {
+  --action-border-color: color-mix(in srgb, #d97706 52%, transparent);
+  --action-bg-color: color-mix(in srgb, #f59e0b 14%, var(--panel-bg));
+  --action-text-color: #a85f00;
+}
+
+.article-primary-action:not(.is-disabled):hover {
+  box-shadow: 0 8px 18px -14px currentColor;
+  transform: translateY(-1px);
+}
+
+[data-theme="dark"] .article-primary-action.article-primary-action--edit,
+[data-theme="dark"] .article-primary-action.article-primary-action--edit:hover,
+[data-theme="dark"] .article-primary-action.article-primary-action--edit:focus {
+  --action-border-color: color-mix(in srgb, #8b7cf6 58%, transparent);
+  --action-bg-color: color-mix(in srgb, #8b7cf6 22%, var(--panel-bg));
+  --action-text-color: #d9d5ff;
+}
+
+[data-theme="dark"] .article-primary-action.article-primary-action--view,
+[data-theme="dark"] .article-primary-action.article-primary-action--view:hover,
+[data-theme="dark"] .article-primary-action.article-primary-action--view:focus {
+  --action-border-color: color-mix(in srgb, #4ea2ff 58%, transparent);
+  --action-bg-color: color-mix(in srgb, #4ea2ff 22%, var(--panel-bg));
+  --action-text-color: #d7ebff;
+}
+
+[data-theme="dark"] .article-primary-action.article-primary-action--withdraw,
+[data-theme="dark"] .article-primary-action.article-primary-action--withdraw:hover,
+[data-theme="dark"] .article-primary-action.article-primary-action--withdraw:focus {
+  --action-border-color: color-mix(in srgb, #f2a64a 58%, transparent);
+  --action-bg-color: color-mix(in srgb, #f2a64a 22%, var(--panel-bg));
+  --action-text-color: #ffe6ba;
+}
+
+.article-more-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted-text-color) 10%, transparent);
+  color: var(--muted-text-color);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.article-more-button:hover,
+.article-more-button:focus-visible {
+  background: color-mix(in srgb, var(--primary-color) 16%, transparent);
+  color: var(--primary-color);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.article-more-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+:global(.article-action-menu) {
+  min-width: 136px !important;
+  padding: 6px !important;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 12%, var(--soft-border-color)) !important;
+  border-radius: 14px !important;
+  background: color-mix(in srgb, var(--panel-bg) 96%, var(--primary-color)) !important;
+  box-shadow: 0 18px 42px -24px rgba(15, 23, 42, 0.55) !important;
+}
+
+:global(.article-action-menu .el-dropdown-menu__item) {
+  height: 34px;
+  border-radius: 10px;
+  color: var(--text-color);
+  font-size: 13px;
+  line-height: 34px;
+}
+
+:global(.article-action-menu .el-dropdown-menu__item:not(.is-disabled):hover) {
+  background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+  color: var(--primary-color);
+}
+
+:global(.article-action-menu .danger-command) {
+  color: var(--danger-color, #f56c6c);
+}
+
+:global(.article-action-menu .danger-command:not(.is-disabled):hover) {
+  background: color-mix(in srgb, #f56c6c 12%, transparent);
+  color: #f56c6c;
 }
 
 .group-cell {

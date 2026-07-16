@@ -42,6 +42,21 @@ class DatabaseConfigTest {
     }
 
     @Test
+    void localMysqlConnectionAllowsPublicKeyRetrievalWhenSslIsDisabled() throws IOException {
+        String applicationYml = readString(Paths.get("src/main/resources/application.yml"));
+
+        String datasourceUrl = requireMatch(
+                Pattern.compile("url:\\s*(jdbc:mysql://\\S+)"),
+                applicationYml,
+                "spring datasource JDBC URL");
+
+        assertTrue(datasourceUrl.contains("useSSL=false"),
+                "Expected local datasource to disable SSL explicitly");
+        assertTrue(datasourceUrl.contains("allowPublicKeyRetrieval=true"),
+                "MySQL 8 caching_sha2_password needs allowPublicKeyRetrieval=true when SSL is disabled");
+    }
+
+    @Test
     void migrationScriptsMustBeIncrementalAndPreserveExistingData() throws IOException {
         String groupSql = readString(Paths.get("src/main/resources/db/migration/2026-06-22-add-article-groups.sql"));
         String groupNormalized = groupSql.toLowerCase(Locale.ROOT);

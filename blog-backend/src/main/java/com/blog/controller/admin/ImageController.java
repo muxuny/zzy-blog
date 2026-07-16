@@ -13,6 +13,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
 
+/**
+ * 图片素材接口：创作者可上传，管理员可查看和删除。
+ */
 @RestController
 @RequestMapping("/api/admin/upload")
 public class ImageController {

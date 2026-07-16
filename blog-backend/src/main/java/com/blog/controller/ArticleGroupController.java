@@ -19,6 +19,9 @@ import javax.validation.Valid;
 import java.security.Principal;
 import java.util.List;
 
+/**
+ * 创作者文章分组接口。
+ */
 @RestController
 @RequestMapping("/api/my/article-groups")
 @PreAuthorize("hasAnyRole('USER', 'ADMIN')")

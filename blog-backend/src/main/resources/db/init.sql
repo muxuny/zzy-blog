@@ -61,6 +61,7 @@ CREATE TABLE `article` (
     `summary` VARCHAR(500) DEFAULT NULL COMMENT '文章摘要',
     `cover_image` VARCHAR(255) DEFAULT NULL COMMENT '封面图片URL',
     `status` VARCHAR(20) NOT NULL DEFAULT 'draft' COMMENT '状态：draft/pending/published/rejected',
+    `visibility` VARCHAR(20) NOT NULL DEFAULT 'public' COMMENT '可见性：public/private',
     `review_reason` VARCHAR(500) DEFAULT NULL COMMENT '审核驳回原因',
     `view_count` INT NOT NULL DEFAULT 0 COMMENT '浏览量',
     `created_by` VARCHAR(50) DEFAULT NULL COMMENT '创建人',
@@ -71,6 +72,7 @@ CREATE TABLE `article` (
     `version` INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
     PRIMARY KEY (`id`),
     KEY `idx_article_status` (`status`),
+    KEY `idx_article_visibility` (`visibility`),
     KEY `idx_article_created_at` (`created_at`),
     KEY `idx_article_created_by` (`created_by`),
     KEY `idx_article_deleted_status_created_at` (`deleted`, `status`, `created_at`)
@@ -226,7 +228,7 @@ INSERT INTO `tag` (
 
 -- 示例文章：用于重建后验证首页、文章详情和标签筛选，可在后台删除
 INSERT INTO `article` (
-    `id`, `title`, `content`, `summary`, `cover_image`, `status`, `review_reason`, `view_count`,
+    `id`, `title`, `content`, `summary`, `cover_image`, `status`, `visibility`, `review_reason`, `view_count`,
     `created_by`, `created_at`, `updated_by`, `updated_at`, `deleted`, `version`
 ) VALUES (
     758902345678901401,
@@ -235,6 +237,7 @@ INSERT INTO `article` (
     '数据库重建完成后用于验证首页、文章详情和标签筛选的示例内容。',
     NULL,
     'published',
+    'public',
     NULL,
     0,
     'admin',

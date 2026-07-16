@@ -88,6 +88,20 @@
             </el-button>
           </div>
         </el-form-item>
+        <el-form-item label="可见性">
+          <el-radio-group v-model="form.visibility" :disabled="formDisabled" class="visibility-control">
+            <el-radio-button
+              v-for="option in visibilityOptions"
+              :key="option.value"
+              :label="option.value"
+            >
+              {{ option.label }}
+            </el-radio-button>
+          </el-radio-group>
+          <p class="visibility-help">
+            公开文章审核通过后会出现在首页；仅自己可见的文章只会保留在你的文章列表里。
+          </p>
+        </el-form-item>
         <el-form-item label="内容">
           <div :class="{ 'disabled-control': formDisabled }" class="editor-control">
             <ArticleEditor v-model="form.content" />
@@ -127,6 +141,7 @@ import ImageUploader from '../../components/admin/ImageUploader.vue'
 import { createArticleGroup, getArticleGroups } from '../../api/articleGroup'
 import { getTags } from '../../api/tag'
 import { createMyArticle, getMyArticle, updateMyArticle } from '../../api/myArticle'
+import { ARTICLE_VISIBILITY_PRIVATE, ARTICLE_VISIBILITY_PUBLIC, normalizeArticleVisibility } from '../../utils/articleVisibility'
 import { buildArticleGroupIdsForSave, getFirstArticleGroupId } from '../../utils/articleGroups'
 import { normalizeArticleMarkdown } from '../../utils/reading'
 
@@ -152,9 +167,14 @@ const form = reactive({
   summary: '',
   coverImage: '',
   status: 'draft',
+  visibility: ARTICLE_VISIBILITY_PUBLIC,
   tagIds: [],
   groupId: ''
 })
+const visibilityOptions = [
+  { label: '公开', value: ARTICLE_VISIBILITY_PUBLIC },
+  { label: '仅自己可见', value: ARTICLE_VISIBILITY_PRIVATE }
+]
 
 onMounted(() => {
   loadTags()
@@ -204,6 +224,7 @@ async function loadArticle() {
     form.summary = article.summary || ''
     form.coverImage = article.coverImage || ''
     form.status = article.status || 'draft'
+    form.visibility = normalizeArticleVisibility(article.visibility)
     form.tagIds = (article.tags || []).map(tag => tag.id)
     existingGroups.value = article.groups || []
     form.groupId = getFirstArticleGroupId(existingGroups.value)
@@ -249,6 +270,7 @@ async function save(status) {
       summary: form.summary,
       coverImage: form.coverImage,
       status: form.status,
+      visibility: form.visibility,
       content: normalizeArticleMarkdown(form.content),
       tagIds: [...form.tagIds],
       groupIds: buildArticleGroupIdsForSave(form.groupId, existingGroups.value)
@@ -313,6 +335,17 @@ async function save(status) {
 
 .group-select {
   flex: 1;
+}
+
+.visibility-control {
+  width: min(100%, 280px);
+}
+
+.visibility-help {
+  margin: 8px 0 0;
+  color: var(--muted-text-color);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .editor-control {

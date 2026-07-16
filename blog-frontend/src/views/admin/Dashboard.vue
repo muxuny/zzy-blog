@@ -138,7 +138,9 @@ const stats = ref(buildDashboardStats())
 
 const metricCards = computed(() => [
   { label: '文章总数', value: stats.value.metrics.totalArticles, note: '全部状态内容', tone: 'primary' },
-  { label: '已发布', value: stats.value.metrics.publishedArticles, note: '公开可见文章', tone: 'success' },
+  { label: '已发布', value: stats.value.metrics.publishedArticles, note: '包含公开和私密', tone: 'success' },
+  { label: '公开可见', value: stats.value.metrics.publicPublishedArticles, note: '会展示在博客前台', tone: 'public' },
+  { label: '仅自己可见', value: stats.value.metrics.privateArticles, note: '作者私密保留', tone: 'private' },
   { label: '待审核文章', value: stats.value.metrics.pendingArticles, note: '需要管理员处理', tone: 'warning' },
   { label: '待审核用户', value: stats.value.metrics.pendingUsers, note: '注册后等待通过', tone: 'danger' }
 ])
@@ -215,7 +217,7 @@ onMounted(loadDashboard)
 
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -405,6 +407,14 @@ onMounted(loadDashboard)
   --tone-color: #22a06b;
 }
 
+.tone-public {
+  --tone-color: #2877d9;
+}
+
+.tone-private {
+  --tone-color: #8a6be8;
+}
+
 .tone-warning {
   --tone-color: #d9971a;
 }
@@ -419,7 +429,7 @@ onMounted(loadDashboard)
 
 @media (max-width: 1080px) {
   .stat-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .dashboard-grid {
@@ -429,7 +439,7 @@ onMounted(loadDashboard)
 
 @media (max-width: 560px) {
   .stat-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .panel-head {

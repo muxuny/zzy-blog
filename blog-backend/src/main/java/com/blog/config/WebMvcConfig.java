@@ -6,6 +6,9 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+/**
+ * Web 层通用配置，包括跨域和本地上传资源映射。
+ */
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
 

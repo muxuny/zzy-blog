@@ -21,6 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ArticleControllerTest {
 
     private final ArticleService articleService = mock(ArticleService.class);
+
     private final ArticleController articleController = new ArticleController(articleService);
 
     @Test

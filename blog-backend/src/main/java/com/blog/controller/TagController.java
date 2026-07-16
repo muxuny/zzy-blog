@@ -9,6 +9,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+/**
+ * 公开阅读侧标签接口。
+ */
 @RestController
 @RequestMapping("/api/tags")
 public class TagController {

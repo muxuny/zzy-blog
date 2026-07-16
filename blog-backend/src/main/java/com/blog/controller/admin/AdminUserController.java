@@ -10,6 +10,9 @@ import com.blog.service.UserService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * 后台用户审核和禁用接口。
+ */
 @RestController
 @RequestMapping("/api/admin/users")
 @PreAuthorize("hasRole('ADMIN')")
@@ -33,7 +36,9 @@ public class AdminUserController {
     @GetMapping("/{id}")
     public Result<User> detail(@PathVariable Long id) {
         User user = userService.getById(id);
-        if (user != null) user.setPassword(null);
+        if (user != null) {
+            user.setPassword(null);
+        }
         return Result.success(user);
     }
 

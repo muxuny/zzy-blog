@@ -14,8 +14,11 @@ export function parseGroupFilterKey(filterKey) {
     return { type: GROUP_FILTER_UNGROUPED }
   }
   if (String(filterKey).startsWith(GROUP_FILTER_PREFIX)) {
-    const groupId = Number(String(filterKey).slice(GROUP_FILTER_PREFIX.length))
-    return Number.isFinite(groupId) ? { type: 'group', groupId } : { type: GROUP_FILTER_ALL }
+    const groupId = String(filterKey).slice(GROUP_FILTER_PREFIX.length)
+    if (!groupId) {
+      return { type: GROUP_FILTER_ALL }
+    }
+    return { type: 'group', groupId }
   }
   return { type: GROUP_FILTER_ALL }
 }
