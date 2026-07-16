@@ -38,4 +38,45 @@
           AND article_id = #{articleId}
           AND deleted = 0
     </select>
+
+    <select id="selectFavoritePage" resultType="com.blog.dto.FavoriteRelationRow">
+        SELECT f.id AS favorite_id,
+               f.article_id,
+               f.title_snapshot,
+               f.created_at AS favorited_at,
+               CASE WHEN a.id IS NOT NULL
+                         AND a.deleted = 0
+                         AND a.status = 'published'
+                         AND (a.visibility = 'public' OR a.visibility IS NULL)
+                    THEN 1 ELSE 0 END AS available
+        FROM article_favorite f
+        LEFT JOIN article a ON a.id = f.article_id
+        WHERE f.user_id = #{userId}
+          AND f.deleted = 0
+        <if test="keyword != null and keyword != ''">
+            AND (
+                (a.id IS NOT NULL AND a.deleted = 0 AND a.status = 'published'
+                 AND (a.visibility = 'public' OR a.visibility IS NULL)
+                 AND (a.title LIKE CONCAT('%', #{keyword}, '%')
+                      OR a.summary LIKE CONCAT('%', #{keyword}, '%')))
+                OR
+                ((a.id IS NULL OR a.deleted != 0 OR a.status != 'published'
+                  OR (a.visibility != 'public' AND a.visibility IS NOT NULL))
+                 AND f.title_snapshot LIKE CONCAT('%', #{keyword}, '%'))
+            )
+        </if>
+        <if test="tagId != null">
+            AND a.id IS NOT NULL
+            AND a.deleted = 0
+            AND a.status = 'published'
+            AND (a.visibility = 'public' OR a.visibility IS NULL)
+            AND EXISTS (
+                SELECT 1 FROM article_tag at
+                WHERE at.article_id = f.article_id
+                  AND at.tag_id = #{tagId}
+                  AND at.deleted = 0
+            )
+        </if>
+        ORDER BY f.created_at DESC, f.id DESC
+    </select>
 </mapper>

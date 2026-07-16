@@ -1,7 +1,13 @@
 package com.blog.service;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.blog.common.BusinessException;
+import com.blog.dto.FavoriteArticleItem;
+import com.blog.dto.FavoritePageQuery;
+import com.blog.dto.FavoriteRelationRow;
 import com.blog.entity.Article;
+import com.blog.entity.Tag;
 import com.blog.entity.User;
 import com.blog.mapper.ArticleFavoriteMapper;
 import com.blog.service.impl.FavoriteServiceImpl;
@@ -9,6 +15,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.Collections;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -82,6 +90,100 @@ class FavoriteServiceImplTest {
     }
 
     @Test
+    void getMyFavorites_shouldReturnPublicArticleAndSafeUnavailableSnapshot() {
+        when(userService.getCurrentUser("alice")).thenReturn(user(10L, "alice"));
+        LocalDateTime availableFavoritedAt = LocalDateTime.of(2026, 7, 15, 9, 30);
+        LocalDateTime unavailableFavoritedAt = LocalDateTime.of(2026, 7, 14, 8, 20);
+        FavoriteRelationRow available = relation(
+                1L, 20L, "Old public title", availableFavoritedAt, true);
+        FavoriteRelationRow unavailable = relation(
+                2L, 21L, "Saved private title", unavailableFavoritedAt, false);
+        Page<FavoriteRelationRow> rows = new Page<>(1, 10);
+        rows.setTotal(2);
+        rows.setRecords(Arrays.asList(available, unavailable));
+        when(favoriteMapper.selectFavoritePage(any(Page.class), eq(10L), eq("architecture"), eq(3L)))
+                .thenReturn(rows);
+
+        Article current = new Article();
+        current.setId(20L);
+        current.setTitle("Current public title");
+        current.setSummary("Public summary");
+        current.setCoverImage("public-cover.png");
+        current.setAuthorName("Public author");
+        current.setViewCount(42);
+        current.setTags(Collections.singletonList(tag(3L, "Java")));
+        when(articleService.getPublicArticleSummaries(Collections.singletonList(20L)))
+                .thenReturn(Collections.singletonList(current));
+        FavoritePageQuery query = new FavoritePageQuery();
+        query.setKeyword("architecture");
+        query.setTagId(3L);
+
+        IPage<FavoriteArticleItem> result = favoriteService.getMyFavorites(query, "alice");
+
+        assertThat(result.getCurrent()).isEqualTo(1);
+        assertThat(result.getSize()).isEqualTo(10);
+        assertThat(result.getTotal()).isEqualTo(2);
+        FavoriteArticleItem visible = result.getRecords().get(0);
+        assertThat(visible.isAvailable()).isTrue();
+        assertThat(visible.getTitle()).isEqualTo("Current public title");
+        assertThat(visible.getSummary()).isEqualTo("Public summary");
+        assertThat(visible.getCoverImage()).isEqualTo("public-cover.png");
+        assertThat(visible.getAuthorName()).isEqualTo("Public author");
+        assertThat(visible.getViewCount()).isEqualTo(42);
+        assertThat(visible.getTags()).extracting(Tag::getName).containsExactly("Java");
+        assertThat(visible.getFavoritedAt()).isEqualTo(availableFavoritedAt);
+
+        FavoriteArticleItem hidden = result.getRecords().get(1);
+        assertThat(hidden.getArticleId()).isEqualTo(21L);
+        assertThat(hidden.isAvailable()).isFalse();
+        assertThat(hidden.getTitle()).isEqualTo("Saved private title");
+        assertThat(hidden.getSummary()).isNull();
+        assertThat(hidden.getCoverImage()).isNull();
+        assertThat(hidden.getAuthorName()).isNull();
+        assertThat(hidden.getViewCount()).isNull();
+        assertThat(hidden.getTags()).isEmpty();
+        assertThat(hidden.getFavoritedAt()).isEqualTo(unavailableFavoritedAt);
+        assertThat(hidden.getUnavailableMessage()).isEqualTo("该文章暂未公开");
+        verify(favoriteMapper).selectFavoritePage(any(Page.class), eq(10L),
+                eq("architecture"), eq(3L));
+    }
+
+    @Test
+    void getMyFavorites_shouldSafelyFallbackWhenAvailableArticleDisappears() {
+        when(userService.getCurrentUser("alice")).thenReturn(user(10L, "alice"));
+        LocalDateTime favoritedAt = LocalDateTime.of(2026, 7, 15, 10, 45);
+        FavoriteRelationRow available = relation(
+                1L, 20L, "Saved public title", favoritedAt, true);
+        Page<FavoriteRelationRow> rows = new Page<>(2, 5);
+        rows.setTotal(6);
+        rows.setRecords(Collections.singletonList(available));
+        when(favoriteMapper.selectFavoritePage(any(Page.class), eq(10L), eq(null), eq(null)))
+                .thenReturn(rows);
+        when(articleService.getPublicArticleSummaries(Collections.singletonList(20L)))
+                .thenReturn(Collections.emptyList());
+        FavoritePageQuery query = new FavoritePageQuery();
+        query.setPage(2);
+        query.setSize(5);
+
+        IPage<FavoriteArticleItem> result = favoriteService.getMyFavorites(query, "alice");
+
+        assertThat(result.getCurrent()).isEqualTo(2);
+        assertThat(result.getSize()).isEqualTo(5);
+        assertThat(result.getTotal()).isEqualTo(6);
+        FavoriteArticleItem hidden = result.getRecords().get(0);
+        assertThat(hidden.getArticleId()).isEqualTo(20L);
+        assertThat(hidden.getTitle()).isEqualTo("Saved public title");
+        assertThat(hidden.getFavoritedAt()).isEqualTo(favoritedAt);
+        assertThat(hidden.isAvailable()).isFalse();
+        assertThat(hidden.getSummary()).isNull();
+        assertThat(hidden.getCoverImage()).isNull();
+        assertThat(hidden.getAuthorName()).isNull();
+        assertThat(hidden.getViewCount()).isNull();
+        assertThat(hidden.getTags()).isEmpty();
+        assertThat(hidden.getUnavailableMessage()).isEqualTo("该文章暂未公开");
+    }
+
+    @Test
     void unfavoriteArticle_shouldCancelOnlyCurrentUserFavorite() {
         when(userService.getCurrentUser("alice")).thenReturn(user(10L, "alice"));
 
@@ -110,5 +212,25 @@ class FavoriteServiceImplTest {
         user.setId(id);
         user.setUsername(username);
         return user;
+    }
+
+    private static FavoriteRelationRow relation(Long favoriteId, Long articleId,
+                                                String titleSnapshot,
+                                                LocalDateTime favoritedAt,
+                                                boolean available) {
+        FavoriteRelationRow row = new FavoriteRelationRow();
+        row.setFavoriteId(favoriteId);
+        row.setArticleId(articleId);
+        row.setTitleSnapshot(titleSnapshot);
+        row.setFavoritedAt(favoritedAt);
+        row.setAvailable(available);
+        return row;
+    }
+
+    private static Tag tag(Long id, String name) {
+        Tag tag = new Tag();
+        tag.setId(id);
+        tag.setName(name);
+        return tag;
     }
 }

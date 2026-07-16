@@ -1,6 +1,9 @@
 package com.blog.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.blog.dto.FavoriteRelationRow;
 import com.blog.entity.ArticleFavorite;
 import org.apache.ibatis.annotations.Param;
 
@@ -22,4 +25,9 @@ public interface ArticleFavoriteMapper extends BaseMapper<ArticleFavorite> {
 
     long countActiveFavorite(@Param("userId") Long userId,
                              @Param("articleId") Long articleId);
+
+    IPage<FavoriteRelationRow> selectFavoritePage(Page<FavoriteRelationRow> page,
+                                                   @Param("userId") Long userId,
+                                                   @Param("keyword") String keyword,
+                                                   @Param("tagId") Long tagId);
 }
