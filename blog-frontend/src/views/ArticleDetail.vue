@@ -29,6 +29,20 @@
             <div v-if="articleTags.length" class="article-tags">
               <el-tag v-for="tag in articleTags" :key="tag.id" size="small">{{ tag.name }}</el-tag>
             </div>
+            <div class="favorite-action">
+              <el-button
+                class="favorite-button"
+                :loading="favoriteLoading"
+                :aria-pressed="favorited"
+                @click="handleFavorite"
+              >
+                <el-icon>
+                  <StarFilled v-if="favorited" />
+                  <Star v-else />
+                </el-icon>
+                <span>{{ favorited ? '已收藏' : '收藏' }}</span>
+              </el-button>
+            </div>
           </div>
           <figure v-if="article.coverImage" class="article-cover">
             <img :src="article.coverImage" :alt="article.title" />
@@ -155,9 +169,17 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, Top } from '@element-plus/icons-vue'
+import { ArrowLeft, Star, StarFilled, Top } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { getArticle, getArticleNeighbors, getRelatedArticles } from '../api/article'
+import { favoriteArticle, unfavoriteArticle, getFavoriteStatus } from '../api/favorite'
+import { useAuthStore } from '../stores/auth'
 import { formatDate } from '../utils'
+import {
+  buildFavoriteLoginRedirect,
+  hasFavoriteIntent,
+  clearFavoriteIntentQuery
+} from '../utils/favorite'
 import { shouldUseHistoryBack } from '../utils/navigation'
 import { extractMarkdownToc, getReadingStats } from '../utils/reading'
 import { getActiveHeadingId, getScrollTopForVisibleItem } from '../utils/scrollSpy'
@@ -166,9 +188,12 @@ import MarkdownRenderer from '../components/MarkdownRenderer.vue'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 const article = ref(null)
 const loading = ref(true)
 const errorMessage = ref('')
+const favorited = ref(false)
+const favoriteLoading = ref(false)
 const neighbors = ref({ previous: null, next: null })
 const relatedArticles = ref([])
 const activeHeadingId = ref('')
@@ -203,6 +228,7 @@ async function loadArticle() {
   loading.value = true
   errorMessage.value = ''
   article.value = null
+  favorited.value = false
   neighbors.value = { previous: null, next: null }
   relatedArticles.value = []
   activeHeadingId.value = ''
@@ -210,6 +236,7 @@ async function loadArticle() {
     const r = await getArticle(route.params.id)
     if (token !== loadToken.value) return
     article.value = r.data
+    void initializeFavorite(r.data.id, token)
     await nextTick()
     updateScrollState()
     loadContinuationData(r.data.id, token)
@@ -219,6 +246,65 @@ async function loadArticle() {
   } finally {
     if (token === loadToken.value) loading.value = false
   }
+}
+
+async function loadFavoriteState(articleId, token) {
+  if (!authStore.isLoggedIn) {
+    if (token === loadToken.value) favorited.value = false
+    return
+  }
+  try {
+    const result = await getFavoriteStatus(articleId)
+    if (token !== loadToken.value || article.value?.id !== articleId) return
+    favorited.value = !!result.data?.favorited
+  } catch {
+    if (token !== loadToken.value || article.value?.id !== articleId) return
+    favorited.value = false
+  }
+}
+
+async function setFavorite(articleId, nextValue, token = loadToken.value) {
+  if (favoriteLoading.value) return false
+  favoriteLoading.value = true
+  try {
+    if (nextValue) await favoriteArticle(articleId)
+    else await unfavoriteArticle(articleId)
+    if (token !== loadToken.value || article.value?.id !== articleId) return false
+    favorited.value = nextValue
+    ElMessage.success(nextValue ? '已收藏' : '已取消收藏')
+    return true
+  } catch {
+    return false
+  } finally {
+    favoriteLoading.value = false
+  }
+}
+
+async function handleFavorite() {
+  if (!article.value) return
+  if (!authStore.isLoggedIn) {
+    router.push({
+      path: '/login',
+      query: { redirect: buildFavoriteLoginRedirect(article.value.id) }
+    })
+    return
+  }
+  await setFavorite(article.value.id, !favorited.value)
+}
+
+async function initializeFavorite(articleId, token) {
+  if (!authStore.isLoggedIn || token !== loadToken.value) return
+  if (hasFavoriteIntent(route.query)) {
+    try {
+      await setFavorite(articleId, true, token)
+    } finally {
+      if (token === loadToken.value) {
+        await router.replace({ query: clearFavoriteIntentQuery(route.query) })
+      }
+    }
+    return
+  }
+  await loadFavoriteState(articleId, token)
 }
 
 async function loadContinuationData(articleId, token) {
@@ -428,6 +514,19 @@ function scrollToTop(smooth = true) {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 18px;
+}
+
+.favorite-action {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  margin-top: 18px;
+}
+
+.favorite-button {
+  width: 112px;
+  height: 40px;
+  flex: 0 0 auto;
 }
 
 .article-cover {
