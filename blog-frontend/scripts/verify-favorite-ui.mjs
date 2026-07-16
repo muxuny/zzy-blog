@@ -15,35 +15,35 @@ const required = [
   'componentActive',
   'favoriteStateVersion',
   'favoriteOperationId',
-  'intentFullPath',
-  'intentPath',
-  'intentAuthToken',
+  'favoriteRequestConfig',
+  'isFavoriteRequestContextCurrent',
+  'canConsumeFavoriteIntent',
+  'navigateToFavoriteLogin',
+  'authStore.logout()',
+  'error.response?.status === 401',
+  'watch(() => authStore.token',
+  'skipAuthRedirect: true',
   "localStorage.getItem('token')",
-  'window.location.pathname',
   '已收藏',
   '收藏'
 ]
 
 const contracts = [
-  ['favorite API imports', /import\s*\{[^}]*favoriteArticle[^}]*unfavoriteArticle[^}]*getFavoriteStatus[^}]*\}\s*from\s*['"]\.\.\/api\/favorite['"]/s],
-  ['favorite intent imports', /import\s*\{[^}]*buildFavoriteLoginRedirect[^}]*hasFavoriteIntent[^}]*clearFavoriteIntentQuery[^}]*\}\s*from\s*['"]\.\.\/utils\/favorite['"]/s],
-  ['favorite button click and loading state', /class="favorite-button"[^>]*:loading="favoriteLoading"[^>]*@click="handleFavorite"/s],
-  ['favorite button icons', /<StarFilled\s+v-if="favorited"\s*\/>[\s\S]*<Star\s+v-else\s*\/>/],
-  ['favorite handler', /async function handleFavorite\s*\(\)/],
-  ['favorite initialization', /async function initializeFavorite\s*\(articleId, token\)/],
-  ['favorite context guard', /return componentActive && token === loadToken\.value && article\.value\?\.id === articleId && stateVersion === favoriteStateVersion/],
-  ['status request captures and validates state version', /const stateVersion = favoriteStateVersion[\s\S]*await getFavoriteStatus\(articleId\)[\s\S]*isCurrentFavoriteContext\(articleId, token, stateVersion\)/],
-  ['favorite write invalidates status and owns loading state', /const stateVersion = \+\+favoriteStateVersion[\s\S]*const operationId = \+\+favoriteOperationId[\s\S]*if \(operationId === favoriteOperationId\) favoriteLoading\.value = false/],
-  ['article load invalidates old favorite work', /async function loadArticle\s*\(\)\s*\{[\s\S]*favoriteStateVersion \+= 1[\s\S]*favoriteOperationId \+= 1[\s\S]*favoriteLoading\.value = false[\s\S]*favorited\.value = false/],
-  ['unmount invalidates article and favorite work', /onBeforeUnmount\(\(\) => \{[\s\S]*componentActive = false[\s\S]*loadToken\.value \+= 1[\s\S]*favoriteStateVersion \+= 1[\s\S]*favoriteOperationId \+= 1[\s\S]*removeEventListener/],
-  ['favorite intent captures route identity', /const intentFullPath = route\.fullPath[\s\S]*const intentPath = route\.path[\s\S]*const intentArticleId = articleId/],
-  ['favorite intent requires an auth token snapshot', /if \(hasFavoriteIntent\(route\.query\)\) \{[\s\S]*const intentAuthToken = localStorage\.getItem\('token'\)[\s\S]*if \(!intentAuthToken\) return[\s\S]*await setFavorite\(articleId, true, token\)/],
-  ['favorite intent cleanup validates lifecycle route browser path and auth token', /componentActive[\s\S]*article\.value\?\.id === intentArticleId[\s\S]*route\.fullPath === intentFullPath[\s\S]*route\.path === intentPath[\s\S]*window\.location\.pathname === intentPath[\s\S]*localStorage\.getItem\('token'\) === intentAuthToken[\s\S]*hasFavoriteIntent\(route\.query\)[\s\S]*router\.replace\s*\(\s*\{\s*query:\s*clearFavoriteIntentQuery\(route\.query\)\s*\}\s*\)/]
+  ['favorite API imports', normalizedSource.includes("from '../api/favorite'")],
+  ['favorite guard imports', normalizedSource.includes('isFavoriteRequestContextCurrent') && normalizedSource.includes('canConsumeFavoriteIntent')],
+  ['favorite button wiring', source.includes('class="favorite-button"') && source.includes(':loading="favoriteLoading"') && source.includes('@click="handleFavorite"')],
+  ['favorite status config', source.includes('getFavoriteStatus(articleId, favoriteRequestConfig)')],
+  ['favorite write config', source.includes('favoriteArticle(articleId, favoriteRequestConfig)') && source.includes('unfavoriteArticle(articleId, favoriteRequestConfig)')],
+  ['favorite request guard call', source.includes('isFavoriteRequestContextCurrent({')],
+  ['favorite intent guard call', source.includes('canConsumeFavoriteIntent({')],
+  ['safe favorite initialization', /void initializeFavorite\([^\n]+\)\.catch\(\(\) => \{\}\)/.test(source)],
+  ['safe login navigation', source.includes('async function navigateToFavoriteLogin(articleId)')],
+  ['safe intent replacement', source.includes('async function replaceFavoriteIntentQuery(query)')]
 ]
 
 const missing = required.filter(text => !source.includes(text))
 const failedContracts = contracts
-  .filter(([, pattern]) => !pattern.test(normalizedSource))
+  .filter(([, passed]) => !passed)
   .map(([name]) => name)
 
 if (missing.length || failedContracts.length) {

@@ -1,8 +1,11 @@
 import request from './request'
 
 export const getFavorites = params => request.get('/my/favorites', { params })
-export const getFavoriteStatus = articleId => request.get(`/my/favorites/${articleId}/status`, {
-  skipErrorMessage: true
+export const getFavoriteStatus = (articleId, config = {}) => request.get(`/my/favorites/${articleId}/status`, {
+  skipErrorMessage: true,
+  ...config
 })
-export const favoriteArticle = articleId => request.put(`/my/favorites/${articleId}`)
-export const unfavoriteArticle = articleId => request.delete(`/my/favorites/${articleId}`)
+export const favoriteArticle = (articleId, config = {}) =>
+  request.put(`/my/favorites/${articleId}`, undefined, config)
+export const unfavoriteArticle = (articleId, config = {}) =>
+  request.delete(`/my/favorites/${articleId}`, config)
