@@ -171,10 +171,29 @@ function hasDirectCardActions(templateSource) {
 const nestedCardActionsFixture = '<article class="favorite-item"><RouterLink /><div class="item-heading"><div></div><el-button class="remove-button"></el-button></div></article>'
 const cardActionsAreDirectSiblings = hasDirectCardActions(favoriteItemTemplate)
 const itemStyleSource = itemSource.match(/<style scoped>([\s\S]*?)<\/style>/)?.[1] || ''
-const interactiveItemSelectors = [...itemStyleSource.matchAll(/([^{}]+)\{/g)]
-  .map(([, selector]) => selector.trim())
-  .filter(selector => /:(?:hover|focus|focus-visible|focus-within)\b/.test(selector))
-const availableInfoClasses = ['title-text', 'item-summary', 'item-cover', 'item-meta', 'item-tags']
+const approvedInteractionSelectors = [
+  '.favorite-item:not(.is-unavailable):hover',
+  '.card-open-link:focus-visible',
+  '.title-snapshot:focus-visible'
+]
+const interactionSelectorBypassFixtures = [
+  '.item-title:hover > span { color: red; }',
+  '.available-details:hover > p { color: red; }',
+  '.available-details img:focus { outline: 2px solid red; }'
+]
+
+function extractInteractiveItemSelectors(styleSource) {
+  return [...styleSource.matchAll(/([^{}]+)\{/g)]
+    .flatMap(([, selectorGroup]) => selectorGroup.split(','))
+    .map(selector => selector.trim())
+    .filter(selector => /:(?:hover|focus(?:-visible|-within)?)\b/.test(selector))
+}
+
+function onlyUsesApprovedInteractionSelectors(styleSource) {
+  const selectors = extractInteractiveItemSelectors(styleSource)
+  return approvedInteractionSelectors.every(selector => selectors.includes(selector))
+    && selectors.every(selector => approvedInteractionSelectors.includes(selector))
+}
 const loadBlock = extractBraceBlock(pageSource, 'async function load()')
 const loadErrorBlock = extractBraceBlock(loadBlock, 'catch (error)')
 const pageCorrectionBlock = extractBraceBlock(loadBlock, 'if (page.value > maxPage)')
@@ -227,7 +246,7 @@ const favoriteContracts = [
   ['card link covers the card and exposes whole-card focus', /\.favorite-item\s*\{[^}]*position:\s*relative;/s.test(itemSource) && /\.card-open-link\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0;[^}]*z-index:\s*1;/s.test(itemSource) && /\.card-open-link:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--primary-color\);/s.test(itemSource)],
   ['card link and remove are direct siblings', cardActionsAreDirectSiblings && !hasDirectCardActions(nestedCardActionsFixture)],
   ['item heading preserves remove button row height', /\.item-heading\s*\{[^}]*min-height:\s*36px;/s.test(itemSource)],
-  ['available card information has no local interaction selectors', interactiveItemSelectors.length > 0 && availableInfoClasses.every(className => interactiveItemSelectors.every(selector => !selector.includes(`.${className}`)))],
+  ['favorite item only uses approved interaction selectors', onlyUsesApprovedInteractionSelectors(itemStyleSource) && interactionSelectorBypassFixtures.every(fixture => !onlyUsesApprovedInteractionSelectors(`${itemStyleSource}\n${fixture}`))],
   ['remove stays above and isolated from card link', itemSource.includes('@click.stop="$emit(\'remove\', item)"') && /\.remove-button\s*\{[^}]*position:\s*(?:relative|absolute);[^}]*z-index:\s*2;/s.test(itemSource)],
   ['favorite page does not forward article navigation', !pageSource.includes('@open="openArticle"') && !pageSource.includes("import { useRouter } from 'vue-router'") && !pageSource.includes('const router = useRouter()') && !pageSource.includes('function openArticle(item)')],
   ['unavailable title uses focusable tooltip', normalizedItemSource.includes('<el-tooltip v-else') && itemSource.includes('content="该文章暂未公开"') && itemSource.includes(':trigger="[\'hover\', \'focus\']"') && itemSource.includes('class="title-snapshot" tabindex="0"')],
