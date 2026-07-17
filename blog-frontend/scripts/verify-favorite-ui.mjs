@@ -186,7 +186,7 @@ const cardActionFixtureResults = {
   invalid: hasDirectCardActions(invalidCardActionsFixture)
 }
 const itemStyleSource = itemSource.match(/<style scoped>([\s\S]*?)<\/style>/)?.[1] || ''
-const approvedInteractionSelectors = [
+const approvedRootInteractionSelectors = [
   '.favorite-item:not(.is-unavailable):hover',
   '.card-open-link:focus-visible',
   '.title-snapshot:focus-visible'
@@ -208,6 +208,41 @@ const commentedApprovedInteractionStyles = `
 /* unavailable title focus */
 .title-snapshot:focus-visible { outline: 2px solid gray; }
 `
+const nestedApprovedInteractionStyles = `
+.shell {
+  .favorite-item:not(.is-unavailable):hover { border-color: red; }
+  .card-open-link:focus-visible { outline: 2px solid red; }
+  .title-snapshot:focus-visible { outline: 2px solid gray; }
+}
+`
+const seededNestedApprovedInteractionStyles = `
+.shell {
+  .seed {}
+  .favorite-item:not(.is-unavailable):hover { border-color: red; }
+  .card-open-link:focus-visible { outline: 2px solid red; }
+  .title-snapshot:focus-visible { outline: 2px solid gray; }
+}
+`
+const declaredNestedApprovedInteractionStyles = `
+.shell {
+  color: red;
+  .favorite-item:not(.is-unavailable):hover { border-color: red; }
+  .card-open-link:focus-visible { outline: 2px solid red; }
+  .title-snapshot:focus-visible { outline: 2px solid gray; }
+}
+`
+const quotedSyntaxApprovedInteractionStyles = `
+.note { content: "literal { } ;"; }
+.favorite-item:not(.is-unavailable):hover { border-color: red; }
+.card-open-link:focus-visible { outline: 2px solid red; }
+.title-snapshot:focus-visible { outline: 2px solid gray; }
+`
+const malformedApprovedInteractionStyles = `
+.favorite-item:not(.is-unavailable):hover { border-color: red; }
+.card-open-link:focus-visible { outline: 2px solid red; }
+.title-snapshot:focus-visible { outline: 2px solid gray; }
+.broken {
+`
 
 function normalizeInteractionPseudoNames(selector) {
   return selector.replace(
@@ -216,24 +251,56 @@ function normalizeInteractionPseudoNames(selector) {
   )
 }
 
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+function extractRootRuleHeads(source) {
+  const ruleHeads = []
+  let braceDepth = 0
+  let quote = ''
+  let escaped = false
+  let rootPreludeStart = 0
+
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index]
+    if (quote) {
+      if (escaped) escaped = false
+      else if (char === '\\') escaped = true
+      else if (char === quote) quote = ''
+      continue
+    }
+    if (char === '"' || char === "'") quote = char
+    else if (char === '{') {
+      if (braceDepth === 0) {
+        const ruleHead = source.slice(rootPreludeStart, index).trim()
+        if (ruleHead) ruleHeads.push(ruleHead)
+      }
+      braceDepth += 1
+    } else if (char === '}') {
+      if (braceDepth === 0) return { valid: false, ruleHeads: [] }
+      braceDepth -= 1
+      if (braceDepth === 0) rootPreludeStart = index + 1
+    } else if (char === ';' && braceDepth === 0) {
+      rootPreludeStart = index + 1
+    }
+  }
+
+  return { valid: braceDepth === 0 && !quote, ruleHeads }
 }
 
-function onlyUsesApprovedInteractionSelectors(styleSource) {
+function onlyUsesApprovedRootInteractionSelectors(styleSource) {
   const normalizedSource = normalizeInteractionPseudoNames(
     styleSource.replace(/\/\*[\s\S]*?\*\//g, '')
   )
+  const { valid, ruleHeads } = extractRootRuleHeads(normalizedSource)
+  if (!valid) return false
+
   const interactionPseudoCount = [
     ...normalizedSource.matchAll(/:(?:hover|focus(?:-visible|-within)?)(?![\w-])/g)
   ].length
-  return interactionPseudoCount === approvedInteractionSelectors.length
-    && approvedInteractionSelectors.every(selector => {
-      const ruleHeadPattern = new RegExp(
-        `(?:^|[{};])\\s*${escapeRegExp(selector)}\\s*\\{`
-      )
-      return ruleHeadPattern.test(normalizedSource)
-    })
+  const rootInteractionRuleHeads = ruleHeads.filter(ruleHead =>
+    /:(?:hover|focus(?:-visible|-within)?)(?![\w-])/.test(ruleHead)
+  )
+  return interactionPseudoCount === approvedRootInteractionSelectors.length
+    && approvedRootInteractionSelectors.every(selector => rootInteractionRuleHeads.includes(selector))
+    && rootInteractionRuleHeads.every(selector => approvedRootInteractionSelectors.includes(selector))
 }
 const loadBlock = extractBraceBlock(pageSource, 'async function load()')
 const loadErrorBlock = extractBraceBlock(loadBlock, 'catch (error)')
@@ -292,8 +359,10 @@ const favoriteContracts = [
   ['card action AST preserves native tag case', !cardActionFixtureResults.uppercase],
   ['card action AST rejects template compile errors', !cardActionFixtureResults.invalid],
   ['item heading preserves remove button row height', /\.item-heading\s*\{[^}]*min-height:\s*36px;/s.test(itemSource)],
-  ['favorite item only uses approved interaction selectors', onlyUsesApprovedInteractionSelectors(itemStyleSource) && onlyUsesApprovedInteractionSelectors(commentedApprovedInteractionStyles)],
-  ['favorite item rejects disallowed interaction selector fixtures', interactionSelectorBypassFixtures.every(fixture => !onlyUsesApprovedInteractionSelectors(`${itemStyleSource}\n${fixture}`))],
+  ['favorite item only uses approved root interaction rules', onlyUsesApprovedRootInteractionSelectors(itemStyleSource) && onlyUsesApprovedRootInteractionSelectors(commentedApprovedInteractionStyles) && onlyUsesApprovedRootInteractionSelectors(quotedSyntaxApprovedInteractionStyles)],
+  ['favorite item rejects disallowed root interaction fixtures', interactionSelectorBypassFixtures.every(fixture => !onlyUsesApprovedRootInteractionSelectors(`${itemStyleSource}\n${fixture}`))],
+  ['favorite item rejects nested approved root interaction rules', [nestedApprovedInteractionStyles, seededNestedApprovedInteractionStyles, declaredNestedApprovedInteractionStyles].every(fixture => !onlyUsesApprovedRootInteractionSelectors(fixture))],
+  ['favorite item rejects malformed root interaction styles', !onlyUsesApprovedRootInteractionSelectors(malformedApprovedInteractionStyles)],
   ['remove stays above and isolated from card link', itemSource.includes('@click.stop="$emit(\'remove\', item)"') && /\.remove-button\s*\{[^}]*position:\s*(?:relative|absolute);[^}]*z-index:\s*2;/s.test(itemSource)],
   ['favorite page does not forward article navigation', !pageSource.includes('@open="openArticle"') && !pageSource.includes("import { useRouter } from 'vue-router'") && !pageSource.includes('const router = useRouter()') && !pageSource.includes('function openArticle(item)')],
   ['unavailable title uses focusable tooltip', normalizedItemSource.includes('<el-tooltip v-else') && itemSource.includes('content="该文章暂未公开"') && itemSource.includes(':trigger="[\'hover\', \'focus\']"') && itemSource.includes('class="title-snapshot" tabindex="0"')],
