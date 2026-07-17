@@ -19,20 +19,20 @@
           <span class="title-snapshot" tabindex="0">{{ item.title }}</span>
         </el-tooltip>
       </h2>
-
-      <el-button
-        class="remove-button"
-        circle
-        text
-        type="danger"
-        :loading="removing"
-        title="取消收藏"
-        aria-label="取消收藏"
-        @click.stop="$emit('remove', item)"
-      >
-        <el-icon><Delete /></el-icon>
-      </el-button>
     </div>
+
+    <el-button
+      class="remove-button"
+      circle
+      text
+      type="danger"
+      :loading="removing"
+      title="取消收藏"
+      aria-label="取消收藏"
+      @click.stop="$emit('remove', item)"
+    >
+      <el-icon><Delete /></el-icon>
+    </el-button>
 
     <template v-if="item.available">
       <div class="available-details">
@@ -110,6 +110,7 @@ defineEmits(['remove'])
 .item-heading {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 36px;
+  min-height: 36px;
   align-items: start;
   gap: 14px;
 }
@@ -140,7 +141,9 @@ defineEmits(['remove'])
 }
 
 .remove-button {
-  position: relative;
+  position: absolute;
+  top: 18px;
+  right: 20px;
   z-index: 2;
   width: 36px;
   height: 36px;
@@ -220,6 +223,11 @@ defineEmits(['remove'])
 
   .item-heading {
     gap: 10px;
+  }
+
+  .remove-button {
+    top: 14px;
+    right: 14px;
   }
 
   .item-title {
