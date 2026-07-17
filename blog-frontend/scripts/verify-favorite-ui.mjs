@@ -223,6 +223,15 @@ const seededNestedApprovedInteractionStyles = `
   .title-snapshot:focus-visible { outline: 2px solid gray; }
 }
 `
+const escapedBraceNestedApprovedInteractionStyles = `
+.shell {
+  .seed\\} {}
+  .favorite-item:not(.is-unavailable):hover { border-color: red; }
+  .card-open-link:focus-visible { outline: 2px solid red; }
+  .title-snapshot:focus-visible { outline: 2px solid gray; }
+  .tail\\{ {}
+}
+`
 const declaredNestedApprovedInteractionStyles = `
 .shell {
   color: red;
@@ -243,6 +252,11 @@ const malformedApprovedInteractionStyles = `
 .title-snapshot:focus-visible { outline: 2px solid gray; }
 .broken {
 `
+const danglingEscapeApprovedInteractionStyles = `
+.favorite-item:not(.is-unavailable):hover { border-color: red; }
+.card-open-link:focus-visible { outline: 2px solid red; }
+.title-snapshot:focus-visible { outline: 2px solid gray; }
+\\`
 
 function normalizeInteractionPseudoNames(selector) {
   return selector.replace(
@@ -260,10 +274,16 @@ function extractRootRuleHeads(source) {
 
   for (let index = 0; index < source.length; index += 1) {
     const char = source[index]
+    if (escaped) {
+      escaped = false
+      continue
+    }
+    if (char === '\\') {
+      escaped = true
+      continue
+    }
     if (quote) {
-      if (escaped) escaped = false
-      else if (char === '\\') escaped = true
-      else if (char === quote) quote = ''
+      if (char === quote) quote = ''
       continue
     }
     if (char === '"' || char === "'") quote = char
@@ -282,7 +302,7 @@ function extractRootRuleHeads(source) {
     }
   }
 
-  return { valid: braceDepth === 0 && !quote, ruleHeads }
+  return { valid: braceDepth === 0 && !quote && !escaped, ruleHeads }
 }
 
 function onlyUsesApprovedRootInteractionSelectors(styleSource) {
@@ -361,8 +381,8 @@ const favoriteContracts = [
   ['item heading preserves remove button row height', /\.item-heading\s*\{[^}]*min-height:\s*36px;/s.test(itemSource)],
   ['favorite item only uses approved root interaction rules', onlyUsesApprovedRootInteractionSelectors(itemStyleSource) && onlyUsesApprovedRootInteractionSelectors(commentedApprovedInteractionStyles) && onlyUsesApprovedRootInteractionSelectors(quotedSyntaxApprovedInteractionStyles)],
   ['favorite item rejects disallowed root interaction fixtures', interactionSelectorBypassFixtures.every(fixture => !onlyUsesApprovedRootInteractionSelectors(`${itemStyleSource}\n${fixture}`))],
-  ['favorite item rejects nested approved root interaction rules', [nestedApprovedInteractionStyles, seededNestedApprovedInteractionStyles, declaredNestedApprovedInteractionStyles].every(fixture => !onlyUsesApprovedRootInteractionSelectors(fixture))],
-  ['favorite item rejects malformed root interaction styles', !onlyUsesApprovedRootInteractionSelectors(malformedApprovedInteractionStyles)],
+  ['favorite item rejects nested approved root interaction rules', [nestedApprovedInteractionStyles, seededNestedApprovedInteractionStyles, escapedBraceNestedApprovedInteractionStyles, declaredNestedApprovedInteractionStyles].every(fixture => !onlyUsesApprovedRootInteractionSelectors(fixture))],
+  ['favorite item rejects malformed root interaction styles', [malformedApprovedInteractionStyles, danglingEscapeApprovedInteractionStyles].every(fixture => !onlyUsesApprovedRootInteractionSelectors(fixture))],
   ['remove stays above and isolated from card link', itemSource.includes('@click.stop="$emit(\'remove\', item)"') && /\.remove-button\s*\{[^}]*position:\s*(?:relative|absolute);[^}]*z-index:\s*2;/s.test(itemSource)],
   ['favorite page does not forward article navigation', !pageSource.includes('@open="openArticle"') && !pageSource.includes("import { useRouter } from 'vue-router'") && !pageSource.includes('const router = useRouter()') && !pageSource.includes('function openArticle(item)')],
   ['unavailable title uses focusable tooltip', normalizedItemSource.includes('<el-tooltip v-else') && itemSource.includes('content="该文章暂未公开"') && itemSource.includes(':trigger="[\'hover\', \'focus\']"') && itemSource.includes('class="title-snapshot" tabindex="0"')],
