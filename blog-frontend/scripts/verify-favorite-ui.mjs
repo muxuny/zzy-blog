@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { compileTemplate, parse as parseSfc } from 'vue/compiler-sfc'
+import { compileStyle, compileTemplate, parse as parseSfc } from 'vue/compiler-sfc'
 
 const articleDetailPath = new URL('../src/views/ArticleDetail.vue', import.meta.url)
 const source = readFileSync(articleDetailPath, 'utf8')
@@ -186,11 +186,14 @@ const cardActionFixtureResults = {
   invalid: hasDirectCardActions(invalidCardActionsFixture)
 }
 const itemStyleSource = itemSource.match(/<style scoped>([\s\S]*?)<\/style>/)?.[1] || ''
-const approvedRootInteractionSelectors = [
-  '.favorite-item:not(.is-unavailable):hover',
-  '.card-open-link:focus-visible',
-  '.title-snapshot:focus-visible'
+const favoriteItemStyleId = 'favorite-article-item'
+const approvedCompiledInteractionSelectors = [
+  `.favorite-item[data-v-${favoriteItemStyleId}]:not(.is-unavailable):hover`,
+  `.card-open-link[data-v-${favoriteItemStyleId}]:focus-visible`,
+  `.title-snapshot[data-v-${favoriteItemStyleId}]:focus-visible`
 ]
+const blockRequiredAtRuleNames = new Set(['media', 'supports', 'container'])
+const interactionPseudoPattern = /:(?:hover|focus(?:-visible|-within)?)(?![\w-])/
 const interactionSelectorBypassFixtures = [
   '.item-title:hover > span { color: red; }',
   '.available-details:hover > p { color: red; }',
@@ -200,6 +203,23 @@ const interactionSelectorBypassFixtures = [
   '@media (hover: hover) { .item-title:hover > span { color: red; } }',
   '@layer defaults; .item-title:hover > span { color: red; }'
 ]
+const escapedInteractionPseudoFixtures = [
+  '.item-title:h\\6f ver { color: red; }',
+  '.item-title:f\\6f cus { outline: 2px solid red; }'
+]
+const malformedInteractionStyleTails = [
+  '/* dangling',
+  '.broken',
+  '@media (hover: hover)',
+  '@supports (display: grid)',
+  '@container card (width > 10px)',
+  '@m\\65 dia (hover: hover);',
+  '@s\\75 pports (display: grid);',
+  '@c\\6f ntainer (width > 1px);',
+  '*/',
+  '}',
+  '\\'
+]
 const commentedApprovedInteractionStyles = `
 /* whole-card hover */
 .favorite-item:not(.is-unavailable):hover { border-color: red; }
@@ -207,6 +227,10 @@ const commentedApprovedInteractionStyles = `
 .card-open-link:focus-visible { outline: 2px solid red; }
 /* unavailable title focus */
 .title-snapshot:focus-visible { outline: 2px solid gray; }
+`
+const layerStatementApprovedInteractionStyles = `
+@layer defaults;
+${commentedApprovedInteractionStyles}
 `
 const nestedApprovedInteractionStyles = `
 .shell {
@@ -240,23 +264,24 @@ const declaredNestedApprovedInteractionStyles = `
   .title-snapshot:focus-visible { outline: 2px solid gray; }
 }
 `
-const quotedSyntaxApprovedInteractionStyles = `
-.note { content: "literal { } ;"; }
-.favorite-item:not(.is-unavailable):hover { border-color: red; }
-.card-open-link:focus-visible { outline: 2px solid red; }
-.title-snapshot:focus-visible { outline: 2px solid gray; }
+const mediaNestedApprovedInteractionStyles = `
+@media (hover: hover) {
+${commentedApprovedInteractionStyles}
+}
 `
-const malformedApprovedInteractionStyles = `
-.favorite-item:not(.is-unavailable):hover { border-color: red; }
-.card-open-link:focus-visible { outline: 2px solid red; }
-.title-snapshot:focus-visible { outline: 2px solid gray; }
-.broken {
+const layeredApprovedInteractionStyles = `
+@layer components {
+${commentedApprovedInteractionStyles}
+}
 `
-const danglingEscapeApprovedInteractionStyles = `
-.favorite-item:not(.is-unavailable):hover { border-color: red; }
-.card-open-link:focus-visible { outline: 2px solid red; }
-.title-snapshot:focus-visible { outline: 2px solid gray; }
-\\`
+const uppercaseApprovedInteractionStyles = `
+.favorite-item:not(.is-unavailable):HOVER { border-color: red; }
+.card-open-link:FOCUS-VISIBLE { outline: 2px solid red; }
+.title-snapshot:Focus-Visible { outline: 2px solid gray; }
+`
+const declarationStringInteractionStyles = `${itemStyleSource}
+.note { content: ":hover"; }
+`
 
 function normalizeInteractionPseudoNames(selector) {
   return selector.replace(
@@ -265,62 +290,61 @@ function normalizeInteractionPseudoNames(selector) {
   )
 }
 
-function extractRootRuleHeads(source) {
-  const ruleHeads = []
-  let braceDepth = 0
-  let quote = ''
-  let escaped = false
-  let rootPreludeStart = 0
-
-  for (let index = 0; index < source.length; index += 1) {
-    const char = source[index]
-    if (escaped) {
-      escaped = false
-      continue
-    }
-    if (char === '\\') {
-      escaped = true
-      continue
-    }
-    if (quote) {
-      if (char === quote) quote = ''
-      continue
-    }
-    if (char === '"' || char === "'") quote = char
-    else if (char === '{') {
-      if (braceDepth === 0) {
-        const ruleHead = source.slice(rootPreludeStart, index).trim()
-        if (ruleHead) ruleHeads.push(ruleHead)
+function decodeCssEscapes(value) {
+  return value.replace(
+    /\\(?:([\da-f]{1,6})(?:\r\n|[ \t\r\n\f])?|(\r\n|[\r\n\f])|([\s\S])|$)|\0/gi,
+    (escape, hex, escapedNewline, escapedCharacter) => {
+      if (escape === '\0') return '\uFFFD'
+      if (hex) {
+        const codePoint = Number.parseInt(hex, 16)
+        const invalidCodePoint = codePoint === 0
+          || codePoint > 0x10FFFF
+          || (codePoint >= 0xD800 && codePoint <= 0xDFFF)
+        return invalidCodePoint ? '\uFFFD' : String.fromCodePoint(codePoint)
       }
-      braceDepth += 1
-    } else if (char === '}') {
-      if (braceDepth === 0) return { valid: false, ruleHeads: [] }
-      braceDepth -= 1
-      if (braceDepth === 0) rootPreludeStart = index + 1
-    } else if (char === ';' && braceDepth === 0) {
-      rootPreludeStart = index + 1
+      if (escapedNewline) return ''
+      return escapedCharacter === '\0' || escapedCharacter === undefined
+        ? '\uFFFD'
+        : escapedCharacter
     }
-  }
-
-  return { valid: braceDepth === 0 && !quote && !escaped, ruleHeads }
+  )
 }
 
 function onlyUsesApprovedRootInteractionSelectors(styleSource) {
-  const normalizedSource = normalizeInteractionPseudoNames(
-    styleSource.replace(/\/\*[\s\S]*?\*\//g, '')
-  )
-  const { valid, ruleHeads } = extractRootRuleHeads(normalizedSource)
-  if (!valid) return false
+  try {
+    const result = compileStyle({
+      source: styleSource,
+      filename: 'FavoriteArticleItem.vue',
+      id: favoriteItemStyleId,
+      scoped: true
+    })
+    const root = result.rawResult?.root
+    if (result.errors.length || !root) return false
 
-  const interactionPseudoCount = [
-    ...normalizedSource.matchAll(/:(?:hover|focus(?:-visible|-within)?)(?![\w-])/g)
-  ].length
-  const rootInteractionRuleHeads = ruleHeads.filter(ruleHead =>
-    /:(?:hover|focus(?:-visible|-within)?)(?![\w-])/.test(ruleHead)
-  )
-  return interactionPseudoCount === approvedRootInteractionSelectors.length
-    && approvedRootInteractionSelectors.every(selector => rootInteractionRuleHeads.includes(selector))
-    && rootInteractionRuleHeads.every(selector => approvedRootInteractionSelectors.includes(selector))
+    let invalidAtRule = false
+    root.walkAtRules(atRule => {
+      if (atRule.nodes !== undefined) return
+      const name = decodeCssEscapes(atRule.name).toLowerCase()
+      const hasEscapedStatement = atRule.name.includes('\\') || atRule.params?.includes('\\')
+      if (hasEscapedStatement || blockRequiredAtRuleNames.has(name)) invalidAtRule = true
+    })
+    if (invalidAtRule) return false
+
+    const interactionRules = []
+    root.walkRules(rule => {
+      const selector = normalizeInteractionPseudoNames(decodeCssEscapes(rule.selector))
+      if (interactionPseudoPattern.test(selector)) {
+        interactionRules.push({ selector, isRoot: rule.parent?.type === 'root' })
+      }
+    })
+    return interactionRules.length === approvedCompiledInteractionSelectors.length
+      && interactionRules.every(rule => rule.isRoot)
+      && approvedCompiledInteractionSelectors.every(selector =>
+        interactionRules.some(rule => rule.selector === selector)
+      )
+  } catch {
+    return false
+  }
 }
 const loadBlock = extractBraceBlock(pageSource, 'async function load()')
 const loadErrorBlock = extractBraceBlock(loadBlock, 'catch (error)')
@@ -379,10 +403,11 @@ const favoriteContracts = [
   ['card action AST preserves native tag case', !cardActionFixtureResults.uppercase],
   ['card action AST rejects template compile errors', !cardActionFixtureResults.invalid],
   ['item heading preserves remove button row height', /\.item-heading\s*\{[^}]*min-height:\s*36px;/s.test(itemSource)],
-  ['favorite item only uses approved root interaction rules', onlyUsesApprovedRootInteractionSelectors(itemStyleSource) && onlyUsesApprovedRootInteractionSelectors(commentedApprovedInteractionStyles) && onlyUsesApprovedRootInteractionSelectors(quotedSyntaxApprovedInteractionStyles)],
+  ['favorite item only uses approved root interaction rules', onlyUsesApprovedRootInteractionSelectors(itemStyleSource) && onlyUsesApprovedRootInteractionSelectors(commentedApprovedInteractionStyles) && onlyUsesApprovedRootInteractionSelectors(layerStatementApprovedInteractionStyles) && onlyUsesApprovedRootInteractionSelectors(uppercaseApprovedInteractionStyles) && onlyUsesApprovedRootInteractionSelectors(declarationStringInteractionStyles)],
   ['favorite item rejects disallowed root interaction fixtures', interactionSelectorBypassFixtures.every(fixture => !onlyUsesApprovedRootInteractionSelectors(`${itemStyleSource}\n${fixture}`))],
-  ['favorite item rejects nested approved root interaction rules', [nestedApprovedInteractionStyles, seededNestedApprovedInteractionStyles, escapedBraceNestedApprovedInteractionStyles, declaredNestedApprovedInteractionStyles].every(fixture => !onlyUsesApprovedRootInteractionSelectors(fixture))],
-  ['favorite item rejects malformed root interaction styles', [malformedApprovedInteractionStyles, danglingEscapeApprovedInteractionStyles].every(fixture => !onlyUsesApprovedRootInteractionSelectors(fixture))],
+  ['favorite item rejects escaped interaction pseudo fixtures', escapedInteractionPseudoFixtures.every(fixture => !onlyUsesApprovedRootInteractionSelectors(`${itemStyleSource}\n${fixture}`))],
+  ['favorite item rejects nested approved root interaction rules', [nestedApprovedInteractionStyles, seededNestedApprovedInteractionStyles, escapedBraceNestedApprovedInteractionStyles, declaredNestedApprovedInteractionStyles, mediaNestedApprovedInteractionStyles, layeredApprovedInteractionStyles].every(fixture => !onlyUsesApprovedRootInteractionSelectors(fixture))],
+  ['favorite item rejects malformed root interaction styles', malformedInteractionStyleTails.every(tail => !onlyUsesApprovedRootInteractionSelectors(`${itemStyleSource}\n${tail}`))],
   ['remove stays above and isolated from card link', itemSource.includes('@click.stop="$emit(\'remove\', item)"') && /\.remove-button\s*\{[^}]*position:\s*(?:relative|absolute);[^}]*z-index:\s*2;/s.test(itemSource)],
   ['favorite page does not forward article navigation', !pageSource.includes('@open="openArticle"') && !pageSource.includes("import { useRouter } from 'vue-router'") && !pageSource.includes('const router = useRouter()') && !pageSource.includes('function openArticle(item)')],
   ['unavailable title uses focusable tooltip', normalizedItemSource.includes('<el-tooltip v-else') && itemSource.includes('content="该文章暂未公开"') && itemSource.includes(':trigger="[\'hover\', \'focus\']"') && itemSource.includes('class="title-snapshot" tabindex="0"')],
