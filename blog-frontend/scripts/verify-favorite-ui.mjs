@@ -192,7 +192,8 @@ const approvedCompiledInteractionSelectors = [
   `.card-open-link[data-v-${favoriteItemStyleId}]:focus-visible`,
   `.title-snapshot[data-v-${favoriteItemStyleId}]:focus-visible`
 ]
-const blockRequiredAtRuleNames = new Set(['media', 'supports', 'container'])
+const allowedRootNodeTypes = new Set(['rule', 'atrule', 'comment'])
+const allowedStatementAtRuleNames = new Set(['charset', 'import', 'namespace', 'layer'])
 const interactionPseudoPattern = /:(?:hover|focus(?:-visible|-within)?)(?![\w-])/
 const interactionSelectorBypassFixtures = [
   '.item-title:hover > span { color: red; }',
@@ -208,6 +209,8 @@ const escapedInteractionPseudoFixtures = [
   '.item-title:f\\6f cus { outline: 2px solid red; }'
 ]
 const malformedInteractionStyleTails = [
+  'color: red;',
+  '--review: value;',
   '/* dangling',
   '.broken',
   '@media (hover: hover)',
@@ -216,6 +219,20 @@ const malformedInteractionStyleTails = [
   '@m\\65 dia (hover: hover);',
   '@s\\75 pports (display: grid);',
   '@c\\6f ntainer (width > 1px);',
+  '@keyframes spin;',
+  '@-webkit-keyframes spin;',
+  '@font-face;',
+  '@page;',
+  '@scope (.card);',
+  '@starting-style;',
+  '@property --review;',
+  '@counter-style review;',
+  '@font-feature-values Review;',
+  '@document url(example);',
+  '@layer\\78;',
+  '@import\\78;',
+  '@charset\\78;',
+  '@namespace\\78;',
   '*/',
   '}',
   '\\'
@@ -228,10 +245,12 @@ const commentedApprovedInteractionStyles = `
 /* unavailable title focus */
 .title-snapshot:focus-visible { outline: 2px solid gray; }
 `
-const layerStatementApprovedInteractionStyles = `
-@layer defaults;
-${commentedApprovedInteractionStyles}
-`
+const allowedStatementApprovedInteractionStyles = [
+  '@charset "UTF-8";',
+  '@import url("x.css");',
+  '@namespace svg url("x");',
+  '@layer defaults;'
+].map(statement => `${statement}\n${commentedApprovedInteractionStyles}`)
 const nestedApprovedInteractionStyles = `
 .shell {
   .favorite-item:not(.is-unavailable):hover { border-color: red; }
@@ -320,13 +339,14 @@ function onlyUsesApprovedRootInteractionSelectors(styleSource) {
     })
     const root = result.rawResult?.root
     if (result.errors.length || !root) return false
+    if (root.nodes.some(node => !allowedRootNodeTypes.has(node.type))) return false
 
     let invalidAtRule = false
     root.walkAtRules(atRule => {
       if (atRule.nodes !== undefined) return
       const name = decodeCssEscapes(atRule.name).toLowerCase()
       const hasEscapedStatement = atRule.name.includes('\\') || atRule.params?.includes('\\')
-      if (hasEscapedStatement || blockRequiredAtRuleNames.has(name)) invalidAtRule = true
+      if (hasEscapedStatement || !allowedStatementAtRuleNames.has(name)) invalidAtRule = true
     })
     if (invalidAtRule) return false
 
@@ -403,7 +423,7 @@ const favoriteContracts = [
   ['card action AST preserves native tag case', !cardActionFixtureResults.uppercase],
   ['card action AST rejects template compile errors', !cardActionFixtureResults.invalid],
   ['item heading preserves remove button row height', /\.item-heading\s*\{[^}]*min-height:\s*36px;/s.test(itemSource)],
-  ['favorite item only uses approved root interaction rules', onlyUsesApprovedRootInteractionSelectors(itemStyleSource) && onlyUsesApprovedRootInteractionSelectors(commentedApprovedInteractionStyles) && onlyUsesApprovedRootInteractionSelectors(layerStatementApprovedInteractionStyles) && onlyUsesApprovedRootInteractionSelectors(uppercaseApprovedInteractionStyles) && onlyUsesApprovedRootInteractionSelectors(declarationStringInteractionStyles)],
+  ['favorite item only uses approved root interaction rules', onlyUsesApprovedRootInteractionSelectors(itemStyleSource) && onlyUsesApprovedRootInteractionSelectors(commentedApprovedInteractionStyles) && allowedStatementApprovedInteractionStyles.every(onlyUsesApprovedRootInteractionSelectors) && onlyUsesApprovedRootInteractionSelectors(uppercaseApprovedInteractionStyles) && onlyUsesApprovedRootInteractionSelectors(declarationStringInteractionStyles)],
   ['favorite item rejects disallowed root interaction fixtures', interactionSelectorBypassFixtures.every(fixture => !onlyUsesApprovedRootInteractionSelectors(`${itemStyleSource}\n${fixture}`))],
   ['favorite item rejects escaped interaction pseudo fixtures', escapedInteractionPseudoFixtures.every(fixture => !onlyUsesApprovedRootInteractionSelectors(`${itemStyleSource}\n${fixture}`))],
   ['favorite item rejects nested approved root interaction rules', [nestedApprovedInteractionStyles, seededNestedApprovedInteractionStyles, escapedBraceNestedApprovedInteractionStyles, declaredNestedApprovedInteractionStyles, mediaNestedApprovedInteractionStyles, layeredApprovedInteractionStyles].every(fixture => !onlyUsesApprovedRootInteractionSelectors(fixture))],
