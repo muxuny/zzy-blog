@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
+import { compileTemplate, parse as parseSfc } from 'vue/compiler-sfc'
 
 const articleDetailPath = new URL('../src/views/ArticleDetail.vue', import.meta.url)
 const source = readFileSync(articleDetailPath, 'utf8')
@@ -123,53 +124,67 @@ const itemOutsideAvailableTemplate = availableTemplateMatch
   ? itemSource.replace(availableTemplateMatch[0], '')
   : itemSource
 const sensitiveItemFields = ['item.summary', 'item.coverImage', 'item.authorName', 'item.viewCount', 'item.tags']
-const favoriteItemTemplate = itemSource.match(/<article class="favorite-item"[\s\S]*?<\/article>/)?.[0] || ''
 
-function extractDirectChildTags(templateSource, rootTagName) {
-  const tagPattern = /<!--(?:[\s\S]*?)-->|<\/?([A-Za-z][\w.-]*)\b(?:[^>"']|"[^"]*"|'[^']*')*\/?>/g
-  const directChildren = []
-  let rootFound = false
-  let depth = 0
+function hasStaticClass(node, className) {
+  const classAttribute = node.props?.find(prop => prop.type === 6 && prop.name === 'class')
+  return classAttribute?.value?.content.split(/\s+/).includes(className) || false
+}
 
-  for (const match of templateSource.matchAll(tagPattern)) {
-    const source = match[0]
-    if (source.startsWith('<!--')) continue
-
-    const tagName = match[1]
-    const closing = source.startsWith('</')
-    const selfClosing = /\/>$/.test(source)
-    if (!rootFound) {
-      if (!closing && tagName === rootTagName) {
-        rootFound = true
-        depth = 1
-      }
-      continue
+function extractDirectElementChildren(parent) {
+  const elements = []
+  for (const child of parent.children) {
+    if (child.type === 1) elements.push(child)
+    else if (child.type === 9) {
+      const branchElements = child.branches
+        .flatMap(branch => branch.children.filter(node => node.type === 1))
+      elements.push(branchElements.length === 1 ? branchElements[0] : null)
     }
-
-    if (closing) {
-      depth -= 1
-      if (depth === 0) break
-      continue
-    }
-
-    if (depth === 1) directChildren.push({ tagName, source })
-    if (!selfClosing) depth += 1
   }
-
-  return directChildren
+  return elements
 }
 
 function hasDirectCardActions(templateSource) {
-  const [cardLink, heading, remove] = extractDirectChildTags(templateSource, 'article')
-  return cardLink?.tagName === 'RouterLink'
-    && cardLink.source.includes('class="card-open-link"')
-    && heading?.tagName === 'div'
-    && heading.source.includes('class="item-heading"')
-    && remove?.tagName === 'el-button'
-    && remove.source.includes('class="remove-button"')
+  try {
+    const result = compileTemplate({
+      id: 'favorite-article-item-contract',
+      filename: 'FavoriteArticleItem.contract.vue',
+      source: templateSource
+    })
+    if (result.errors.length || !result.ast) return false
+
+    const rootElements = result.ast.children.filter(node => node.type === 1)
+    if (rootElements.length !== 1) return false
+    const article = rootElements[0]
+    if (article.tag !== 'article' || !hasStaticClass(article, 'favorite-item')) return false
+
+    const [cardLink, heading, remove] = extractDirectElementChildren(article)
+    return cardLink?.tag === 'RouterLink'
+      && hasStaticClass(cardLink, 'card-open-link')
+      && heading?.tag === 'div'
+      && hasStaticClass(heading, 'item-heading')
+      && remove?.tag === 'el-button'
+      && hasStaticClass(remove, 'remove-button')
+  } catch {
+    return false
+  }
 }
-const nestedCardActionsFixture = '<article class="favorite-item"><RouterLink /><div class="item-heading"><div></div><el-button class="remove-button"></el-button></div></article>'
-const cardActionsAreDirectSiblings = hasDirectCardActions(favoriteItemTemplate)
+const parsedItemSfc = parseSfc(itemSource, { filename: 'FavoriteArticleItem.vue' })
+const favoriteItemTemplate = parsedItemSfc.errors.length
+  ? ''
+  : parsedItemSfc.descriptor.template?.content || ''
+const nestedCardActionsFixture = '<article class="favorite-item"><RouterLink class="card-open-link" /><div class="item-heading"><div></div><el-button class="remove-button"></el-button></div></article>'
+const complexCardActionsFixture = '<article class="favorite-item"><!-- card action --><RouterLink class="card-open-link" data-label="a > b" /><div class="item-heading"></div><el-button class="remove-button"></el-button></article>'
+const voidElementCardActionsFixture = '<article class="favorite-item"><RouterLink class="card-open-link" /><div class="item-heading"><img src="cover"></div><el-button class="remove-button"></el-button></article>'
+const uppercaseCardActionsFixture = '<ARTICLE class="favorite-item"><RouterLink class="card-open-link" /><div class="item-heading"></div><el-button class="remove-button"></el-button></ARTICLE>'
+const invalidCardActionsFixture = '<article class="favorite-item"><RouterLink class="card-open-link" /><div class="item-heading"></div><el-button class="remove-button"></el-button>'
+const cardActionFixtureResults = {
+  actual: hasDirectCardActions(favoriteItemTemplate),
+  nested: hasDirectCardActions(nestedCardActionsFixture),
+  complex: hasDirectCardActions(complexCardActionsFixture),
+  voidElement: hasDirectCardActions(voidElementCardActionsFixture),
+  uppercase: hasDirectCardActions(uppercaseCardActionsFixture),
+  invalid: hasDirectCardActions(invalidCardActionsFixture)
+}
 const itemStyleSource = itemSource.match(/<style scoped>([\s\S]*?)<\/style>/)?.[1] || ''
 const approvedInteractionSelectors = [
   '.favorite-item:not(.is-unavailable):hover',
@@ -179,20 +194,46 @@ const approvedInteractionSelectors = [
 const interactionSelectorBypassFixtures = [
   '.item-title:hover > span { color: red; }',
   '.available-details:hover > p { color: red; }',
-  '.available-details img:focus { outline: 2px solid red; }'
+  '.available-details img:focus { outline: 2px solid red; }',
+  '.item-title:HOVER > span { color: red; }',
+  '.card-open-link:focus-visible, .item-title:hover > span { color: red; }',
+  '@media (hover: hover) { .item-title:hover > span { color: red; } }',
+  '@layer defaults; .item-title:hover > span { color: red; }'
 ]
+const commentedApprovedInteractionStyles = `
+/* whole-card hover */
+.favorite-item:not(.is-unavailable):hover { border-color: red; }
+/* link focus */
+.card-open-link:focus-visible { outline: 2px solid red; }
+/* unavailable title focus */
+.title-snapshot:focus-visible { outline: 2px solid gray; }
+`
 
-function extractInteractiveItemSelectors(styleSource) {
-  return [...styleSource.matchAll(/([^{}]+)\{/g)]
-    .flatMap(([, selectorGroup]) => selectorGroup.split(','))
-    .map(selector => selector.trim())
-    .filter(selector => /:(?:hover|focus(?:-visible|-within)?)\b/.test(selector))
+function normalizeInteractionPseudoNames(selector) {
+  return selector.replace(
+    /:(hover|focus(?:-visible|-within)?)(?![\w-])/gi,
+    (_, pseudoName) => `:${pseudoName.toLowerCase()}`
+  )
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 function onlyUsesApprovedInteractionSelectors(styleSource) {
-  const selectors = extractInteractiveItemSelectors(styleSource)
-  return approvedInteractionSelectors.every(selector => selectors.includes(selector))
-    && selectors.every(selector => approvedInteractionSelectors.includes(selector))
+  const normalizedSource = normalizeInteractionPseudoNames(
+    styleSource.replace(/\/\*[\s\S]*?\*\//g, '')
+  )
+  const interactionPseudoCount = [
+    ...normalizedSource.matchAll(/:(?:hover|focus(?:-visible|-within)?)(?![\w-])/g)
+  ].length
+  return interactionPseudoCount === approvedInteractionSelectors.length
+    && approvedInteractionSelectors.every(selector => {
+      const ruleHeadPattern = new RegExp(
+        `(?:^|[{};])\\s*${escapeRegExp(selector)}\\s*\\{`
+      )
+      return ruleHeadPattern.test(normalizedSource)
+    })
 }
 const loadBlock = extractBraceBlock(pageSource, 'async function load()')
 const loadErrorBlock = extractBraceBlock(loadBlock, 'catch (error)')
@@ -244,9 +285,15 @@ const favoriteContracts = [
   ['available card uses full-card route link', normalizedItemSource.includes('<RouterLink v-if="item.available" class="card-open-link" :to="`/article/${item.articleId}`" :aria-label="`打开文章：${item.title}`" />') && !itemSource.includes('Number(item.articleId)')],
   ['available title stays visually static', normalizedItemSource.includes('<span v-if="item.available" class="title-text">{{ item.title }}</span>') && !itemSource.includes('title-button')],
   ['card link covers the card and exposes whole-card focus', /\.favorite-item\s*\{[^}]*position:\s*relative;/s.test(itemSource) && /\.card-open-link\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0;[^}]*z-index:\s*1;/s.test(itemSource) && /\.card-open-link:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--primary-color\);/s.test(itemSource)],
-  ['card link and remove are direct siblings', cardActionsAreDirectSiblings && !hasDirectCardActions(nestedCardActionsFixture)],
+  ['card link and remove are direct siblings', cardActionFixtureResults.actual],
+  ['card action AST rejects nested remove', !cardActionFixtureResults.nested],
+  ['card action AST accepts comments quoted attributes and self-closing tags', cardActionFixtureResults.complex],
+  ['card action AST handles HTML void elements', cardActionFixtureResults.voidElement],
+  ['card action AST preserves native tag case', !cardActionFixtureResults.uppercase],
+  ['card action AST rejects template compile errors', !cardActionFixtureResults.invalid],
   ['item heading preserves remove button row height', /\.item-heading\s*\{[^}]*min-height:\s*36px;/s.test(itemSource)],
-  ['favorite item only uses approved interaction selectors', onlyUsesApprovedInteractionSelectors(itemStyleSource) && interactionSelectorBypassFixtures.every(fixture => !onlyUsesApprovedInteractionSelectors(`${itemStyleSource}\n${fixture}`))],
+  ['favorite item only uses approved interaction selectors', onlyUsesApprovedInteractionSelectors(itemStyleSource) && onlyUsesApprovedInteractionSelectors(commentedApprovedInteractionStyles)],
+  ['favorite item rejects disallowed interaction selector fixtures', interactionSelectorBypassFixtures.every(fixture => !onlyUsesApprovedInteractionSelectors(`${itemStyleSource}\n${fixture}`))],
   ['remove stays above and isolated from card link', itemSource.includes('@click.stop="$emit(\'remove\', item)"') && /\.remove-button\s*\{[^}]*position:\s*(?:relative|absolute);[^}]*z-index:\s*2;/s.test(itemSource)],
   ['favorite page does not forward article navigation', !pageSource.includes('@open="openArticle"') && !pageSource.includes("import { useRouter } from 'vue-router'") && !pageSource.includes('const router = useRouter()') && !pageSource.includes('function openArticle(item)')],
   ['unavailable title uses focusable tooltip', normalizedItemSource.includes('<el-tooltip v-else') && itemSource.includes('content="该文章暂未公开"') && itemSource.includes(':trigger="[\'hover\', \'focus\']"') && itemSource.includes('class="title-snapshot" tabindex="0"')],
