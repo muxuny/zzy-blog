@@ -137,7 +137,6 @@ const loadTagsErrorBlock = extractBraceBlock(loadTagsBlock, 'catch')
 const removeFavoriteBlock = extractBraceBlock(pageSource, 'async function removeFavorite(item)')
 const removeFinallyBlock = extractBraceBlock(removeFavoriteBlock, 'finally')
 const removeRequestGuardBlock = extractBraceBlock(pageSource, 'function isRemoveRequestCurrent(articleId, requestId)')
-const openArticleBlock = extractBraceBlock(pageSource, 'function openArticle(item)')
 const unauthorizedBlock = extractBraceBlock(requestSource, "if (error.response?.status === 401 && !error.config?.skipAuthRedirect)")
 const favoritesRoutePattern = /\{\s*path:\s*'\/favorites',\s*name:\s*'Favorites',\s*component:\s*\(\)\s*=>\s*import\('\.\.\/views\/Favorites\.vue'\),\s*meta:\s*\{\s*requiresAuth:\s*true\s*\}\s*\}/s
 const activeLoadGuard = 'if (!componentActive || requestId !== loadRequestVersion) return null'
@@ -170,8 +169,12 @@ const removeSecondGuardIndex = removeFavoriteBlock.indexOf(
 const favoriteContracts = [
   ['favorites route is protected', requiredRoutes.every(text => routerSource.includes(text)) && favoritesRoutePattern.test(routerSource)],
   ['favorites header entry', headerSource.includes('我的收藏') && headerSource.includes("$router.push('/favorites')")],
-  ['item declares required prop and events', normalizedItemSource.includes('item: { type: Object, required: true }') && itemSource.includes("defineEmits(['open', 'remove'])")],
-  ['available title opens only when available', normalizedItemSource.includes('<button v-if="item.available"') && normalizedItemSource.includes("@click=\"$emit('open', item)\"")],
+  ['item declares required prop and remove event', normalizedItemSource.includes('item: { type: Object, required: true }') && itemSource.includes("defineEmits(['remove'])")],
+  ['available card uses full-card route link', normalizedItemSource.includes('<RouterLink v-if="item.available" class="card-open-link" :to="`/article/${item.articleId}`" :aria-label="`打开文章：${item.title}`" />') && !itemSource.includes('Number(item.articleId)')],
+  ['available title stays visually static', normalizedItemSource.includes('<span v-if="item.available" class="title-text">{{ item.title }}</span>') && !itemSource.includes('title-button')],
+  ['card link covers the card and exposes whole-card focus', /\.favorite-item\s*\{[^}]*position:\s*relative;/s.test(itemSource) && /\.card-open-link\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0;[^}]*z-index:\s*1;/s.test(itemSource) && /\.card-open-link:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--primary-color\);/s.test(itemSource)],
+  ['remove stays above and isolated from card link', itemSource.includes('@click.stop="$emit(\'remove\', item)"') && /\.remove-button\s*\{[^}]*position:\s*relative;[^}]*z-index:\s*2;/s.test(itemSource)],
+  ['favorite page does not forward article navigation', !pageSource.includes('@open="openArticle"') && !pageSource.includes("import { useRouter } from 'vue-router'") && !pageSource.includes('const router = useRouter()') && !pageSource.includes('function openArticle(item)')],
   ['unavailable title uses focusable tooltip', normalizedItemSource.includes('<el-tooltip v-else') && itemSource.includes('content="该文章暂未公开"') && itemSource.includes(':trigger="[\'hover\', \'focus\']"') && itemSource.includes('class="title-snapshot" tabindex="0"')],
   ['sensitive fields stay in available branch', sensitiveItemFields.every(field => availableTemplate.includes(field)) && sensitiveItemFields.every(field => !itemOutsideAvailableTemplate.includes(field))],
   ['favorite date is always visible', itemSource.includes('<div class="item-foot">') && itemSource.indexOf('formatDate(item.favoritedAt)') > availableTemplateEnd],
@@ -193,7 +196,6 @@ const favoriteContracts = [
   ['tag loading does not block favorites and respects lifecycle', pageSource.includes('void loadTags()') && pageSource.includes('void load()') && loadTagsBlock.includes('const requestId = ++tagRequestVersion') && tagSuccessGuardIndex >= 0 && tagApplyIndex > tagSuccessGuardIndex && tagErrorGuardIndex >= 0 && tagErrorApplyIndex > tagErrorGuardIndex],
   ['remove awaits current write then uses generic load', removeFavoriteBlock.includes('if (isRemoving(item.articleId) || !componentActive) return') && removeWriteAwaitIndex >= 0 && removeFirstGuardIndex > removeWriteAwaitIndex && removeToastIndex > removeFirstGuardIndex && removeReloadIndex > removeToastIndex && removeSecondGuardIndex > removeReloadIndex && !removeFavoriteBlock.includes('recordCount') && !removeFavoriteBlock.includes('page.value -= 1')],
   ['remove finally keeps request ownership', removeRequestGuardBlock.includes('componentActive') && removeRequestGuardBlock.includes('removeRequestVersions.get(articleId) === requestId') && removeFinallyBlock.includes('if (isRemoveRequestCurrent(item.articleId, requestId))')],
-  ['article navigation keeps snowflake ids and catches rejection', openArticleBlock.includes('if (!item.available) return') && openArticleBlock.includes("router.push('/article/' + item.articleId).catch(() => {})") && !pageSource.includes('Number(item.articleId)') && !pageSource.includes('Number(tagId.value)')],
   ['401 redirect preserves same-origin full path', unauthorizedBlock.includes("localStorage.removeItem('token')") && unauthorizedBlock.includes('const currentFullPath = `${window.location.pathname}${window.location.search}${window.location.hash}`') && unauthorizedBlock.includes('window.location.href = `/login?redirect=${encodeURIComponent(currentFullPath)}`')],
   ['favorite layout uses theme variables and responsive rules', itemSource.includes('var(--panel-bg)') && pageSource.includes('var(--content-width)') && itemSource.includes('@media (max-width: 640px)') && pageSource.includes('@media (max-width: 720px)')]
 ]

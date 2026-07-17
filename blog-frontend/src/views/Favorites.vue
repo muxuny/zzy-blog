@@ -59,7 +59,6 @@
             :key="item.articleId"
             :item="item"
             :removing="isRemoving(item.articleId)"
-            @open="openArticle"
             @remove="removeFavorite"
           />
         </div>
@@ -84,7 +83,6 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Refresh, Search } from '@element-plus/icons-vue'
 import AppHeader from '../components/AppHeader.vue'
@@ -104,7 +102,6 @@ const tagId = ref('')
 const loading = ref(false)
 const loadError = ref('')
 const removingIds = ref(new Set())
-const router = useRouter()
 let componentActive = true
 let loadRequestVersion = 0
 let tagRequestVersion = 0
@@ -209,11 +206,6 @@ function retryLoad() {
 function handlePageChange(nextPage) {
   page.value = nextPage
   void load()
-}
-
-function openArticle(item) {
-  if (!item.available) return
-  void router.push('/article/' + item.articleId).catch(() => {})
 }
 
 function isRemoving(articleId) {

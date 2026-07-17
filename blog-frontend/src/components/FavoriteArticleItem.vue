@@ -1,15 +1,15 @@
 <template>
   <article class="favorite-item" :class="{ 'is-unavailable': !item.available }">
+    <RouterLink
+      v-if="item.available"
+      class="card-open-link"
+      :to="`/article/${item.articleId}`"
+      :aria-label="`打开文章：${item.title}`"
+    />
+
     <div class="item-heading">
       <h2 class="item-title">
-        <button
-          v-if="item.available"
-          type="button"
-          class="title-button"
-          @click="$emit('open', item)"
-        >
-          {{ item.title }}
-        </button>
+        <span v-if="item.available" class="title-text">{{ item.title }}</span>
         <el-tooltip
           v-else
           content="该文章暂未公开"
@@ -71,11 +71,12 @@ defineProps({
   removing: { type: Boolean, default: false }
 })
 
-defineEmits(['open', 'remove'])
+defineEmits(['remove'])
 </script>
 
 <style scoped>
 .favorite-item {
+  position: relative;
   min-width: 0;
   padding: 18px 20px;
   border: 1px solid var(--soft-border-color);
@@ -87,6 +88,18 @@ defineEmits(['open', 'remove'])
 .favorite-item:not(.is-unavailable):hover {
   border-color: color-mix(in srgb, var(--primary-color) 36%, var(--soft-border-color));
   box-shadow: var(--shadow-sm);
+}
+
+.card-open-link {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+}
+
+.card-open-link:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 3px;
 }
 
 .favorite-item.is-unavailable {
@@ -109,25 +122,9 @@ defineEmits(['open', 'remove'])
   overflow-wrap: anywhere;
 }
 
-.title-button {
-  padding: 0;
-  border: 0;
-  background: transparent;
+.title-text {
   color: var(--text-color);
-  font: inherit;
   font-weight: 800;
-  text-align: left;
-  cursor: pointer;
-}
-
-.title-button:hover {
-  color: var(--primary-color);
-}
-
-.title-button:focus-visible {
-  border-radius: 2px;
-  outline: 2px solid var(--primary-color);
-  outline-offset: 3px;
 }
 
 .title-snapshot {
@@ -143,6 +140,8 @@ defineEmits(['open', 'remove'])
 }
 
 .remove-button {
+  position: relative;
+  z-index: 2;
   width: 36px;
   height: 36px;
   min-width: 36px;
