@@ -43,7 +43,7 @@ async function handleLogin() {
     authStore.setToken(r.data.token)
     await authStore.fetchUser()
     ElMessage.success('登录成功')
-    router.push(resolveLoginRedirect(authStore.user, route.query.redirect))
+    await router.replace(resolveLoginRedirect(authStore.user, route.query.redirect))
   } finally {
     loading.value = false
   }

@@ -77,7 +77,7 @@ const contracts = [
   ['favorite request guard call', source.includes('isFavoriteRequestContextCurrent({')],
   ['favorite intent guard call', source.includes('canConsumeFavoriteIntent({')],
   ['safe favorite initialization', /void initializeFavorite\([^\n]+\)\.catch\(\(\) => \{\}\)/.test(source)],
-  ['safe login navigation', source.includes('async function navigateToFavoriteLogin(articleId, nextValue = true)') && source.includes('buildFavoriteLoginRedirect(articleId, nextValue)')],
+  ['safe login navigation', source.includes('async function navigateToFavoriteLogin(articleId, nextValue = true)') && source.includes('buildFavoriteLoginRedirect(articleId, nextValue)') && extractBraceBlock(source, 'async function navigateToFavoriteLogin(').includes('await router.replace({')],
   ['favorite write auth redirect preserves requested value', extractBraceBlock(source, 'async function setFavorite(').includes('await navigateToFavoriteLogin(articleId, nextValue)')],
   ['safe intent replacement', source.includes('async function replaceFavoriteIntentQuery(query)')]
 ]

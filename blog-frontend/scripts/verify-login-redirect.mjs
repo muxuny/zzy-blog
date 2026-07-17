@@ -1,4 +1,10 @@
 import { resolveLoginRedirect } from '../src/utils/authRedirect.js'
+import { readFileSync } from 'node:fs'
+
+const loginSource = readFileSync(new URL('../src/views/Login.vue', import.meta.url), 'utf8')
+const articleSource = readFileSync(new URL('../src/views/ArticleDetail.vue', import.meta.url), 'utf8')
+const normalizedLoginSource = loginSource.replace(/\s+/g, ' ')
+const normalizedArticleSource = articleSource.replace(/\s+/g, ' ')
 
 const cases = [
   [{ role: 'user' }, undefined, '/'],
@@ -29,6 +35,17 @@ for (const [user, redirect, expected] of cases) {
   if (actual !== expected) {
     throw new Error(`Expected ${expected}, got ${actual} for ${JSON.stringify({ user, redirect })}`)
   }
+}
+
+const historyContracts = [
+  ['post-login navigation replaces the login history entry',
+    normalizedLoginSource.includes('await router.replace(resolveLoginRedirect(authStore.user, route.query.redirect))')],
+  ['favorite login navigation replaces the article history entry',
+    normalizedArticleSource.includes("async function navigateToFavoriteLogin(articleId, nextValue = true) { try { await router.replace({ path: '/login'")]
+]
+
+for (const [name, passed] of historyContracts) {
+  if (!passed) throw new Error(`Missing login history contract: ${name}`)
 }
 
 console.log('login redirect rules verified')

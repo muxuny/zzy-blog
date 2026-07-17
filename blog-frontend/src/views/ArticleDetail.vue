@@ -334,7 +334,7 @@ async function setFavorite(articleId, nextValue, token = loadToken.value) {
 
 async function navigateToFavoriteLogin(articleId, nextValue = true) {
   try {
-    await router.push({
+    await router.replace({
       path: '/login',
       query: { redirect: buildFavoriteLoginRedirect(articleId, nextValue) }
     })
