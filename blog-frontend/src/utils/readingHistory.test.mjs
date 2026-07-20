@@ -62,6 +62,15 @@ test('authenticated user menu links to reading and creator spaces', () => {
   const userMenuSource = appHeaderSource.match(
     /<template v-if="authStore\.isLoggedIn">[\s\S]*?<el-dropdown-menu>[\s\S]*?<\/el-dropdown-menu>/
   )?.[0] || ''
+  const writeArticleItemSource = userMenuSource.match(
+    /<el-dropdown-item\b[^>]*>\s*写文章\s*<\/el-dropdown-item>/
+  )?.[0] || ''
+  const adminItemSource = userMenuSource.match(
+    /<el-dropdown-item\b[^>]*>\s*后台管理\s*<\/el-dropdown-item>/
+  )?.[0] || ''
+  const logoutItemSource = userMenuSource.match(
+    /<el-dropdown-item\b[^>]*>\s*退出登录\s*<\/el-dropdown-item>/
+  )?.[0] || ''
 
   assert.ok(userMenuSource, 'authenticated user dropdown menu should exist')
   assert.match(
@@ -74,9 +83,19 @@ test('authenticated user menu links to reading and creator spaces', () => {
   )
   assert.doesNotMatch(userMenuSource, />\s*我的收藏\s*</)
   assert.doesNotMatch(userMenuSource, />\s*我的文章\s*</)
-  assert.match(userMenuSource, />\s*写文章\s*</)
-  assert.match(userMenuSource, />\s*后台管理\s*</)
-  assert.match(userMenuSource, /<el-dropdown-item @click="logout">退出登录<\/el-dropdown-item>/)
+  assert.ok(writeArticleItemSource, 'write article menu item should exist')
+  assert.match(
+    writeArticleItemSource,
+    /<el-dropdown-item\b[^>]*@click="\$router\.push\('\/creator\/articles\/create'\)"[^>]*>/
+  )
+  assert.ok(adminItemSource, 'admin menu item should exist')
+  assert.match(adminItemSource, /<el-dropdown-item\b[^>]*v-if="authStore\.isAdmin"[^>]*>/)
+  assert.match(
+    adminItemSource,
+    /<el-dropdown-item\b[^>]*@click="\$router\.push\('\/admin\/dashboard'\)"[^>]*>/
+  )
+  assert.ok(logoutItemSource, 'logout menu item should exist')
+  assert.match(logoutItemSource, /<el-dropdown-item\b[^>]*@click="logout"[^>]*>/)
 })
 
 test('guest header branch remains limited to login and registration', () => {
@@ -92,25 +111,35 @@ test('guest header branch remains limited to login and registration', () => {
 })
 
 test('favorites page returns to the reading overview before its heading', () => {
-  const favoritesBackLinkSource = favoritesSource.match(
-    /<main class="favorites-main"[^>]*>[\s\S]*?<header class="page-heading">/
+  const favoritesIntroSource = favoritesSource.match(
+    /<main\b[^>]*class="favorites-main"[^>]*>([\s\S]*?)<header class="page-heading">/
+  )?.[1]?.trim() || ''
+  const favoritesBackLinkSource = favoritesIntroSource.match(
+    /^<RouterLink\b[^>]*>[\s\S]*<\/RouterLink>$/
   )?.[0] || ''
+  const favoritesBackLinkOpeningTag = favoritesBackLinkSource.match(/^<RouterLink\b[^>]*>/)?.[0] || ''
+  const backLinkStyleSource = favoritesSource.match(/\.back-to-reading\s*\{([^}]*)\}/)?.[1] || ''
+  const backLinkFocusStyleSource = favoritesSource.match(
+    /\.back-to-reading:focus-visible\s*\{([^}]*)\}/
+  )?.[1] || ''
 
+  assert.ok(favoritesIntroSource, 'favorites page intro should exist')
+  assert.equal(favoritesIntroSource, favoritesBackLinkSource, 'back link should be the direct child before the heading')
   assert.ok(favoritesBackLinkSource, 'favorites page intro should exist')
   assert.equal((favoritesBackLinkSource.match(/<RouterLink\b/g) || []).length, 1)
-  assert.match(
-    favoritesBackLinkSource,
-    /<RouterLink class="back-to-reading" to="\/reading" aria-label="返回我的阅读">\s*<el-icon><ArrowLeft \/><\/el-icon>\s*<span>返回我的阅读<\/span>\s*<\/RouterLink>/
-  )
+  assert.match(favoritesBackLinkOpeningTag, /\bclass="back-to-reading"/)
+  assert.match(favoritesBackLinkOpeningTag, /\bto="\/reading"/)
+  assert.match(favoritesBackLinkOpeningTag, /\baria-label="返回我的阅读"/)
+  assert.match(favoritesBackLinkSource, /<el-icon>\s*<ArrowLeft \/>\s*<\/el-icon>/)
+  assert.match(favoritesBackLinkSource, /<span>返回我的阅读<\/span>/)
+  assert.doesNotMatch(favoritesBackLinkSource, /<(?:el-)?button\b/i)
   assert.match(favoritesSource, /import\s*\{[^}]*\bArrowLeft\b[^}]*\}\s*from '@element-plus\/icons-vue'/)
-  assert.match(
-    favoritesSource,
-    /\.back-to-reading\s*\{[^}]*min-height:\s*36px;[^}]*color:\s*var\(--muted-text-color\);/s
-  )
-  assert.match(
-    favoritesSource,
-    /\.back-to-reading:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--primary-color\);/s
-  )
+  assert.ok(backLinkStyleSource, 'back link styles should exist')
+  assert.match(backLinkStyleSource, /display:\s*inline-flex;/)
+  assert.match(backLinkStyleSource, /min-height:\s*36px;/)
+  assert.match(backLinkStyleSource, /color:\s*var\(--muted-text-color\);/)
+  assert.ok(backLinkFocusStyleSource, 'back link focus styles should exist')
+  assert.match(backLinkFocusStyleSource, /outline:\s*2px solid var\(--primary-color\);/)
 })
 
 test('reading space separates continuation history favorites and discovery', () => {
