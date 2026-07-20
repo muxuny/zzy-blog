@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.toolkit.IdWorker;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.blog.common.BusinessException;
 import com.blog.dto.ReadingHistoryItem;
+import com.blog.dto.ReadingHistoryOverview;
 import com.blog.dto.ReadingHistoryPageQuery;
 import com.blog.dto.ReadingHistoryRelationRow;
 import com.blog.entity.Article;
@@ -76,6 +77,36 @@ public class ReadingHistoryServiceImpl implements ReadingHistoryService {
     }
 
     @Override
+    public ReadingHistoryOverview getOverview(long recentSize, Long userId) {
+        validateRecentSize(recentSize);
+        Page<ReadingHistoryRelationRow> requestPage = new Page<>(1, recentSize);
+        IPage<ReadingHistoryRelationRow> relationPage = historyMapper.selectHistoryPage(requestPage, userId);
+        ReadingHistoryRelationRow lastRow = historyMapper.selectLastAvailable(userId);
+
+        LinkedHashSet<Long> availableIds = relationPage.getRecords().stream()
+                .filter(ReadingHistoryRelationRow::isAvailable)
+                .map(ReadingHistoryRelationRow::getArticleId)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (lastRow != null && lastRow.isAvailable()) {
+            availableIds.add(lastRow.getArticleId());
+        }
+        Map<Long, Article> articlesById = getPublicArticlesById(new java.util.ArrayList<>(availableIds));
+        List<ReadingHistoryItem> items = relationPage.getRecords().stream()
+                .map(row -> toReadingHistoryItem(row, articlesById.get(row.getArticleId())))
+                .collect(Collectors.toList());
+        Page<ReadingHistoryItem> recentHistory = new Page<>(relationPage.getCurrent(),
+                relationPage.getSize(), relationPage.getTotal());
+        recentHistory.setRecords(items);
+
+        ReadingHistoryOverview overview = new ReadingHistoryOverview();
+        overview.setRecentHistory(recentHistory);
+        overview.setLastRead(lastRow == null ? null
+                : articlesById.containsKey(lastRow.getArticleId())
+                ? toReadingHistoryItem(lastRow, articlesById.get(lastRow.getArticleId())) : null);
+        return overview;
+    }
+
+    @Override
     public ReadingHistoryItem getLastAvailable(String username) {
         User user = requireUser(username);
         ReadingHistoryRelationRow row = historyMapper.selectLastAvailable(user.getId());
@@ -143,6 +174,12 @@ public class ReadingHistoryServiceImpl implements ReadingHistoryService {
     private void validatePageQuery(ReadingHistoryPageQuery query) {
         if (query == null || query.getPage() < 1 || query.getSize() < 1
                 || query.getSize() > MAX_PAGE_SIZE) {
+            throw new BusinessException("分页参数不合法");
+        }
+    }
+
+    private void validateRecentSize(long recentSize) {
+        if (recentSize < 1 || recentSize > MAX_PAGE_SIZE) {
             throw new BusinessException("分页参数不合法");
         }
     }

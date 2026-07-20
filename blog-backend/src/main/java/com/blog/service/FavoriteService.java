@@ -14,4 +14,6 @@ public interface FavoriteService {
     FavoriteStatus getFavoriteStatus(Long articleId, String username);
 
     IPage<FavoriteArticleItem> getMyFavorites(FavoritePageQuery query, String username);
+
+    IPage<FavoriteArticleItem> getMyFavoritesForUser(FavoritePageQuery query, Long userId);
 }

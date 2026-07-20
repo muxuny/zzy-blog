@@ -218,6 +218,47 @@ class FavoriteServiceImplTest {
     }
 
     @Test
+    void getMyFavoritesForUser_shouldUseResolvedUserIdWithoutUserLookup() {
+        Page<FavoriteRelationRow> rows = new Page<>(1, 4);
+        rows.setTotal(6);
+        rows.setRecords(Collections.singletonList(relation(1L, 20L, "Saved title",
+                LocalDateTime.of(2026, 7, 20, 10, 30), true)));
+        when(favoriteMapper.selectFavoritePage(any(Page.class), eq(10L), eq(null), eq(null)))
+                .thenReturn(rows);
+        when(articleService.getPublicArticleSummaries(Collections.singletonList(20L)))
+                .thenReturn(Collections.singletonList(article(20L, "Current title", "Summary", "cover.png",
+                        "Author", 42, Collections.emptyList())));
+        FavoritePageQuery query = new FavoritePageQuery();
+        query.setPage(1);
+        query.setSize(4);
+
+        IPage<FavoriteArticleItem> result = favoriteService.getMyFavoritesForUser(query, 10L);
+
+        assertThat(result.getTotal()).isEqualTo(6);
+        assertThat(result.getRecords()).singleElement()
+                .extracting(FavoriteArticleItem::getTitle).isEqualTo("Current title");
+        ArgumentCaptor<Page<FavoriteRelationRow>> pageCaptor = ArgumentCaptor.forClass(Page.class);
+        verify(favoriteMapper).selectFavoritePage(pageCaptor.capture(), eq(10L), eq(null), eq(null));
+        assertThat(pageCaptor.getValue().getCurrent()).isEqualTo(1);
+        assertThat(pageCaptor.getValue().getSize()).isEqualTo(4);
+        verify(articleService).getPublicArticleSummaries(Collections.singletonList(20L));
+        verifyNoInteractions(userService);
+        verifyNoMoreInteractions(favoriteMapper, articleService);
+    }
+
+    @Test
+    void getMyFavoritesForUser_shouldValidateBeforeUsingResolvedUserDependencies() {
+        FavoritePageQuery query = new FavoritePageQuery();
+        query.setSize(0);
+
+        assertThatThrownBy(() -> favoriteService.getMyFavoritesForUser(query, 10L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("分页参数不合法");
+
+        verifyNoInteractions(userService, favoriteMapper, articleService);
+    }
+
+    @Test
     void getMyFavorites_shouldRejectNullQueryBeforeUsingDependencies() {
         assertInvalidFavoritePage(null);
     }
@@ -295,6 +336,19 @@ class FavoriteServiceImplTest {
         tag.setId(id);
         tag.setName(name);
         return tag;
+    }
+
+    private static Article article(Long id, String title, String summary, String coverImage,
+                                   String authorName, Integer viewCount, java.util.List<Tag> tags) {
+        Article article = new Article();
+        article.setId(id);
+        article.setTitle(title);
+        article.setSummary(summary);
+        article.setCoverImage(coverImage);
+        article.setAuthorName(authorName);
+        article.setViewCount(viewCount);
+        article.setTags(tags);
+        return article;
     }
 
     private void assertInvalidFavoritePage(FavoritePageQuery query) {

@@ -73,9 +73,19 @@ public class FavoriteServiceImpl implements FavoriteService {
     public IPage<FavoriteArticleItem> getMyFavorites(FavoritePageQuery query, String username) {
         validateFavoritePage(query);
         User user = requireUser(username);
+        return getFavoritesForUser(query, user.getId());
+    }
+
+    @Override
+    public IPage<FavoriteArticleItem> getMyFavoritesForUser(FavoritePageQuery query, Long userId) {
+        validateFavoritePage(query);
+        return getFavoritesForUser(query, userId);
+    }
+
+    private IPage<FavoriteArticleItem> getFavoritesForUser(FavoritePageQuery query, Long userId) {
         Page<FavoriteRelationRow> requestPage = new Page<>(query.getPage(), query.getSize());
         IPage<FavoriteRelationRow> relationPage = favoriteMapper.selectFavoritePage(
-                requestPage, user.getId(), query.getKeyword(), query.getTagId());
+                requestPage, userId, query.getKeyword(), query.getTagId());
 
         List<Long> availableIds = relationPage.getRecords().stream()
                 .filter(FavoriteRelationRow::isAvailable)

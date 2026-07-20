@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.blog.common.BusinessException;
 import com.blog.dto.ReadingHistoryItem;
+import com.blog.dto.ReadingHistoryOverview;
 import com.blog.dto.ReadingHistoryPageQuery;
 import com.blog.dto.ReadingHistoryRelationRow;
 import com.blog.entity.Article;
@@ -243,6 +244,103 @@ class ReadingHistoryServiceImplTest {
                 .thenReturn(Collections.emptyList());
 
         assertThat(readingHistoryService.getLastAvailable("alice")).isNull();
+    }
+
+    @Test
+    void getOverview_shouldBatchDistinctRecentAndLastAvailableArticleIdsOnce() {
+        LocalDateTime now = LocalDateTime.of(2026, 7, 20, 10, 30);
+        Page<ReadingHistoryRelationRow> rows = new Page<>(1, 5);
+        rows.setTotal(8);
+        rows.setRecords(Arrays.asList(
+                relation(1L, 20L, "First saved title", now.minusDays(2), now.minusDays(1), 2, true),
+                relation(2L, 20L, "Second saved title", now.minusDays(1), now, 1, true),
+                relation(3L, 22L, "Unavailable title", now.minusDays(3), now.minusDays(2), 1, false)));
+        ReadingHistoryRelationRow last = relation(4L, 21L, "Last saved title",
+                now.minusDays(4), now, 4, true);
+        when(historyMapper.selectHistoryPage(any(Page.class), eq(10L))).thenReturn(rows);
+        when(historyMapper.selectLastAvailable(10L)).thenReturn(last);
+        when(articleService.getPublicArticleSummaries(Arrays.asList(20L, 21L))).thenReturn(Arrays.asList(
+                article(20L, "Current page title", "Page summary", "page.png", "Page author", 20),
+                article(21L, "Current last title", "Last summary", "last.png", "Last author", 21)));
+
+        ReadingHistoryOverview result = readingHistoryService.getOverview(5, 10L);
+
+        assertThat(result.getRecentHistory().getCurrent()).isEqualTo(1);
+        assertThat(result.getRecentHistory().getSize()).isEqualTo(5);
+        assertThat(result.getRecentHistory().getTotal()).isEqualTo(8);
+        assertThat(result.getRecentHistory().getRecords()).extracting(ReadingHistoryItem::getTitle)
+                .containsExactly("Current page title", "Current page title", "Unavailable title");
+        assertThat(result.getLastRead()).isNotNull();
+        assertThat(result.getLastRead().getArticleId()).isEqualTo(21L);
+        assertThat(result.getLastRead().getTitle()).isEqualTo("Current last title");
+        ArgumentCaptor<Page<ReadingHistoryRelationRow>> pageCaptor = ArgumentCaptor.forClass(Page.class);
+        verify(historyMapper).selectHistoryPage(pageCaptor.capture(), eq(10L));
+        assertThat(pageCaptor.getValue().getCurrent()).isEqualTo(1);
+        assertThat(pageCaptor.getValue().getSize()).isEqualTo(5);
+        verify(historyMapper).selectLastAvailable(10L);
+        verify(articleService).getPublicArticleSummaries(Arrays.asList(20L, 21L));
+        verifyNoInteractions(userService);
+        verifyNoMoreInteractions(historyMapper, articleService);
+    }
+
+    @Test
+    void getOverview_shouldNotDuplicateLastArticleIdWhenItAlreadyAppearsInRecentHistory() {
+        Page<ReadingHistoryRelationRow> rows = new Page<>(1, 5);
+        rows.setRecords(Collections.singletonList(relation(1L, 20L, "Saved title",
+                LocalDateTime.of(2026, 7, 19, 9, 0), LocalDateTime.of(2026, 7, 20, 10, 30),
+                2, true)));
+        ReadingHistoryRelationRow last = relation(2L, 20L, "Last saved title",
+                LocalDateTime.of(2026, 7, 18, 9, 0), LocalDateTime.of(2026, 7, 20, 10, 30),
+                3, true);
+        when(historyMapper.selectHistoryPage(any(Page.class), eq(10L))).thenReturn(rows);
+        when(historyMapper.selectLastAvailable(10L)).thenReturn(last);
+        when(articleService.getPublicArticleSummaries(Collections.singletonList(20L)))
+                .thenReturn(Collections.singletonList(article(20L, "Current title", "Summary", "cover.png",
+                        "Author", 42)));
+
+        ReadingHistoryOverview result = readingHistoryService.getOverview(5, 10L);
+
+        assertThat(result.getRecentHistory().getRecords()).singleElement()
+                .extracting(ReadingHistoryItem::getTitle).isEqualTo("Current title");
+        assertThat(result.getLastRead()).extracting(ReadingHistoryItem::getTitle).isEqualTo("Current title");
+        verify(articleService).getPublicArticleSummaries(Collections.singletonList(20L));
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    void getOverview_shouldReturnNullLastReadWhenLastArticleDisappearsFromTheBatch() {
+        Page<ReadingHistoryRelationRow> rows = new Page<>(1, 5);
+        rows.setRecords(Collections.singletonList(relation(1L, 20L, "Saved page title",
+                LocalDateTime.of(2026, 7, 19, 9, 0), LocalDateTime.of(2026, 7, 20, 10, 30),
+                2, true)));
+        ReadingHistoryRelationRow last = relation(2L, 21L, "Saved last title",
+                LocalDateTime.of(2026, 7, 18, 9, 0), LocalDateTime.of(2026, 7, 20, 10, 30),
+                3, true);
+        when(historyMapper.selectHistoryPage(any(Page.class), eq(10L))).thenReturn(rows);
+        when(historyMapper.selectLastAvailable(10L)).thenReturn(last);
+        when(articleService.getPublicArticleSummaries(Arrays.asList(20L, 21L)))
+                .thenReturn(Collections.singletonList(article(20L, "Current page title", "Summary", "cover.png",
+                        "Author", 42)));
+
+        ReadingHistoryOverview result = readingHistoryService.getOverview(5, 10L);
+
+        assertThat(result.getRecentHistory().getRecords()).singleElement()
+                .extracting(ReadingHistoryItem::getTitle).isEqualTo("Current page title");
+        assertThat(result.getLastRead()).isNull();
+        verify(articleService).getPublicArticleSummaries(Arrays.asList(20L, 21L));
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    void getOverview_shouldRejectInvalidRecentSizeBeforeUsingDependencies() {
+        assertThatThrownBy(() -> readingHistoryService.getOverview(0, 10L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("分页参数不合法");
+        assertThatThrownBy(() -> readingHistoryService.getOverview(101, 10L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("分页参数不合法");
+
+        verifyNoInteractions(userService, historyMapper, articleService);
     }
 
     @Test
