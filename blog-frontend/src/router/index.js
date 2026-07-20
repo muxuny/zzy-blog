@@ -14,6 +14,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/reading/history',
+    name: 'ReadingHistory',
+    component: () => import('../views/ReadingHistory.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/creator/articles',
     name: 'CreatorArticles',
     component: () => import('../views/creator/MyArticles.vue'),

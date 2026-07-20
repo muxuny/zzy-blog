@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { existsSync, readFileSync } from 'node:fs'
 import request from '../api/request.js'
 import {
   clearReadingHistory,
@@ -14,6 +15,125 @@ import {
   groupReadingHistory,
   getPageAfterHistoryDeletion
 } from './readingHistory.js'
+
+const historyFiles = {
+  page: new URL('../views/ReadingHistory.vue', import.meta.url),
+  item: new URL('../components/ReadingHistoryItem.vue', import.meta.url),
+  router: new URL('../router/index.js', import.meta.url)
+}
+
+function readSource(path) {
+  return existsSync(path) ? readFileSync(path, 'utf8') : ''
+}
+
+function withoutComments(source) {
+  return source
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+}
+
+const pageSource = withoutComments(readSource(historyFiles.page))
+const itemSource = withoutComments(readSource(historyFiles.item))
+const routerSource = withoutComments(readSource(historyFiles.router))
+const normalizedPageSource = pageSource.replace(/\s+/g, ' ')
+const normalizedItemSource = itemSource.replace(/\s+/g, ' ')
+
+test('reading history view and item component exist', () => {
+  assert.equal(existsSync(historyFiles.page), true, 'ReadingHistory.vue should exist')
+  assert.equal(existsSync(historyFiles.item), true, 'ReadingHistoryItem.vue should exist')
+})
+
+test('reading history route is lazy loaded and protected', () => {
+  assert.match(routerSource, /path:\s*['"]\/reading\/history['"]/)
+  assert.match(routerSource, /name:\s*['"]ReadingHistory['"]/)
+  assert.match(routerSource, /import\(['"]\.\.\/views\/ReadingHistory\.vue['"]\)/)
+  assert.match(routerSource, /path:\s*['"]\/reading\/history['"][\s\S]*?meta:\s*\{\s*requiresAuth:\s*true\s*\}/)
+})
+
+test('reading history item exposes a safe whole-item link only for available articles', () => {
+  assert.match(normalizedItemSource, /<article[^>]*class="reading-history-item"[^>]*:class="\{ 'is-unavailable': !item\.available \}"/)
+  assert.match(normalizedItemSource, /<RouterLink v-if="item\.available" class="item-open-link" :to="`\/article\/\$\{item\.articleId\}`"[^>]*\/?>/)
+  assert.doesNotMatch(itemSource, /<RouterLink\b(?![^>]*v-if="item\.available")[^>]*>/)
+  assert.match(itemSource, /\.reading-history-item\s*\{[^}]*position:\s*relative;/s)
+  assert.match(itemSource, /\.item-open-link\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0;[^}]*z-index:\s*1;/s)
+})
+
+test('reading history item keeps unavailable snapshots private and focusable', () => {
+  const availableBranch = itemSource.match(/<template\s+v-if="item\.available">([\s\S]*?)<\/template>/)?.[1] || ''
+  const unavailableBranch = itemSource.match(/<template\s+v-else>([\s\S]*?)<\/template>/)?.[1] || ''
+
+  assert.match(unavailableBranch, /<el-tooltip\b/)
+  assert.match(unavailableBranch, /content="该文章暂未公开"/)
+  assert.match(unavailableBranch, /tabindex="0"/)
+  assert.match(unavailableBranch, /该文章暂未公开/)
+  for (const field of ['item.summary', 'item.coverImage', 'item.authorName', 'item.viewCount']) {
+    assert.ok(availableBranch.includes(field), `${field} should be inside the available branch`)
+    assert.ok(!unavailableBranch.includes(field), `${field} must not leak into the unavailable branch`)
+  }
+})
+
+test('reading history item formats times and isolates the accessible remove action', () => {
+  for (const field of ['item.lastReadAt', 'item.firstReadAt']) {
+    assert.ok(itemSource.includes(`formatReadingTime(${field})`))
+  }
+  assert.match(itemSource, /item\.readCount/)
+  assert.match(normalizedItemSource, /item: \{ type: Object, required: true \}/)
+  assert.match(normalizedItemSource, /removing: \{ type: Boolean, default: false \}/)
+  assert.match(itemSource, /defineEmits\(\['remove'\]\)/)
+  assert.match(itemSource, /@click\.stop="\$emit\('remove', item\)"/)
+  assert.match(itemSource, /title="删除历史"/)
+  assert.match(itemSource, /aria-label="删除历史"/)
+  assert.match(itemSource, /\.remove-button\s*\{[^}]*z-index:\s*(?:[2-9]|\d{2,});/s)
+})
+
+test('reading history item has stable responsive media and root-only hover treatment', () => {
+  assert.match(itemSource, /width:\s*144px;/)
+  assert.match(itemSource, /height:\s*96px;/)
+  assert.match(itemSource, /aspect-ratio:\s*16\s*\/\s*9;/)
+  assert.match(itemSource, /overflow-wrap:\s*anywhere;/)
+  assert.match(itemSource, /\.reading-history-item:not\(\.is-unavailable\):hover\s*\{[^}]*(?:border-color|box-shadow):/s)
+  assert.doesNotMatch(itemSource, /\.(?:item-title|item-meta|title-text)[^{]*(?::hover|:focus(?!-visible))/)
+})
+
+test('reading history page renders grouped timeline states and pagination', () => {
+  for (const text of ['阅读历史', '暂无阅读历史', '去发现文章', '阅读历史加载失败，请重试']) {
+    assert.ok(pageSource.includes(text), `page should include ${text}`)
+  }
+  assert.match(normalizedPageSource, /<AppHeader\s*\/?>/)
+  assert.match(normalizedPageSource, /<RouterLink[^>]*to="\/reading"/)
+  assert.match(pageSource, /groupReadingHistory\(items\.value\)/)
+  assert.match(pageSource, /v-for="group in groups"/)
+  assert.match(pageSource, /<ReadingHistoryItem\b/)
+  assert.match(pageSource, /<el-skeleton\b/)
+  assert.match(pageSource, /class="sr-only"/)
+  assert.match(pageSource, /v-if="total > size"/)
+  assert.match(pageSource, /:page-size="size"/)
+  assert.match(pageSource, /@current-change="handlePageChange"/)
+})
+
+test('reading history page loads retries and corrects stale paginated responses', () => {
+  assert.match(pageSource, /getReadingHistory\(params\)/)
+  assert.match(pageSource, /buildReadingHistoryParams\(\{[\s\S]*?page:\s*requestPage,[\s\S]*?size:\s*size\.value/s)
+  assert.match(pageSource, /const requestId = \+\+requestVersion/)
+  assert.match(pageSource, /if \(!componentActive \|\| requestId !== requestVersion\) return null/)
+  assert.match(pageSource, /const maxPage = Math\.max\(1, Math\.ceil\(nextTotal \/ size\.value\)\)/)
+  assert.match(pageSource, /if \(page\.value > maxPage\)[\s\S]*?page\.value = maxPage[\s\S]*?return await load\(\)/)
+  assert.match(pageSource, /@click="retryLoad"/)
+  assert.match(pageSource, /function retryLoad\(\)[\s\S]*?void load\(\)/)
+})
+
+test('reading history deletion and clear actions are guarded and reload safely', () => {
+  assert.match(pageSource, /deleteReadingHistory\(item\.articleId\)/)
+  assert.match(pageSource, /getPageAfterHistoryDeletion\(\{[\s\S]*?page:\s*page\.value,[\s\S]*?size:\s*size\.value,[\s\S]*?total:\s*total\.value/s)
+  assert.match(pageSource, /ElMessage\.success\('已删除阅读历史'\)/)
+  assert.match(pageSource, /clearReadingHistory\(\)/)
+  assert.match(pageSource, /ElMessageBox\.confirm\([\s\S]*?清空[\s\S]*?阅读历史/s)
+  assert.match(pageSource, /ElMessage\.success\('阅读历史已清空'\)/)
+  assert.match(pageSource, /if \(clearing\.value \|\| !componentActive\) return/)
+  assert.match(pageSource, /if \(isRemoving\(item\.articleId\) \|\| !componentActive\) return/)
+  assert.match(pageSource, /onBeforeUnmount\([\s\S]*?componentActive = false[\s\S]*?requestVersion \+= 1/s)
+})
 
 test('reading API wrappers execute the expected requests', async () => {
   const capturedConfigs = []
