@@ -237,6 +237,8 @@ class DatabaseConfigTest {
                         + "on delete cascade on update cascade"));
 
         String normalizedMigration = normalizeSql(migration);
+        assertEquals(migrationDefinition, normalizedMigration,
+                "Reading history migration must contain only its CREATE TABLE statement");
         assertTrue(!normalizedMigration.contains("drop "));
         assertTrue(!normalizedMigration.contains("delete from"));
     }
@@ -251,9 +253,11 @@ class DatabaseConfigTest {
                         + "VALUES (#{id}, #{userId}, #{articleId}, #{titleSnapshot}, #{now}, #{now}, 1, "
                         + "#{username}, #{now}, #{username}, #{now}, 0, 0) "
                         + "ON DUPLICATE KEY UPDATE "
-                        + "title_snapshot = VALUES(title_snapshot), "
+                        + "title_snapshot = IF(deleted = 1 OR VALUES(last_read_at) >= last_read_at, "
+                        + "VALUES(title_snapshot), title_snapshot), "
                         + "first_read_at = IF(deleted = 1, VALUES(first_read_at), first_read_at), "
-                        + "last_read_at = VALUES(last_read_at), "
+                        + "last_read_at = IF(deleted = 1, VALUES(last_read_at), "
+                        + "GREATEST(last_read_at, VALUES(last_read_at))), "
                         + "read_count = IF(deleted = 1, 1, read_count + 1), "
                         + "updated_by = VALUES(updated_by), "
                         + "updated_at = VALUES(updated_at), "
