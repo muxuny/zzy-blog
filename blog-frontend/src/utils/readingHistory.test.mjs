@@ -340,13 +340,27 @@ test('reading history item has stable responsive media and root-only hover treat
   assert.doesNotMatch(itemSource, /\.(?:item-title|item-meta|title-text)[^{]*(?::hover|:focus(?!-visible))/)
 })
 
+test('reading history page disables skeleton animation for reduced motion', () => {
+  assert.match(
+    pageSource,
+    /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*?:deep\(\.el-skeleton\.is-animated \.el-skeleton__item\)\s*\{[^}]*animation:\s*none;/s
+  )
+})
+
+test('reading history item disables transitions for reduced motion', () => {
+  assert.match(
+    itemSource,
+    /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*?\.reading-history-item\s*\{[^}]*transition:\s*none;/s
+  )
+})
+
 test('reading history page renders grouped timeline states and pagination', () => {
   for (const text of ['阅读历史', '暂无阅读历史', '去发现文章', '阅读历史加载失败，请重试']) {
     assert.ok(pageSource.includes(text), `page should include ${text}`)
   }
   assert.match(normalizedPageSource, /<AppHeader\s*\/?>/)
   assert.match(normalizedPageSource, /<RouterLink[^>]*to="\/reading"/)
-  assert.match(pageSource, /groupReadingHistory\(items\.value\)/)
+  assert.match(pageSource, /groupReadingHistory\(items\.value, groupingNow\.value\)/)
   assert.match(pageSource, /v-for="group in groups"/)
   assert.match(pageSource, /<ReadingHistoryItem\b/)
   assert.match(pageSource, /<el-skeleton\b/)
@@ -354,6 +368,35 @@ test('reading history page renders grouped timeline states and pagination', () =
   assert.match(pageSource, /v-if="total > size"/)
   assert.match(pageSource, /:page-size="size"/)
   assert.match(pageSource, /@current-change="handlePageChange"/)
+})
+
+test('reading history page groups against a reactive current time', () => {
+  assert.match(pageSource, /const groupingNow = ref\(new Date\(\)\)/)
+  assert.match(
+    pageSource,
+    /const groups = computed\(\(\) => groupReadingHistory\(items\.value, groupingNow\.value\)\)/
+  )
+})
+
+test('reading history page reschedules grouping at each local midnight without polling', () => {
+  assert.match(pageSource, /let dayRefreshTimer = null/)
+  assert.match(
+    pageSource,
+    /function scheduleNextDayRefresh\(\)\s*\{[\s\S]*?const now = new Date\(\)[\s\S]*?const nextDay = new Date\(now\)[\s\S]*?nextDay\.setHours\(24,\s*0,\s*0,\s*0\)[\s\S]*?const delay = Math\.max\(1, nextDay\.getTime\(\) - now\.getTime\(\)\)[\s\S]*?dayRefreshTimer = setTimeout\(\(\) => \{[\s\S]*?groupingNow\.value = new Date\(\)[\s\S]*?scheduleNextDayRefresh\(\)[\s\S]*?\}, delay\)/s
+  )
+  assert.match(
+    pageSource,
+    /onMounted\(\(\) => \{[\s\S]*?void load\(\)[\s\S]*?scheduleNextDayRefresh\(\)[\s\S]*?\}\)/s
+  )
+  assert.doesNotMatch(pageSource, /\bsetInterval\s*\(/)
+  assert.doesNotMatch(pageSource, /visibilitychange/)
+})
+
+test('reading history page clears its local-midnight timer on unmount', () => {
+  assert.match(
+    pageSource,
+    /onBeforeUnmount\(\(\) => \{[\s\S]*?componentActive = false[\s\S]*?clearTimeout\(dayRefreshTimer\)[\s\S]*?dayRefreshTimer = null[\s\S]*?\}\)/s
+  )
 })
 
 test('reading history empty action avoids nested interaction and routes explicitly', () => {

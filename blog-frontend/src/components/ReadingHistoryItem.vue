@@ -235,4 +235,10 @@ defineEmits(['remove'])
     font-size: 17px;
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .reading-history-item {
+    transition: none;
+  }
+}
 </style>

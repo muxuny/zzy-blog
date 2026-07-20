@@ -53,6 +53,7 @@ public class ReadingHistoryServiceImpl implements ReadingHistoryService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public IPage<ReadingHistoryItem> getHistory(ReadingHistoryPageQuery query, String username) {
         validatePageQuery(query);
         User user = requireUser(username);

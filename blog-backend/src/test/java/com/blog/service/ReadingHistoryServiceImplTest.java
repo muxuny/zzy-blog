@@ -14,7 +14,10 @@ import com.blog.service.impl.ReadingHistoryServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.core.annotation.AnnotatedElementUtils;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collections;
@@ -44,6 +47,17 @@ class ReadingHistoryServiceImplTest {
         articleService = mock(ArticleService.class);
         userService = mock(UserService.class);
         readingHistoryService = new ReadingHistoryServiceImpl(historyMapper, articleService, userService);
+    }
+
+    @Test
+    void getHistory_shouldRunInReadOnlyTransaction() throws NoSuchMethodException {
+        Method method = ReadingHistoryServiceImpl.class.getMethod(
+                "getHistory", ReadingHistoryPageQuery.class, String.class);
+
+        Transactional transactional = AnnotatedElementUtils.findMergedAnnotation(method, Transactional.class);
+
+        assertThat(transactional).isNotNull();
+        assertThat(transactional.readOnly()).isTrue();
     }
 
     @Test

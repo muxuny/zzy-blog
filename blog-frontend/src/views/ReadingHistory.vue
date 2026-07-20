@@ -97,6 +97,7 @@ const page = ref(1)
 const size = ref(10)
 const total = ref(0)
 const items = ref([])
+const groupingNow = ref(new Date())
 const loading = ref(false)
 const error = ref('')
 const clearing = ref(false)
@@ -104,17 +105,40 @@ const removingIds = ref(new Set())
 const router = useRouter()
 let componentActive = true
 let requestVersion = 0
+let dayRefreshTimer = null
 
-const groups = computed(() => groupReadingHistory(items.value))
+const groups = computed(() => groupReadingHistory(items.value, groupingNow.value))
 
 onMounted(() => {
   void load()
+  scheduleNextDayRefresh()
 })
 
 onBeforeUnmount(() => {
   componentActive = false
   requestVersion += 1
+  if (dayRefreshTimer !== null) {
+    clearTimeout(dayRefreshTimer)
+    dayRefreshTimer = null
+  }
 })
+
+function scheduleNextDayRefresh() {
+  if (!componentActive) return
+  if (dayRefreshTimer !== null) clearTimeout(dayRefreshTimer)
+
+  const now = new Date()
+  const nextDay = new Date(now)
+  nextDay.setHours(24, 0, 0, 0)
+  const delay = Math.max(1, nextDay.getTime() - now.getTime())
+
+  dayRefreshTimer = setTimeout(() => {
+    dayRefreshTimer = null
+    if (!componentActive) return
+    groupingNow.value = new Date()
+    scheduleNextDayRefresh()
+  }, delay)
+}
 
 async function load() {
   if (!componentActive) return null
@@ -418,6 +442,12 @@ async function clearAllHistory() {
 
   .page-heading .el-button {
     align-self: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :deep(.el-skeleton.is-animated .el-skeleton__item) {
+    animation: none;
   }
 }
 </style>
