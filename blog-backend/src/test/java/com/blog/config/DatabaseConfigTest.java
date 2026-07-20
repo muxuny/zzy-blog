@@ -237,23 +237,29 @@ class DatabaseConfigTest {
                         + "on delete cascade on update cascade"));
 
         String normalizedMigration = normalizeSql(migration);
-        assertTrue(!normalizedMigration.contains("drop table"));
+        assertTrue(!normalizedMigration.contains("drop "));
         assertTrue(!normalizedMigration.contains("delete from"));
     }
 
     @Test
     void readingHistoryMapperUsesAtomicRecordAndScopedDeleteContract() throws IOException {
         String xml = readString(Paths.get("src/main/resources/mapper/ArticleReadingHistoryMapper.xml"));
-        String upsert = extractMapperStatement(xml, "insert", "upsertHistory");
-
-        assertTrue(upsert.contains(normalizeWhitespace("title_snapshot = VALUES(title_snapshot)")));
-        assertTrue(upsert.contains(normalizeWhitespace(
-                "first_read_at = IF(deleted = 1, VALUES(first_read_at), first_read_at)")));
-        assertTrue(upsert.contains(normalizeWhitespace("last_read_at = VALUES(last_read_at)")));
-        assertTrue(upsert.contains(normalizeWhitespace(
-                "read_count = IF(deleted = 1, 1, read_count + 1)")));
-        assertTrue(upsert.contains(normalizeWhitespace("version = version + 1")));
-        assertTrue(upsert.contains(normalizeWhitespace("deleted = 0")));
+        assertEquals(normalizeWhitespace(
+                "INSERT INTO article_reading_history "
+                        + "(id, user_id, article_id, title_snapshot, first_read_at, last_read_at, read_count, "
+                        + "created_by, created_at, updated_by, updated_at, deleted, version) "
+                        + "VALUES (#{id}, #{userId}, #{articleId}, #{titleSnapshot}, #{now}, #{now}, 1, "
+                        + "#{username}, #{now}, #{username}, #{now}, 0, 0) "
+                        + "ON DUPLICATE KEY UPDATE "
+                        + "title_snapshot = VALUES(title_snapshot), "
+                        + "first_read_at = IF(deleted = 1, VALUES(first_read_at), first_read_at), "
+                        + "last_read_at = VALUES(last_read_at), "
+                        + "read_count = IF(deleted = 1, 1, read_count + 1), "
+                        + "updated_by = VALUES(updated_by), "
+                        + "updated_at = VALUES(updated_at), "
+                        + "version = version + 1, "
+                        + "deleted = 0"),
+                extractMapperStatement(xml, "insert", "upsertHistory"));
         assertEquals(normalizeWhitespace(
                 "UPDATE article_reading_history SET deleted = 1, updated_by = #{username}, "
                         + "updated_at = #{now}, version = version + 1 "
