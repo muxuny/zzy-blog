@@ -73,6 +73,7 @@ test('authenticated user menu links to reading and creator spaces', () => {
     /<el-dropdown-item @click="\$router\.push\('\/creator\/articles'\)">\s*创作中心\s*<\/el-dropdown-item>/
   )
   assert.doesNotMatch(userMenuSource, />\s*我的收藏\s*</)
+  assert.doesNotMatch(userMenuSource, />\s*我的文章\s*</)
   assert.match(userMenuSource, />\s*写文章\s*</)
   assert.match(userMenuSource, />\s*后台管理\s*</)
   assert.match(userMenuSource, /<el-dropdown-item @click="logout">退出登录<\/el-dropdown-item>/)
