@@ -88,10 +88,11 @@ class ArticleControllerTest {
     @Test
     void detailDoesNotRecordWhenPublicArticleLookupFails() {
         BusinessException exception = new BusinessException("article not found");
+        Principal principal = () -> "alice";
         when(articleService.getPublicDetail(1L)).thenThrow(exception);
 
         BusinessException thrown = assertThrows(BusinessException.class,
-                () -> articleController.detail(1L, null));
+                () -> articleController.detail(1L, principal));
 
         assertEquals(exception, thrown);
         verifyNoInteractions(readingHistoryService);
