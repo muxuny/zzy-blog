@@ -17,6 +17,8 @@ import {
 } from './readingHistory.js'
 
 const historyFiles = {
+  appHeader: new URL('../components/AppHeader.vue', import.meta.url),
+  favorites: new URL('../views/Favorites.vue', import.meta.url),
   page: new URL('../views/ReadingHistory.vue', import.meta.url),
   item: new URL('../components/ReadingHistoryItem.vue', import.meta.url),
   space: new URL('../views/ReadingSpace.vue', import.meta.url),
@@ -38,6 +40,8 @@ const pageSource = withoutComments(readSource(historyFiles.page))
 const itemSource = withoutComments(readSource(historyFiles.item))
 const readingSpaceSource = withoutComments(readSource(historyFiles.space))
 const routerSource = withoutComments(readSource(historyFiles.router))
+const appHeaderSource = withoutComments(readSource(historyFiles.appHeader))
+const favoritesSource = withoutComments(readSource(historyFiles.favorites))
 const normalizedPageSource = pageSource.replace(/\s+/g, ' ')
 const normalizedItemSource = itemSource.replace(/\s+/g, ' ')
 const normalizedReadingSpaceSource = readingSpaceSource.replace(/\s+/g, ' ')
@@ -52,6 +56,60 @@ test('reading history route is lazy loaded and protected', () => {
   assert.match(routerSource, /name:\s*['"]ReadingHistory['"]/)
   assert.match(routerSource, /import\(['"]\.\.\/views\/ReadingHistory\.vue['"]\)/)
   assert.match(routerSource, /path:\s*['"]\/reading\/history['"][\s\S]*?meta:\s*\{\s*requiresAuth:\s*true\s*\}/)
+})
+
+test('authenticated user menu links to reading and creator spaces', () => {
+  const userMenuSource = appHeaderSource.match(
+    /<template v-if="authStore\.isLoggedIn">[\s\S]*?<el-dropdown-menu>[\s\S]*?<\/el-dropdown-menu>/
+  )?.[0] || ''
+
+  assert.ok(userMenuSource, 'authenticated user dropdown menu should exist')
+  assert.match(
+    userMenuSource,
+    /<el-dropdown-item @click="\$router\.push\('\/reading'\)">\s*我的阅读\s*<\/el-dropdown-item>/
+  )
+  assert.match(
+    userMenuSource,
+    /<el-dropdown-item @click="\$router\.push\('\/creator\/articles'\)">\s*创作中心\s*<\/el-dropdown-item>/
+  )
+  assert.doesNotMatch(userMenuSource, />\s*我的收藏\s*</)
+  assert.match(userMenuSource, />\s*写文章\s*</)
+  assert.match(userMenuSource, />\s*后台管理\s*</)
+  assert.match(userMenuSource, /<el-dropdown-item @click="logout">退出登录<\/el-dropdown-item>/)
+})
+
+test('guest header branch remains limited to login and registration', () => {
+  const guestActionsSource = appHeaderSource.match(
+    /<template v-else>[\s\S]*?<\/template>/
+  )?.[0] || ''
+
+  assert.ok(guestActionsSource, 'guest header actions should exist')
+  assert.equal((guestActionsSource.match(/<el-button\b/g) || []).length, 2)
+  assert.match(guestActionsSource, /\$router\.push\('\/login'\)[\s\S]*?>登录<\/el-button>/)
+  assert.match(guestActionsSource, /\$router\.push\('\/register'\)[\s\S]*?>注册<\/el-button>/)
+  assert.doesNotMatch(guestActionsSource, /\/reading/)
+})
+
+test('favorites page returns to the reading overview before its heading', () => {
+  const favoritesBackLinkSource = favoritesSource.match(
+    /<main class="favorites-main"[^>]*>[\s\S]*?<header class="page-heading">/
+  )?.[0] || ''
+
+  assert.ok(favoritesBackLinkSource, 'favorites page intro should exist')
+  assert.equal((favoritesBackLinkSource.match(/<RouterLink\b/g) || []).length, 1)
+  assert.match(
+    favoritesBackLinkSource,
+    /<RouterLink class="back-to-reading" to="\/reading" aria-label="返回我的阅读">\s*<el-icon><ArrowLeft \/><\/el-icon>\s*<span>返回我的阅读<\/span>\s*<\/RouterLink>/
+  )
+  assert.match(favoritesSource, /import\s*\{[^}]*\bArrowLeft\b[^}]*\}\s*from '@element-plus\/icons-vue'/)
+  assert.match(
+    favoritesSource,
+    /\.back-to-reading\s*\{[^}]*min-height:\s*36px;[^}]*color:\s*var\(--muted-text-color\);/s
+  )
+  assert.match(
+    favoritesSource,
+    /\.back-to-reading:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--primary-color\);/s
+  )
 })
 
 test('reading space separates continuation history favorites and discovery', () => {

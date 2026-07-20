@@ -18,11 +18,11 @@
                 <el-dropdown-item @click="$router.push('/creator/articles/create')">
                   写文章
                 </el-dropdown-item>
-                <el-dropdown-item @click="$router.push('/creator/articles')">
-                  我的文章
+                <el-dropdown-item @click="$router.push('/reading')">
+                  我的阅读
                 </el-dropdown-item>
-                <el-dropdown-item @click="$router.push('/favorites')">
-                  我的收藏
+                <el-dropdown-item @click="$router.push('/creator/articles')">
+                  创作中心
                 </el-dropdown-item>
                 <el-dropdown-item v-if="authStore.isAdmin" @click="$router.push('/admin/dashboard')">
                   后台管理

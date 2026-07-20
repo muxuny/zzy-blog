@@ -2,6 +2,11 @@
   <div class="layout">
     <AppHeader />
     <main class="favorites-main" :aria-busy="loading">
+      <RouterLink class="back-to-reading" to="/reading" aria-label="返回我的阅读">
+        <el-icon><ArrowLeft /></el-icon>
+        <span>返回我的阅读</span>
+      </RouterLink>
+
       <header class="page-heading">
         <div>
           <span class="page-kicker">阅读清单</span>
@@ -84,7 +89,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Refresh, Search } from '@element-plus/icons-vue'
+import { ArrowLeft, Refresh, Search } from '@element-plus/icons-vue'
 import AppHeader from '../components/AppHeader.vue'
 import FavoriteArticleItem from '../components/FavoriteArticleItem.vue'
 import { getFavorites, unfavoriteArticle } from '../api/favorite'
@@ -246,6 +251,26 @@ async function removeFavorite(item) {
   width: min(100%, var(--content-width));
   margin: 0 auto;
   padding: 30px 24px 56px;
+}
+
+.back-to-reading {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+  margin-bottom: 12px;
+  color: var(--muted-text-color);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.back-to-reading:hover {
+  color: var(--text-color);
+}
+
+.back-to-reading:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
 }
 
 .page-heading {
