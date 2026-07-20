@@ -72,10 +72,21 @@ test('reading space separates continuation history favorites and discovery', () 
   assert.match(readingSpaceSource, /<el-skeleton\b/)
 })
 
+test('reading space treats cover images with repeated labels as decorative', () => {
+  assert.match(
+    normalizedReadingSpaceSource,
+    /<img v-if="overview\.lastRead\.coverImage"[^>]*class="last-read-cover"[^>]*alt=""[^>]*\/?>/
+  )
+  assert.match(
+    normalizedReadingSpaceSource,
+    /<img v-if="item\.coverImage"[^>]*class="favorite-cover"[^>]*alt=""[^>]*\/?>/
+  )
+  assert.doesNotMatch(readingSpaceSource, /:alt="(?:overview\.lastRead\.title|item\.title)"/)
+})
+
 test('reading space guards whole-item links and private snapshots', () => {
   assert.match(readingSpaceSource, /<article\s+v-if="overview\.lastRead"[^>]*class="last-read"/)
   assert.match(readingSpaceSource, /v-if="overview\.lastRead\.available"[\s\S]*?class="card-open-link"/)
-  assert.match(readingSpaceSource, /v-if="item\.available"[\s\S]*?class="card-open-link"/)
   assert.match(readingSpaceSource, /content="该文章暂未公开"/)
   assert.match(readingSpaceSource, /tabindex="0"/)
   assert.match(readingSpaceSource, /该文章暂未公开/)
@@ -115,6 +126,39 @@ test('reading space guards whole-item links and private snapshots', () => {
       ...new Set([...branch.source.matchAll(branch.fieldPattern)].map(match => match[1]))
     ].sort()
     assert.deepEqual(referencedFields, branch.allowedFields, `${branch.name} may only use snapshot fields`)
+  }
+})
+
+test('reading space guards history and favorite preview links independently', () => {
+  const previewArticles = [
+    {
+      name: 'history',
+      source: readingSpaceSource.match(
+        /<article\s+v-for="item in overview\.recentHistory"[\s\S]*?class="history-preview"[\s\S]*?<\/article>/
+      )?.[0] || ''
+    },
+    {
+      name: 'favorites',
+      source: readingSpaceSource.match(
+        /<article\s+v-for="item in overview\.recentFavorites"[\s\S]*?class="favorite-preview"[\s\S]*?<\/article>/
+      )?.[0] || ''
+    }
+  ]
+
+  for (const article of previewArticles) {
+    assert.ok(article.source, `${article.name} preview article should exist`)
+    assert.match(
+      article.source,
+      /<RouterLink\s+v-if="item\.available"\s+class="card-open-link"/
+    )
+    assert.equal(
+      (article.source.match(/<RouterLink\b/g) || []).length,
+      1,
+      `${article.name} preview should have exactly one conditional detail link`
+    )
+    const unavailableBranch = article.source.match(/<template\s+v-else>[\s\S]*?<\/template>/)?.[0] || ''
+    assert.ok(unavailableBranch, `${article.name} preview needs an explicit unavailable branch`)
+    assert.doesNotMatch(unavailableBranch, /<RouterLink\b/)
   }
 })
 

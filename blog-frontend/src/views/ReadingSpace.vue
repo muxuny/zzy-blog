@@ -52,7 +52,7 @@
                 v-if="overview.lastRead.coverImage"
                 class="last-read-cover"
                 :src="overview.lastRead.coverImage"
-                :alt="overview.lastRead.title"
+                alt=""
               />
               <div class="last-read-copy">
                 <h3 class="last-read-title">{{ overview.lastRead.title }}</h3>
@@ -189,7 +189,7 @@
                   v-if="item.coverImage"
                   class="favorite-cover"
                   :src="item.coverImage"
-                  :alt="item.title"
+                  alt=""
                 />
                 <div class="preview-copy">
                   <h3 class="preview-title">{{ item.title }}</h3>
