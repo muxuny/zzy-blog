@@ -19,6 +19,7 @@ import {
 const historyFiles = {
   page: new URL('../views/ReadingHistory.vue', import.meta.url),
   item: new URL('../components/ReadingHistoryItem.vue', import.meta.url),
+  space: new URL('../views/ReadingSpace.vue', import.meta.url),
   router: new URL('../router/index.js', import.meta.url)
 }
 
@@ -35,9 +36,11 @@ function withoutComments(source) {
 
 const pageSource = withoutComments(readSource(historyFiles.page))
 const itemSource = withoutComments(readSource(historyFiles.item))
+const readingSpaceSource = withoutComments(readSource(historyFiles.space))
 const routerSource = withoutComments(readSource(historyFiles.router))
 const normalizedPageSource = pageSource.replace(/\s+/g, ' ')
 const normalizedItemSource = itemSource.replace(/\s+/g, ' ')
+const normalizedReadingSpaceSource = readingSpaceSource.replace(/\s+/g, ' ')
 
 test('reading history view and item component exist', () => {
   assert.equal(existsSync(historyFiles.page), true, 'ReadingHistory.vue should exist')
@@ -49,6 +52,113 @@ test('reading history route is lazy loaded and protected', () => {
   assert.match(routerSource, /name:\s*['"]ReadingHistory['"]/)
   assert.match(routerSource, /import\(['"]\.\.\/views\/ReadingHistory\.vue['"]\)/)
   assert.match(routerSource, /path:\s*['"]\/reading\/history['"][\s\S]*?meta:\s*\{\s*requiresAuth:\s*true\s*\}/)
+})
+
+test('reading space separates continuation history favorites and discovery', () => {
+  assert.equal(existsSync(historyFiles.space), true, 'ReadingSpace.vue should exist')
+  for (const contract of [
+    'getReadingOverview()',
+    '上次阅读',
+    '最近阅读',
+    '最近收藏',
+    'to="/reading/history"',
+    'to="/favorites"',
+    'to="/"',
+    '发现更多文章'
+  ]) {
+    assert.ok(readingSpaceSource.includes(contract), `Missing reading space contract: ${contract}`)
+  }
+  assert.match(normalizedReadingSpaceSource, /<AppHeader\s*\/?>/)
+  assert.match(readingSpaceSource, /<el-skeleton\b/)
+})
+
+test('reading space guards whole-item links and private snapshots', () => {
+  assert.match(readingSpaceSource, /<article\s+v-if="overview\.lastRead"[^>]*class="last-read"/)
+  assert.match(readingSpaceSource, /v-if="overview\.lastRead\.available"[\s\S]*?class="card-open-link"/)
+  assert.match(readingSpaceSource, /v-if="item\.available"[\s\S]*?class="card-open-link"/)
+  assert.match(readingSpaceSource, /content="该文章暂未公开"/)
+  assert.match(readingSpaceSource, /tabindex="0"/)
+  assert.match(readingSpaceSource, /该文章暂未公开/)
+
+  const previewUnavailableBranches = [
+    ...readingSpaceSource.matchAll(
+      /<template\s+v-else>\s*<div class="preview-copy">[\s\S]*?<\/div>\s*<\/template>/g
+    )
+  ].map(match => match[0])
+  const unavailableBranches = [
+    {
+      name: 'last read',
+      source: readingSpaceSource.match(/<template\s+v-else>\s*<div class="last-read-copy unavailable-copy">[\s\S]*?<\/template>/)?.[0] || '',
+      fieldPattern: /overview\.lastRead\.([A-Za-z][A-Za-z0-9]*)/g,
+      allowedFields: ['lastReadAt', 'title']
+    },
+    {
+      name: 'history',
+      source: previewUnavailableBranches.find(source => source.includes('item.lastReadAt')) || '',
+      fieldPattern: /item\.([A-Za-z][A-Za-z0-9]*)/g,
+      allowedFields: ['lastReadAt', 'title']
+    },
+    {
+      name: 'favorites',
+      source: previewUnavailableBranches.find(source => source.includes('item.favoritedAt')) || '',
+      fieldPattern: /item\.([A-Za-z][A-Za-z0-9]*)/g,
+      allowedFields: ['favoritedAt', 'title']
+    }
+  ]
+  for (const branch of unavailableBranches) {
+    assert.ok(branch.source, `${branch.name} needs an explicit unavailable branch`)
+    assert.match(branch.source, /<el-tooltip\b/)
+    assert.match(branch.source, /tabindex="0"/)
+    assert.match(branch.source, /该文章暂未公开/)
+    assert.doesNotMatch(branch.source, /<RouterLink\b/)
+    const referencedFields = [
+      ...new Set([...branch.source.matchAll(branch.fieldPattern)].map(match => match[1]))
+    ].sort()
+    assert.deepEqual(referencedFields, branch.allowedFields, `${branch.name} may only use snapshot fields`)
+  }
+})
+
+test('reading space normalizes overview and ignores stale or unmounted loads', () => {
+  for (const contract of [
+    'lastRead: null',
+    'recentHistory: []',
+    'historyTotal: 0',
+    'recentFavorites: []',
+    'favoriteTotal: 0'
+  ]) {
+    assert.ok(readingSpaceSource.includes(contract), `Missing overview default: ${contract}`)
+  }
+  assert.match(readingSpaceSource, /const data = result\.data/)
+  assert.match(readingSpaceSource, /Array\.isArray\(data\.recentHistory\)/)
+  assert.match(readingSpaceSource, /Array\.isArray\(data\.recentFavorites\)/)
+  assert.match(readingSpaceSource, /const requestId = \+\+requestVersion/)
+  assert.match(readingSpaceSource, /if \(!componentActive \|\| requestId !== requestVersion\) return null/)
+  assert.match(readingSpaceSource, /onBeforeUnmount\([\s\S]*?componentActive = false[\s\S]*?requestVersion \+= 1/s)
+  assert.match(readingSpaceSource, /error\.response\?\.data\?\.message \|\| error\.message \|\| '我的阅读加载失败，请重试'/)
+  assert.match(readingSpaceSource, /@click="retryLoad"/)
+})
+
+test('reading space keeps previews responsive and focuses only actionable surfaces', () => {
+  assert.match(readingSpaceSource, /\.card-open-link\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0;/s)
+  assert.match(readingSpaceSource, /\.card-open-link:focus-visible\s*\{/)
+  assert.match(readingSpaceSource, /\.last-read \.card-open-link:focus-visible\s*\{[^}]*outline-offset:\s*-3px;/s)
+  assert.match(readingSpaceSource, /\.timeline-dot\s*\{[^}]*pointer-events:\s*none;/s)
+  assert.match(readingSpaceSource, /\.favorite-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/s)
+  assert.match(readingSpaceSource, /overflow-wrap:\s*anywhere;/)
+  assert.match(readingSpaceSource, /@media\s*\(max-width:[^)]+\)[\s\S]*?\.favorite-grid[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\);/s)
+  assert.match(readingSpaceSource, /@media\s*\(prefers-reduced-motion:\s*reduce\)/)
+  assert.match(readingSpaceSource, /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?:deep\(\.el-skeleton\.is-animated \.el-skeleton__item\)[\s\S]*?animation:\s*none;/s)
+  assert.doesNotMatch(readingSpaceSource, /\.(?:preview-title|preview-meta|title-text|last-read-title)[^{]*(?::hover|:focus(?!-visible))/)
+})
+
+test('reading space route is lazy loaded and protected', () => {
+  assert.match(routerSource, /path:\s*['"]\/reading['"]/)
+  assert.match(routerSource, /name:\s*['"]ReadingSpace['"]/)
+  assert.match(routerSource, /import\(['"]\.\.\/views\/ReadingSpace\.vue['"]\)/)
+  assert.match(
+    routerSource,
+    /\{\s*path:\s*['"]\/reading['"],\s*name:\s*['"]ReadingSpace['"],\s*component:\s*\(\)\s*=>\s*import\(['"]\.\.\/views\/ReadingSpace\.vue['"]\),\s*meta:\s*\{\s*requiresAuth:\s*true\s*\}\s*\}/
+  )
 })
 
 test('reading history item exposes a safe whole-item link only for available articles', () => {
