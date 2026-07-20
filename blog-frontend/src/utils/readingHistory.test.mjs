@@ -80,6 +80,8 @@ test('reading history item formats times and isolates the accessible remove acti
   assert.match(itemSource, /item\.readCount/)
   assert.match(normalizedItemSource, /item: \{ type: Object, required: true \}/)
   assert.match(normalizedItemSource, /removing: \{ type: Boolean, default: false \}/)
+  assert.match(normalizedItemSource, /disabled: \{ type: Boolean, default: false \}/)
+  assert.match(itemSource, /:disabled="disabled"/)
   assert.match(itemSource, /defineEmits\(\['remove'\]\)/)
   assert.match(itemSource, /@click\.stop="\$emit\('remove', item\)"/)
   assert.match(itemSource, /title="删除历史"/)
@@ -112,6 +114,16 @@ test('reading history page renders grouped timeline states and pagination', () =
   assert.match(pageSource, /@current-change="handlePageChange"/)
 })
 
+test('reading history empty action avoids nested interaction and routes explicitly', () => {
+  const emptyState = pageSource.match(/<div v-else class="empty-status"[\s\S]*?<\/div>/)?.[0] || ''
+
+  assert.doesNotMatch(emptyState, /<RouterLink\b[\s\S]*?<el-button\b/)
+  assert.match(emptyState, /<el-button[^>]*@click="goDiscover"[^>]*>去发现文章<\/el-button>/)
+  assert.match(pageSource, /import \{ useRouter \} from 'vue-router'/)
+  assert.match(pageSource, /const router = useRouter\(\)/)
+  assert.match(pageSource, /function goDiscover\(\)\s*\{\s*router\.push\('\/'\)\s*\}/)
+})
+
 test('reading history page loads retries and corrects stale paginated responses', () => {
   assert.match(pageSource, /getReadingHistory\(params\)/)
   assert.match(pageSource, /buildReadingHistoryParams\(\{[\s\S]*?page:\s*requestPage,[\s\S]*?size:\s*size\.value/s)
@@ -130,8 +142,11 @@ test('reading history deletion and clear actions are guarded and reload safely',
   assert.match(pageSource, /clearReadingHistory\(\)/)
   assert.match(pageSource, /ElMessageBox\.confirm\([\s\S]*?清空[\s\S]*?阅读历史/s)
   assert.match(pageSource, /ElMessage\.success\('阅读历史已清空'\)/)
-  assert.match(pageSource, /if \(clearing\.value \|\| !componentActive\) return/)
-  assert.match(pageSource, /if \(isRemoving\(item\.articleId\) \|\| !componentActive\) return/)
+  assert.match(pageSource, /async function clearAllHistory\(\)/)
+  assert.match(pageSource, /if \(clearing\.value \|\| removingIds\.value\.size > 0 \|\| !componentActive\) return/)
+  assert.match(pageSource, /if \(clearing\.value \|\| isRemoving\(item\.articleId\) \|\| !componentActive\) return/)
+  assert.match(pageSource, /:disabled="total === 0 \|\| removingIds\.size > 0"/)
+  assert.match(pageSource, /<ReadingHistoryItem[\s\S]*?:disabled="clearing"[\s\S]*?@remove="removeHistory"/)
   assert.match(pageSource, /onBeforeUnmount\([\s\S]*?componentActive = false[\s\S]*?requestVersion \+= 1/s)
 })
 

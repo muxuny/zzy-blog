@@ -17,6 +17,7 @@
       type="danger"
       :icon="Delete"
       :loading="removing"
+      :disabled="disabled"
       title="删除历史"
       aria-label="删除历史"
       @click.stop="$emit('remove', item)"
@@ -71,7 +72,8 @@ import { formatReadingTime } from '../utils/readingHistory'
 
 defineProps({
   item: { type: Object, required: true },
-  removing: { type: Boolean, default: false }
+  removing: { type: Boolean, default: false },
+  disabled: { type: Boolean, default: false }
 })
 
 defineEmits(['remove'])

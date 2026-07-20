@@ -17,8 +17,8 @@
           plain
           :icon="Delete"
           :loading="clearing"
-          :disabled="total <= 0"
-          @click="clearHistory"
+          :disabled="total === 0 || removingIds.size > 0"
+          @click="clearAllHistory"
         >
           清空历史
         </el-button>
@@ -47,6 +47,7 @@
                 <ReadingHistoryItem
                   :item="item"
                   :removing="isRemoving(item.articleId)"
+                  :disabled="clearing"
                   @remove="removeHistory"
                 />
               </div>
@@ -56,9 +57,7 @@
 
         <div v-else class="empty-status" role="status" aria-live="polite">
           <el-empty description="暂无阅读历史">
-            <RouterLink to="/">
-              <el-button type="primary">去发现文章</el-button>
-            </RouterLink>
+            <el-button type="primary" @click="goDiscover">去发现文章</el-button>
           </el-empty>
         </div>
 
@@ -78,6 +77,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Delete, Refresh } from '@element-plus/icons-vue'
 import AppHeader from '../components/AppHeader.vue'
@@ -101,6 +101,7 @@ const loading = ref(false)
 const error = ref('')
 const clearing = ref(false)
 const removingIds = ref(new Set())
+const router = useRouter()
 let componentActive = true
 let requestVersion = 0
 
@@ -157,12 +158,16 @@ function handlePageChange(nextPage) {
   void load()
 }
 
+function goDiscover() {
+  router.push('/')
+}
+
 function isRemoving(articleId) {
   return removingIds.value.has(articleId)
 }
 
 async function removeHistory(item) {
-  if (isRemoving(item.articleId) || !componentActive) return
+  if (clearing.value || isRemoving(item.articleId) || !componentActive) return
   removingIds.value = new Set(removingIds.value).add(item.articleId)
 
   try {
@@ -186,8 +191,8 @@ async function removeHistory(item) {
   }
 }
 
-async function clearHistory() {
-  if (clearing.value || !componentActive) return
+async function clearAllHistory() {
+  if (clearing.value || removingIds.value.size > 0 || !componentActive) return
   clearing.value = true
 
   try {
