@@ -1,4 +1,4 @@
-import request from './request'
+import request from './request.js'
 
 export const getReadingOverview = () => request.get('/my/reading/overview')
 export const getReadingHistory = params => request.get('/my/reading/history', { params })

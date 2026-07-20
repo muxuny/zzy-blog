@@ -1,6 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import request from '../api/request.js'
+import {
+  clearReadingHistory,
+  deleteReadingHistory,
+  getReadingHistory,
+  getReadingOverview
+} from '../api/reading.js'
 import {
   buildReadingHistoryParams,
   formatReadingTime,
@@ -9,31 +15,51 @@ import {
   getPageAfterHistoryDeletion
 } from './readingHistory.js'
 
-const readingApiSource = readFileSync(new URL('../api/reading.js', import.meta.url), 'utf8')
+test('reading API wrappers execute the expected requests', async () => {
+  const capturedConfigs = []
+  const originalAdapter = request.defaults.adapter
+  const originalLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
 
-const readingApiContracts = [
-  "export const getReadingOverview = () => request.get('/my/reading/overview')",
-  "export const getReadingHistory = params => request.get('/my/reading/history', { params })",
-  "export const deleteReadingHistory = articleId => request.delete(`/my/reading/history/${articleId}`)",
-  "export const clearReadingHistory = () => request.delete('/my/reading/history')"
-]
-
-function assertReadingApiContract(source) {
-  const normalizedSource = source.replace(/\s+/g, ' ').trim()
-  for (const contract of readingApiContracts) {
-    assert.ok(normalizedSource.includes(contract), `Missing API contract: ${contract}`)
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: () => null,
+      removeItem: () => {},
+      setItem: () => {},
+      clear: () => {}
+    }
+  })
+  request.defaults.adapter = async config => {
+    capturedConfigs.push(config)
+    return {
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config,
+      data: { code: 200, message: 'success', data: null }
+    }
   }
-}
 
-test('reading API contract detects missing wrappers', () => {
-  assert.throws(
-    () => assertReadingApiContract("import request from './request'"),
-    /Missing API contract/
-  )
-})
+  try {
+    await getReadingOverview()
+    await getReadingHistory({ page: 2, size: 10 })
+    await deleteReadingHistory('758902345678901401')
+    await clearReadingHistory()
 
-test('reading API wrappers preserve methods paths and params', () => {
-  assertReadingApiContract(readingApiSource)
+    assert.deepEqual(capturedConfigs.map(({ method, url, params }) => ({ method, url, params })), [
+      { method: 'get', url: '/my/reading/overview', params: undefined },
+      { method: 'get', url: '/my/reading/history', params: { page: 2, size: 10 } },
+      { method: 'delete', url: '/my/reading/history/758902345678901401', params: undefined },
+      { method: 'delete', url: '/my/reading/history', params: undefined }
+    ])
+  } finally {
+    request.defaults.adapter = originalAdapter
+    if (originalLocalStorage) {
+      Object.defineProperty(globalThis, 'localStorage', originalLocalStorage)
+    } else {
+      delete globalThis.localStorage
+    }
+  }
 })
 
 test('reading history params normalize numeric and numeric-string inputs', () => {
