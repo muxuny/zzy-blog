@@ -7,7 +7,8 @@ function localDaySerial(date) {
   return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000
 }
 
-export function buildReadingHistoryParams({ page = 1, size = 10 } = {}) {
+export function buildReadingHistoryParams(options = {}) {
+  const { page = 1, size = 10 } = options ?? {}
   const normalizedPage = normalizePositiveInteger(page, 1)
   const normalizedSize = normalizePositiveInteger(size, 10)
 

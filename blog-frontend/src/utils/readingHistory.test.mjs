@@ -41,6 +41,10 @@ test('reading history params normalize numeric and numeric-string inputs', () =>
   assert.deepEqual(buildReadingHistoryParams({ page: '3', size: '50' }), { page: 3, size: 50 })
 })
 
+test('reading history params use defaults for null options', () => {
+  assert.deepEqual(buildReadingHistoryParams(null), { page: 1, size: 10 })
+})
+
 test('reading history params replace invalid page inputs with defaults', () => {
   for (const page of [0, -1, 1.5, Number.NaN, null]) {
     assert.deepEqual(buildReadingHistoryParams({ page, size: 10 }), { page: 1, size: 10 })
