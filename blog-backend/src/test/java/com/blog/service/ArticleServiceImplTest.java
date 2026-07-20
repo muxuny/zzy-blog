@@ -14,6 +14,7 @@ import com.blog.entity.Article;
 import com.blog.entity.ArticleGroup;
 import com.blog.entity.ArticleGroupRelation;
 import com.blog.entity.ArticleTag;
+import com.blog.entity.Tag;
 import com.blog.entity.User;
 import com.blog.mapper.ArticleGroupMapper;
 import com.blog.mapper.ArticleGroupRelationMapper;
@@ -43,6 +44,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -171,6 +173,43 @@ class ArticleServiceImplTest {
         List<Article> summaries = articleService.getPublicArticleSummaries(Arrays.asList(1L, 2L, 3L));
 
         assertThat(summaries).extracting(Article::getId).containsExactly(1L);
+    }
+
+    @Test
+    void getPublicArticleSummaries_shouldBatchTagsAndAuthorsForAllSummaries() {
+        ArticleTagMapper articleTagMapper = mock(ArticleTagMapper.class);
+        TagMapper tagMapper = mock(TagMapper.class);
+        UserService userService = mock(UserService.class);
+        ArticleServiceImpl summaryService = new TestArticleService(articleTagMapper, tagMapper, userService,
+                mock(ArticleGroupMapper.class), mock(ArticleGroupRelationMapper.class));
+        Article first = article(1L, "alice", ArticleStatus.PUBLISHED);
+        first.setTitle("First");
+        Article second = article(2L, "bob", ArticleStatus.PUBLISHED);
+        second.setTitle("Second");
+        ((TestArticleService) summaryService).put(first);
+        ((TestArticleService) summaryService).put(second);
+        when(articleTagMapper.selectList(any())).thenReturn(Arrays.asList(
+                articleTag(1L, 10L), articleTag(1L, 11L), articleTag(2L, 11L)));
+        when(tagMapper.selectBatchIds(any())).thenReturn(Arrays.asList(
+                tag(10L, "Java"), tag(11L, "Spring")));
+        when(userService.list(any())).thenReturn(Arrays.asList(
+                user("alice", "Alice"), user("bob", "Bob")));
+
+        List<Article> summaries = summaryService.getPublicArticleSummaries(Arrays.asList(1L, 2L));
+
+        verify(articleTagMapper, times(1)).selectList(any());
+        verify(tagMapper, times(1)).selectBatchIds(any());
+        verify(userService, times(1)).list(any());
+        verify(userService, never()).getOne(any(Wrapper.class));
+        assertThat(summaries).extracting(Article::getId).containsExactlyInAnyOrder(1L, 2L);
+        assertThat(summaries.stream().filter(article -> article.getId().equals(1L)).findFirst().get().getTags())
+                .extracting(Tag::getName).containsExactly("Java", "Spring");
+        assertThat(summaries.stream().filter(article -> article.getId().equals(2L)).findFirst().get().getTags())
+                .extracting(Tag::getName).containsExactly("Spring");
+        assertThat(summaries.stream().filter(article -> article.getId().equals(1L)).findFirst().get()
+                .getAuthorName()).isEqualTo("Alice");
+        assertThat(summaries.stream().filter(article -> article.getId().equals(2L)).findFirst().get()
+                .getAuthorName()).isEqualTo("Bob");
     }
 
     @Test
@@ -548,6 +587,27 @@ class ArticleServiceImplTest {
         return group;
     }
 
+    private static ArticleTag articleTag(Long articleId, Long tagId) {
+        ArticleTag articleTag = new ArticleTag();
+        articleTag.setArticleId(articleId);
+        articleTag.setTagId(tagId);
+        return articleTag;
+    }
+
+    private static Tag tag(Long id, String name) {
+        Tag tag = new Tag();
+        tag.setId(id);
+        tag.setName(name);
+        return tag;
+    }
+
+    private static User user(String username, String nickname) {
+        User user = new User();
+        user.setUsername(username);
+        user.setNickname(nickname);
+        return user;
+    }
+
     private static class TestArticleService extends ArticleServiceImpl {
         private final Map<Long, Article> articles = new HashMap<>();
         private final List<ArticleTag> articleTags = new ArrayList<>();
@@ -675,6 +735,11 @@ class ArticleServiceImplTest {
                     .filter(article -> ArticleVisibility.isPublic(article.getVisibility()))
                     .filter(article -> article.getDeleted() == null || article.getDeleted() == 0)
                     .collect(Collectors.toList());
+        }
+
+        @Override
+        protected List<Article> listPublicArticleSummariesByIds(Collection<Long> articleIds) {
+            return listPublicArticlesByIds(articleIds);
         }
 
         @Override

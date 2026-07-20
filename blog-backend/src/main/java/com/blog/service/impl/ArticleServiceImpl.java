@@ -33,6 +33,7 @@ import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -105,8 +106,8 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     @Override
     public List<Article> getPublicArticleSummaries(Collection<Long> articleIds) {
-        List<Article> articles = listPublicArticlesByIds(articleIds);
-        articles.forEach(this::attachTagsAndAuthor);
+        List<Article> articles = listPublicArticleSummariesByIds(articleIds);
+        attachTagsAndAuthors(articles);
         return articles;
     }
 
@@ -535,6 +536,21 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
                         .isNull(Article::getVisibility)));
     }
 
+    protected List<Article> listPublicArticleSummariesByIds(Collection<Long> articleIds) {
+        if (articleIds == null || articleIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return list(new LambdaQueryWrapper<Article>()
+                .select(Article::getId, Article::getTitle, Article::getSummary, Article::getCoverImage,
+                        Article::getCreatedBy, Article::getCreatedAt, Article::getViewCount)
+                .in(Article::getId, articleIds)
+                .eq(Article::getStatus, ArticleStatus.PUBLISHED)
+                .and(wrapper -> wrapper
+                        .eq(Article::getVisibility, ArticleVisibility.PUBLIC)
+                        .or()
+                        .isNull(Article::getVisibility)));
+    }
+
     // 创作者分组过滤查询
     protected IPage<Article> selectMyArticlePage(Page<Article> page,
                                                  ArticlePageQuery query,
@@ -721,6 +737,72 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
             User user = userService.getOne(
                     new LambdaQueryWrapper<User>()
                             .eq(User::getUsername, article.getCreatedBy()));
+            if (user != null) {
+                article.setAuthorName(user.getNickname());
+            }
+        }
+    }
+
+    private void attachTagsAndAuthors(List<Article> articles) {
+        if (articles == null || articles.isEmpty()) {
+            return;
+        }
+        List<Long> articleIds = articles.stream()
+                .map(Article::getId)
+                .filter(id -> id != null)
+                .distinct()
+                .collect(Collectors.toList());
+        if (articleIds.isEmpty()) {
+            return;
+        }
+
+        List<ArticleTag> articleTags = articleTagMapper.selectList(new LambdaQueryWrapper<ArticleTag>()
+                .in(ArticleTag::getArticleId, articleIds));
+        Map<Long, List<Long>> tagIdsByArticleId = Collections.emptyMap();
+        if (articleTags != null && !articleTags.isEmpty()) {
+            tagIdsByArticleId = articleTags.stream()
+                    .filter(articleTag -> articleTag.getArticleId() != null
+                            && articleTag.getTagId() != null)
+                    .collect(Collectors.groupingBy(ArticleTag::getArticleId,
+                            Collectors.mapping(ArticleTag::getTagId, Collectors.toList())));
+            List<Long> tagIds = tagIdsByArticleId.values().stream()
+                    .flatMap(Collection::stream)
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (!tagIds.isEmpty()) {
+                List<Tag> tags = tagMapper.selectBatchIds(tagIds);
+                Map<Long, Tag> tagsById = tags == null ? Collections.emptyMap() : tags.stream()
+                        .filter(tag -> tag.getId() != null)
+                        .collect(Collectors.toMap(Tag::getId, Function.identity(),
+                                (first, ignored) -> first));
+                for (Article article : articles) {
+                    List<Long> articleTagIds = tagIdsByArticleId.get(article.getId());
+                    if (articleTagIds != null) {
+                        article.setTags(articleTagIds.stream()
+                                .map(tagsById::get)
+                                .filter(tag -> tag != null)
+                                .collect(Collectors.toList()));
+                    }
+                }
+            }
+        }
+
+        List<String> usernames = articles.stream()
+                .map(Article::getCreatedBy)
+                .filter(username -> username != null)
+                .distinct()
+                .collect(Collectors.toList());
+        if (usernames.isEmpty()) {
+            return;
+        }
+        List<User> users = userService.list(new LambdaQueryWrapper<User>()
+                .in(User::getUsername, usernames));
+        Map<String, User> usersByUsername = users == null ? Collections.emptyMap() : users.stream()
+                .filter(user -> user.getUsername() != null)
+                .collect(Collectors.toMap(User::getUsername, Function.identity(),
+                        (first, ignored) -> first));
+        for (Article article : articles) {
+            User user = usersByUsername.get(article.getCreatedBy());
             if (user != null) {
                 article.setAuthorName(user.getNickname());
             }
