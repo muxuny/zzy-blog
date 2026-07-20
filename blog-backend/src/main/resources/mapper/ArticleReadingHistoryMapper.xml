@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.blog.mapper.ArticleReadingHistoryMapper">
+    <insert id="upsertHistory">
+        INSERT INTO article_reading_history
+            (id, user_id, article_id, title_snapshot, first_read_at, last_read_at, read_count,
+             created_by, created_at, updated_by, updated_at, deleted, version)
+        VALUES
+            (#{id}, #{userId}, #{articleId}, #{titleSnapshot}, #{now}, #{now}, 1,
+             #{username}, #{now}, #{username}, #{now}, 0, 0)
+        ON DUPLICATE KEY UPDATE
+            title_snapshot = VALUES(title_snapshot),
+            first_read_at = IF(deleted = 1, VALUES(first_read_at), first_read_at),
+            last_read_at = VALUES(last_read_at),
+            read_count = IF(deleted = 1, 1, read_count + 1),
+            updated_by = VALUES(updated_by),
+            updated_at = VALUES(updated_at),
+            version = version + 1,
+            deleted = 0
+    </insert>
+
+    <select id="selectHistoryPage" resultType="com.blog.dto.ReadingHistoryRelationRow">
+        SELECT h.id AS history_id,
+               h.article_id,
+               h.title_snapshot,
+               h.first_read_at,
+               h.last_read_at,
+               h.read_count,
+               CASE WHEN a.id IS NOT NULL
+                         AND a.deleted = 0
+                         AND a.status = 'published'
+                         AND (a.visibility = 'public' OR a.visibility IS NULL)
+                    THEN 1 ELSE 0 END AS available
+        FROM article_reading_history h
+        LEFT JOIN article a ON a.id = h.article_id
+        WHERE h.user_id = #{userId}
+          AND h.deleted = 0
+        ORDER BY h.last_read_at DESC, h.id DESC
+    </select>
+
+    <select id="selectLastAvailable" resultType="com.blog.dto.ReadingHistoryRelationRow">
+        SELECT h.id AS history_id,
+               h.article_id,
+               h.title_snapshot,
+               h.first_read_at,
+               h.last_read_at,
+               h.read_count,
+               1 AS available
+        FROM article_reading_history h
+        INNER JOIN article a ON a.id = h.article_id
+        WHERE h.user_id = #{userId}
+          AND h.deleted = 0
+          AND a.id IS NOT NULL
+          AND a.deleted = 0
+          AND a.status = 'published'
+          AND (a.visibility = 'public' OR a.visibility IS NULL)
+        ORDER BY h.last_read_at DESC, h.id DESC
+        LIMIT 1
+    </select>
+
+    <update id="deleteHistory">
+        UPDATE article_reading_history
+        SET deleted = 1,
+            updated_by = #{username},
+            updated_at = #{now},
+            version = version + 1
+        WHERE user_id = #{userId}
+          AND article_id = #{articleId}
+          AND deleted = 0
+    </update>
+
+    <update id="clearHistory">
+        UPDATE article_reading_history
+        SET deleted = 1,
+            updated_by = #{username},
+            updated_at = #{now},
+            version = version + 1
+        WHERE user_id = #{userId}
+          AND deleted = 0
+    </update>
+</mapper>

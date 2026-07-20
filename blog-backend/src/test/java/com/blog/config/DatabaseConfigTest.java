@@ -195,6 +195,103 @@ class DatabaseConfigTest {
                 "Favorite page ordering must be stable and newest-first");
     }
 
+    @Test
+    void readingHistorySchemaIncludesBusinessAndCommonFields() throws IOException {
+        String migration = readString(Paths.get(
+                "src/main/resources/db/migration/2026-07-20-新增文章阅读历史.sql"));
+        String initSql = readString(Paths.get("src/main/resources/db/init.sql"));
+        String migrationDefinition = normalizeSql(extractReadingHistoryTableDefinition(migration, "migration"));
+        String initDefinition = normalizeSql(extractReadingHistoryTableDefinition(initSql, "init.sql"));
+
+        assertEquals(migrationDefinition, initDefinition,
+                "init.sql and migration must use the same article_reading_history table definition");
+        for (String columnDefinition : Arrays.asList(
+                "`id` bigint not null comment '雪花id',",
+                "`user_id` bigint not null comment '阅读用户id',",
+                "`article_id` bigint not null comment '文章id',",
+                "`title_snapshot` varchar(200) not null comment '最近阅读时公开标题快照',",
+                "`first_read_at` datetime not null comment '首次阅读时间',",
+                "`last_read_at` datetime not null comment '最近阅读时间',",
+                "`read_count` int not null default 1 comment '阅读次数',",
+                "`created_by` varchar(50) default null comment '创建人',",
+                "`created_at` datetime default null comment '创建时间',",
+                "`updated_by` varchar(50) default null comment '更新人',",
+                "`updated_at` datetime default null comment '更新时间',",
+                "`deleted` tinyint(1) not null default 0 comment '逻辑删除：0未删除，1已删除',",
+                "`version` int not null default 0 comment '乐观锁版本号',")) {
+            assertTrue(migrationDefinition.contains(columnDefinition),
+                    "Missing reading history column definition " + columnDefinition);
+        }
+        assertTrue(migrationDefinition.contains("primary key (`id`)"));
+        assertTrue(migrationDefinition.contains(
+                "unique key `uk_article_reading_history_user_article` (`user_id`, `article_id`)"));
+        assertTrue(migrationDefinition.contains(
+                "key `idx_article_reading_history_user_last` (`user_id`, `deleted`, `last_read_at`)"));
+        assertTrue(migrationDefinition.contains(
+                "key `idx_article_reading_history_article` (`article_id`, `deleted`)"));
+        assertTrue(migrationDefinition.contains(
+                "constraint `fk_article_reading_history_user` foreign key (`user_id`) references `user` (`id`) "
+                        + "on delete cascade on update cascade"));
+        assertTrue(migrationDefinition.contains(
+                "constraint `fk_article_reading_history_article` foreign key (`article_id`) references `article` (`id`) "
+                        + "on delete cascade on update cascade"));
+
+        String normalizedMigration = normalizeSql(migration);
+        assertTrue(!normalizedMigration.contains("drop table"));
+        assertTrue(!normalizedMigration.contains("delete from"));
+    }
+
+    @Test
+    void readingHistoryMapperUsesAtomicRecordAndScopedDeleteContract() throws IOException {
+        String xml = readString(Paths.get("src/main/resources/mapper/ArticleReadingHistoryMapper.xml"));
+        String upsert = extractMapperStatement(xml, "insert", "upsertHistory");
+
+        assertTrue(upsert.contains(normalizeWhitespace("title_snapshot = VALUES(title_snapshot)")));
+        assertTrue(upsert.contains(normalizeWhitespace(
+                "first_read_at = IF(deleted = 1, VALUES(first_read_at), first_read_at)")));
+        assertTrue(upsert.contains(normalizeWhitespace("last_read_at = VALUES(last_read_at)")));
+        assertTrue(upsert.contains(normalizeWhitespace(
+                "read_count = IF(deleted = 1, 1, read_count + 1)")));
+        assertTrue(upsert.contains(normalizeWhitespace("version = version + 1")));
+        assertTrue(upsert.contains(normalizeWhitespace("deleted = 0")));
+        assertEquals(normalizeWhitespace(
+                "UPDATE article_reading_history SET deleted = 1, updated_by = #{username}, "
+                        + "updated_at = #{now}, version = version + 1 "
+                        + "WHERE user_id = #{userId} AND article_id = #{articleId} AND deleted = 0"),
+                extractMapperStatement(xml, "update", "deleteHistory"));
+        assertEquals(normalizeWhitespace(
+                "UPDATE article_reading_history SET deleted = 1, updated_by = #{username}, "
+                        + "updated_at = #{now}, version = version + 1 "
+                        + "WHERE user_id = #{userId} AND deleted = 0"),
+                extractMapperStatement(xml, "update", "clearHistory"));
+    }
+
+    @Test
+    void readingHistoryMapperQueriesPreserveVisibilityAndOrderingContract() throws IOException {
+        String xml = readString(Paths.get("src/main/resources/mapper/ArticleReadingHistoryMapper.xml"));
+        String pageQuery = extractMapperStatement(xml, "select", "selectHistoryPage");
+        String lastAvailableQuery = extractMapperStatement(xml, "select", "selectLastAvailable");
+        String visibility = normalizeWhitespace(
+                "a.id IS NOT NULL AND a.deleted = 0 AND a.status = 'published' "
+                        + "AND (a.visibility = 'public' OR a.visibility IS NULL)");
+
+        assertTrue(pageQuery.contains(normalizeWhitespace(
+                "WHERE h.user_id = #{userId} AND h.deleted = 0")),
+                "History page must only include the current user's active history");
+        assertTrue(pageQuery.contains(visibility),
+                "History page availability must only recognize public published articles");
+        assertTrue(pageQuery.contains("ORDER BY h.last_read_at DESC, h.id DESC"),
+                "History page ordering must be stable and most-recent-first");
+        assertTrue(lastAvailableQuery.contains(normalizeWhitespace(
+                "FROM article_reading_history h INNER JOIN article a ON a.id = h.article_id")),
+                "Last available history must join the current article");
+        assertTrue(lastAvailableQuery.contains(normalizeWhitespace(
+                "WHERE h.user_id = #{userId} AND h.deleted = 0 AND " + visibility)),
+                "Last available history must use the same public visibility rule");
+        assertTrue(lastAvailableQuery.contains("ORDER BY h.last_read_at DESC, h.id DESC"));
+        assertTrue(lastAvailableQuery.contains("LIMIT 1"));
+    }
+
     private static String extractMapperStatement(String xml, String element, String id) {
         String withoutComments = xml.replaceAll("(?s)<!--.*?-->", "");
         Pattern pattern = Pattern.compile(
@@ -221,6 +318,18 @@ class DatabaseConfigTest {
         Matcher matcher = pattern.matcher(sql);
         assertTrue(matcher.find(),
                 "Expected to find complete article_favorite CREATE TABLE block in " + source);
+        return matcher.group();
+    }
+
+    private static String extractReadingHistoryTableDefinition(String sql, String source) {
+        Pattern pattern = Pattern.compile(
+                "CREATE\\s+TABLE\\s+IF\\s+NOT\\s+EXISTS\\s+`article_reading_history`\\s*"
+                        + "\\(.*?\\)\\s*ENGINE\\s*=\\s*InnoDB\\s+DEFAULT\\s+CHARSET\\s*=\\s*utf8mb4\\s+"
+                        + "COLLATE\\s*=\\s*utf8mb4_unicode_ci\\s+COMMENT\\s*=\\s*'文章阅读历史表'\\s*;",
+                Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+        Matcher matcher = pattern.matcher(sql);
+        assertTrue(matcher.find(),
+                "Expected to find complete article_reading_history CREATE TABLE block in " + source);
         return matcher.group();
     }
 
