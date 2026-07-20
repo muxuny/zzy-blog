@@ -12,6 +12,7 @@ import com.blog.service.impl.ReadingSpaceServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -37,6 +38,16 @@ class ReadingSpaceServiceImplTest {
         favoriteService = mock(FavoriteService.class);
         userService = mock(UserService.class);
         readingSpaceService = new ReadingSpaceServiceImpl(historyService, favoriteService, userService);
+    }
+
+    @Test
+    void getOverview_shouldUseReadOnlyTransaction() throws NoSuchMethodException {
+        Transactional transactional = ReadingSpaceServiceImpl.class
+                .getMethod("getOverview", String.class)
+                .getAnnotation(Transactional.class);
+
+        assertThat(transactional).isNotNull();
+        assertThat(transactional.readOnly()).isTrue();
     }
 
     @Test

@@ -11,6 +11,7 @@ import com.blog.service.ReadingHistoryService;
 import com.blog.service.ReadingSpaceService;
 import com.blog.service.UserService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ReadingSpaceServiceImpl implements ReadingSpaceService {
@@ -27,6 +28,7 @@ public class ReadingSpaceServiceImpl implements ReadingSpaceService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ReadingOverview getOverview(String username) {
         User user = userService.getCurrentUser(username);
         if (user == null) {
