@@ -6,10 +6,12 @@ import {
   clearReadingHistory,
   deleteReadingHistory,
   getReadingHistory,
-  getReadingOverview
+  getReadingOverview,
+  saveReadingPosition
 } from '../api/reading.js'
 import {
   buildReadingHistoryParams,
+  formatReadingProgress,
   formatReadingTime,
   getReadingHistoryGroupKey,
   groupReadingHistory,
@@ -464,12 +466,18 @@ test('reading API wrappers execute the expected requests', async () => {
     await getReadingOverview()
     await getReadingHistory({ page: 2, size: 10 })
     await deleteReadingHistory('758902345678901401')
+    await saveReadingPosition('758902345678901401', {
+      progressPercent: 42,
+      scrollY: 3810,
+      articleUpdatedAt: '2026-07-21T16:40:00'
+    })
     await clearReadingHistory()
 
     assert.deepEqual(capturedConfigs.map(({ method, url, params }) => ({ method, url, params })), [
       { method: 'get', url: '/my/reading/overview', params: undefined },
       { method: 'get', url: '/my/reading/history', params: { page: 2, size: 10 } },
       { method: 'delete', url: '/my/reading/history/758902345678901401', params: undefined },
+      { method: 'put', url: '/my/reading/history/758902345678901401/position', params: undefined },
       { method: 'delete', url: '/my/reading/history', params: undefined }
     ])
   } finally {
@@ -514,6 +522,14 @@ test('format reading time returns empty text for invalid nullish and empty value
   for (const value of ['invalid', null, undefined, '']) {
     assert.equal(formatReadingTime(value), '')
   }
+})
+
+test('format reading progress returns compact Chinese progress text', () => {
+  assert.equal(formatReadingProgress(42), '读到 42%')
+  assert.equal(formatReadingProgress('42.8'), '读到 43%')
+  assert.equal(formatReadingProgress(-1), '')
+  assert.equal(formatReadingProgress(101), '')
+  assert.equal(formatReadingProgress(null), '')
 })
 
 test('reading history group key handles local day boundaries', () => {
