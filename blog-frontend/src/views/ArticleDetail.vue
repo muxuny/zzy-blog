@@ -29,6 +29,20 @@
             <div v-if="articleTags.length" class="article-tags">
               <el-tag v-for="tag in articleTags" :key="tag.id" size="small">{{ tag.name }}</el-tag>
             </div>
+            <div class="favorite-action">
+              <el-button
+                class="favorite-button"
+                :loading="favoriteLoading"
+                :aria-pressed="favorited"
+                @click="handleFavorite"
+              >
+                <el-icon>
+                  <StarFilled v-if="favorited" />
+                  <Star v-else />
+                </el-icon>
+                <span>{{ favorited ? '已收藏' : '收藏' }}</span>
+              </el-button>
+            </div>
           </div>
           <figure v-if="article.coverImage" class="article-cover">
             <img :src="article.coverImage" :alt="article.title" />
@@ -155,26 +169,43 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, Top } from '@element-plus/icons-vue'
+import { ArrowLeft, Star, StarFilled, Top } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { getArticle, getArticleNeighbors, getRelatedArticles } from '../api/article'
+import { favoriteArticle, unfavoriteArticle, getFavoriteStatus } from '../api/favorite'
+import { useAuthStore } from '../stores/auth'
 import { formatDate } from '../utils'
+import {
+  buildFavoriteLoginRedirect,
+  canConsumeFavoriteIntent,
+  clearFavoriteIntentQuery,
+  hasFavoriteIntent,
+  isFavoriteRequestContextCurrent
+} from '../utils/favorite'
 import { shouldUseHistoryBack } from '../utils/navigation'
 import { extractMarkdownToc, getReadingStats } from '../utils/reading'
 import { getActiveHeadingId, getScrollTopForVisibleItem } from '../utils/scrollSpy'
 import AppHeader from '../components/AppHeader.vue'
 import MarkdownRenderer from '../components/MarkdownRenderer.vue'
 
+const favoriteRequestConfig = { skipAuthRedirect: true }
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 const article = ref(null)
 const loading = ref(true)
 const errorMessage = ref('')
+const favorited = ref(false)
+const favoriteLoading = ref(false)
 const neighbors = ref({ previous: null, next: null })
 const relatedArticles = ref([])
 const activeHeadingId = ref('')
 const showBackToTop = ref(false)
 const loadToken = ref(0)
 const tocPanelRef = ref(null)
+let componentActive = true
+let favoriteStateVersion = 0
+let favoriteOperationId = 0
 
 const articleTags = computed(() => article.value?.tags || [])
 const authorName = computed(() => article.value?.authorName || article.value?.createdBy || '匿名作者')
@@ -190,6 +221,10 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  componentActive = false
+  loadToken.value += 1
+  favoriteStateVersion += 1
+  favoriteOperationId += 1
   window.removeEventListener('scroll', updateScrollState)
 })
 
@@ -198,11 +233,24 @@ watch(() => route.params.id, () => {
   loadArticle()
 })
 
+watch(() => authStore.token, authToken => {
+  favoriteStateVersion += 1
+  favoriteOperationId += 1
+  favoriteLoading.value = false
+  favorited.value = false
+  if (!componentActive || !article.value || !authToken) return
+  void initializeFavorite(article.value.id, loadToken.value).catch(() => {})
+})
+
 async function loadArticle() {
   const token = ++loadToken.value
+  favoriteStateVersion += 1
+  favoriteOperationId += 1
+  favoriteLoading.value = false
   loading.value = true
   errorMessage.value = ''
   article.value = null
+  favorited.value = false
   neighbors.value = { previous: null, next: null }
   relatedArticles.value = []
   activeHeadingId.value = ''
@@ -210,6 +258,7 @@ async function loadArticle() {
     const r = await getArticle(route.params.id)
     if (token !== loadToken.value) return
     article.value = r.data
+    void initializeFavorite(r.data.id, token).catch(() => {})
     await nextTick()
     updateScrollState()
     loadContinuationData(r.data.id, token)
@@ -218,6 +267,130 @@ async function loadArticle() {
     errorMessage.value = '文章不存在或暂不可见'
   } finally {
     if (token === loadToken.value) loading.value = false
+  }
+}
+
+function isCurrentFavoriteRequest(articleId, token, stateVersion, requestAuthToken) {
+  return isFavoriteRequestContextCurrent({
+    componentActive,
+    requestArticleId: articleId,
+    currentArticleId: article.value?.id,
+    requestLoadToken: token,
+    currentLoadToken: loadToken.value,
+    requestStateVersion: stateVersion,
+    currentStateVersion: favoriteStateVersion,
+    requestAuthToken,
+    currentAuthToken: localStorage.getItem('token')
+  })
+}
+
+async function loadFavoriteState(articleId, token) {
+  const stateVersion = favoriteStateVersion
+  const requestAuthToken = localStorage.getItem('token')
+  if (!authStore.isLoggedIn || !requestAuthToken) {
+    if (componentActive && token === loadToken.value && article.value?.id === articleId) {
+      favorited.value = false
+    }
+    return
+  }
+  try {
+    const result = await getFavoriteStatus(articleId, favoriteRequestConfig)
+    if (!isCurrentFavoriteRequest(articleId, token, stateVersion, requestAuthToken)) return
+    favorited.value = !!result.data?.favorited
+  } catch (error) {
+    if (!isCurrentFavoriteRequest(articleId, token, stateVersion, requestAuthToken)) return
+    favorited.value = false
+    if (error.response?.status === 401) authStore.logout()
+  }
+}
+
+async function setFavorite(articleId, nextValue, token = loadToken.value) {
+  if (favoriteLoading.value || !componentActive) return false
+  const requestAuthToken = localStorage.getItem('token')
+  if (!requestAuthToken) return false
+  const stateVersion = ++favoriteStateVersion
+  const operationId = ++favoriteOperationId
+  favoriteLoading.value = true
+  try {
+    if (nextValue) await favoriteArticle(articleId, favoriteRequestConfig)
+    else await unfavoriteArticle(articleId, favoriteRequestConfig)
+    if (!isCurrentFavoriteRequest(articleId, token, stateVersion, requestAuthToken)) return false
+    favorited.value = nextValue
+    ElMessage.success(nextValue ? '已收藏' : '已取消收藏')
+    return true
+  } catch (error) {
+    if (
+      error.response?.status === 401 &&
+      isCurrentFavoriteRequest(articleId, token, stateVersion, requestAuthToken)
+    ) {
+      authStore.logout()
+      await navigateToFavoriteLogin(articleId, nextValue)
+    }
+    return false
+  } finally {
+    if (operationId === favoriteOperationId) favoriteLoading.value = false
+  }
+}
+
+async function navigateToFavoriteLogin(articleId, nextValue = true) {
+  try {
+    await router.replace({
+      path: '/login',
+      query: { redirect: buildFavoriteLoginRedirect(articleId, nextValue) }
+    })
+  } catch {
+    // The current page remains usable when a navigation guard rejects the redirect.
+  }
+}
+
+async function handleFavorite() {
+  if (!article.value) return
+  if (!authStore.isLoggedIn) {
+    await navigateToFavoriteLogin(article.value.id)
+    return
+  }
+  await setFavorite(article.value.id, !favorited.value)
+}
+
+async function initializeFavorite(articleId, token) {
+  if (!authStore.isLoggedIn || token !== loadToken.value) return
+  if (hasFavoriteIntent(route.query)) {
+    const intentAuthToken = localStorage.getItem('token')
+    if (!intentAuthToken) return
+    const intentFullPath = route.fullPath
+    const intentPath = route.path
+    const intentArticleId = articleId
+    try {
+      await setFavorite(articleId, true, token)
+    } finally {
+      if (canConsumeFavoriteIntent({
+        componentActive,
+        intentArticleId,
+        currentArticleId: article.value?.id,
+        intentLoadToken: token,
+        currentLoadToken: loadToken.value,
+        intentFullPath,
+        currentFullPath: route.fullPath,
+        intentPath,
+        currentPath: route.path,
+        browserPathname: typeof window === 'undefined' ? '' : window.location.pathname,
+        intentAuthToken,
+        currentAuthToken: localStorage.getItem('token'),
+        hasIntent: hasFavoriteIntent(route.query)
+      })) {
+        await replaceFavoriteIntentQuery(clearFavoriteIntentQuery(route.query))
+      }
+    }
+    return
+  }
+  await loadFavoriteState(articleId, token)
+}
+
+async function replaceFavoriteIntentQuery(query) {
+  try {
+    await router.replace({ query })
+  } catch {
+    // Keep the current intent so a later initialization can retry it.
   }
 }
 
@@ -428,6 +601,19 @@ function scrollToTop(smooth = true) {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 18px;
+}
+
+.favorite-action {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  margin-top: 18px;
+}
+
+.favorite-button {
+  width: 112px;
+  height: 40px;
+  flex: 0 0 auto;
 }
 
 .article-cover {

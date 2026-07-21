@@ -1,6 +1,9 @@
 package com.blog.service;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.blog.common.ArticleStatus;
 import com.blog.common.ArticleVisibility;
 import com.blog.common.BusinessException;
@@ -11,14 +14,20 @@ import com.blog.entity.Article;
 import com.blog.entity.ArticleGroup;
 import com.blog.entity.ArticleGroupRelation;
 import com.blog.entity.ArticleTag;
+import com.blog.entity.Tag;
 import com.blog.entity.User;
 import com.blog.mapper.ArticleGroupMapper;
 import com.blog.mapper.ArticleGroupRelationMapper;
+import com.blog.mapper.ArticleMapper;
 import com.blog.mapper.ArticleTagMapper;
 import com.blog.mapper.TagMapper;
 import com.blog.service.impl.ArticleServiceImpl;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.beans.BeanUtils;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -35,6 +44,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ArticleServiceImplTest {
@@ -52,6 +64,54 @@ class ArticleServiceImplTest {
         when(userService.getOne(any(Wrapper.class))).thenReturn(null);
         articleService = new TestArticleService(articleTagMapper, tagMapper, userService,
                 articleGroupMapper, articleGroupRelationMapper);
+    }
+
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    void keywordSearch_shouldApplyTitleOrSummaryFilterToAllArticleLists() {
+        TableInfoHelper.initTableInfo(
+                new MapperBuilderAssistant(new MybatisConfiguration(), ""),
+                Article.class);
+        ArticleMapper articleMapper = mock(ArticleMapper.class);
+        when(articleMapper.selectPage(any(IPage.class), any(Wrapper.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        ArticleServiceImpl keywordService = new ArticleServiceImpl(
+                mock(ArticleTagMapper.class),
+                mock(TagMapper.class),
+                mock(UserService.class),
+                mock(ArticleGroupMapper.class),
+                mock(ArticleGroupRelationMapper.class));
+        ReflectionTestUtils.setField(keywordService, "baseMapper", articleMapper);
+        ArticlePageQuery query = new ArticlePageQuery();
+        query.setKeyword("architecture");
+        query.setStatus(ArticleStatus.DRAFT);
+        query.setVisibility(ArticleVisibility.PUBLIC);
+        query.setAuthor("alice");
+
+        keywordService.getPublicPage(query);
+        keywordService.getMyPage(query, "alice");
+        keywordService.getAdminPage(query);
+
+        ArgumentCaptor<Wrapper<Article>> wrapperCaptor = ArgumentCaptor.forClass(Wrapper.class);
+        verify(articleMapper, times(3)).selectPage(any(IPage.class), wrapperCaptor.capture());
+        List<Wrapper<Article>> wrappers = wrapperCaptor.getAllValues();
+        assertThat(wrappers.get(0).getSqlSegment())
+                .contains("status =")
+                .contains("visibility =")
+                .contains("AND (title LIKE")
+                .contains("OR summary LIKE");
+        assertThat(wrappers.get(1).getSqlSegment())
+                .contains("created_by =")
+                .contains("status =")
+                .contains("visibility =")
+                .contains("AND (title LIKE")
+                .contains("OR summary LIKE");
+        assertThat(wrappers.get(2).getSqlSegment())
+                .contains("status =")
+                .contains("visibility =")
+                .contains("AND (title LIKE")
+                .contains("OR summary LIKE")
+                .contains("AND created_by =");
     }
 
     @Test
@@ -73,6 +133,83 @@ class ArticleServiceImplTest {
         assertThatThrownBy(() -> articleService.getPublicDetail(1L))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("文章不存在");
+    }
+
+    @Test
+    void getPublicDetail_shouldIncreaseAndPersistViewCount() {
+        Article article = article(1L, "alice", ArticleStatus.PUBLISHED);
+        article.setViewCount(7);
+        articleService.put(article);
+
+        Article detail = articleService.getPublicDetail(1L);
+
+        assertThat(detail.getViewCount()).isEqualTo(8);
+        assertThat(articleService.getById(1L).getViewCount()).isEqualTo(8);
+        assertThat(articleService.updateByIdCallCount()).isEqualTo(1);
+    }
+
+    @Test
+    void getPublicArticleSummary_shouldNotIncreaseViewCount() {
+        Article article = article(1L, "alice", ArticleStatus.PUBLISHED);
+        article.setViewCount(7);
+        articleService.put(article);
+
+        Article summary = articleService.getPublicArticleSummary(1L);
+
+        assertThat(summary.getViewCount()).isEqualTo(7);
+        assertThat(articleService.getById(1L).getViewCount()).isEqualTo(7);
+        assertThat(articleService.updateByIdCallCount()).isZero();
+    }
+
+    @Test
+    void getPublicArticleSummaries_shouldFilterUnavailableArticles() {
+        Article visible = article(1L, "alice", ArticleStatus.PUBLISHED);
+        Article privateArticle = article(2L, "alice", ArticleStatus.PUBLISHED);
+        privateArticle.setVisibility(ArticleVisibility.PRIVATE);
+        articleService.put(visible);
+        articleService.put(privateArticle);
+        articleService.put(article(3L, "alice", ArticleStatus.DRAFT));
+
+        List<Article> summaries = articleService.getPublicArticleSummaries(Arrays.asList(1L, 2L, 3L));
+
+        assertThat(summaries).extracting(Article::getId).containsExactly(1L);
+    }
+
+    @Test
+    void getPublicArticleSummaries_shouldBatchTagsAndAuthorsForAllSummaries() {
+        ArticleTagMapper articleTagMapper = mock(ArticleTagMapper.class);
+        TagMapper tagMapper = mock(TagMapper.class);
+        UserService userService = mock(UserService.class);
+        ArticleServiceImpl summaryService = new TestArticleService(articleTagMapper, tagMapper, userService,
+                mock(ArticleGroupMapper.class), mock(ArticleGroupRelationMapper.class));
+        Article first = article(1L, "alice", ArticleStatus.PUBLISHED);
+        first.setTitle("First");
+        Article second = article(2L, "bob", ArticleStatus.PUBLISHED);
+        second.setTitle("Second");
+        ((TestArticleService) summaryService).put(first);
+        ((TestArticleService) summaryService).put(second);
+        when(articleTagMapper.selectList(any())).thenReturn(Arrays.asList(
+                articleTag(1L, 10L), articleTag(1L, 11L), articleTag(2L, 11L)));
+        when(tagMapper.selectBatchIds(any())).thenReturn(Arrays.asList(
+                tag(10L, "Java"), tag(11L, "Spring")));
+        when(userService.list(any())).thenReturn(Arrays.asList(
+                user("alice", "Alice"), user("bob", "Bob")));
+
+        List<Article> summaries = summaryService.getPublicArticleSummaries(Arrays.asList(1L, 2L));
+
+        verify(articleTagMapper, times(1)).selectList(any());
+        verify(tagMapper, times(1)).selectBatchIds(any());
+        verify(userService, times(1)).list(any());
+        verify(userService, never()).getOne(any(Wrapper.class));
+        assertThat(summaries).extracting(Article::getId).containsExactlyInAnyOrder(1L, 2L);
+        assertThat(summaries.stream().filter(article -> article.getId().equals(1L)).findFirst().get().getTags())
+                .extracting(Tag::getName).containsExactly("Java", "Spring");
+        assertThat(summaries.stream().filter(article -> article.getId().equals(2L)).findFirst().get().getTags())
+                .extracting(Tag::getName).containsExactly("Spring");
+        assertThat(summaries.stream().filter(article -> article.getId().equals(1L)).findFirst().get()
+                .getAuthorName()).isEqualTo("Alice");
+        assertThat(summaries.stream().filter(article -> article.getId().equals(2L)).findFirst().get()
+                .getAuthorName()).isEqualTo("Bob");
     }
 
     @Test
@@ -450,12 +587,34 @@ class ArticleServiceImplTest {
         return group;
     }
 
+    private static ArticleTag articleTag(Long articleId, Long tagId) {
+        ArticleTag articleTag = new ArticleTag();
+        articleTag.setArticleId(articleId);
+        articleTag.setTagId(tagId);
+        return articleTag;
+    }
+
+    private static Tag tag(Long id, String name) {
+        Tag tag = new Tag();
+        tag.setId(id);
+        tag.setName(name);
+        return tag;
+    }
+
+    private static User user(String username, String nickname) {
+        User user = new User();
+        user.setUsername(username);
+        user.setNickname(nickname);
+        return user;
+    }
+
     private static class TestArticleService extends ArticleServiceImpl {
         private final Map<Long, Article> articles = new HashMap<>();
         private final List<ArticleTag> articleTags = new ArrayList<>();
         private final Map<Long, ArticleGroup> groups = new HashMap<>();
         private final List<ArticleGroupRelation> articleGroupRelations = new ArrayList<>();
         private long nextId = 100L;
+        private int updateByIdCallCount;
 
         TestArticleService(ArticleTagMapper articleTagMapper,
                            TagMapper tagMapper,
@@ -466,7 +625,11 @@ class ArticleServiceImplTest {
         }
 
         void put(Article article) {
-            articles.put(article.getId(), article);
+            articles.put(article.getId(), copyArticle(article));
+        }
+
+        int updateByIdCallCount() {
+            return updateByIdCallCount;
         }
 
         void linkTags(Long articleId, Long... tagIds) {
@@ -495,7 +658,7 @@ class ArticleServiceImplTest {
 
         @Override
         public Article getById(Serializable id) {
-            return articles.get((Long) id);
+            return copyArticle(articles.get((Long) id));
         }
 
         @Override
@@ -503,13 +666,14 @@ class ArticleServiceImplTest {
             if (article.getId() == null) {
                 article.setId(nextId++);
             }
-            articles.put(article.getId(), article);
+            articles.put(article.getId(), copyArticle(article));
             return true;
         }
 
         @Override
         public boolean updateById(Article article) {
-            articles.put(article.getId(), article);
+            updateByIdCallCount++;
+            articles.put(article.getId(), copyArticle(article));
             return true;
         }
 
@@ -571,6 +735,11 @@ class ArticleServiceImplTest {
                     .filter(article -> ArticleVisibility.isPublic(article.getVisibility()))
                     .filter(article -> article.getDeleted() == null || article.getDeleted() == 0)
                     .collect(Collectors.toList());
+        }
+
+        @Override
+        protected List<Article> listPublicArticleSummariesByIds(Collection<Long> articleIds) {
+            return listPublicArticlesByIds(articleIds);
         }
 
         @Override
@@ -649,7 +818,8 @@ class ArticleServiceImplTest {
                             || query.getStatus().equals(article.getStatus()))
                     .filter(article -> matchesVisibility(query.getVisibility(), article.getVisibility()))
                     .filter(article -> query.getKeyword() == null || query.getKeyword().isEmpty()
-                            || article.getTitle().contains(query.getKeyword()))
+                            || article.getTitle().contains(query.getKeyword())
+                            || article.getSummary() != null && article.getSummary().contains(query.getKeyword()))
                     .filter(article -> includeArticleIds == null || includeArticleIds.contains(article.getId()))
                     .filter(article -> excludeArticleIds == null || !excludeArticleIds.contains(article.getId()))
                     .sorted(Comparator.comparing(Article::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
@@ -667,6 +837,15 @@ class ArticleServiceImplTest {
                 return ArticleVisibility.isPublic(articleVisibility);
             }
             return requestedVisibility.equals(articleVisibility);
+        }
+
+        private Article copyArticle(Article article) {
+            if (article == null) {
+                return null;
+            }
+            Article copy = new Article();
+            BeanUtils.copyProperties(article, copy);
+            return copy;
         }
     }
 }

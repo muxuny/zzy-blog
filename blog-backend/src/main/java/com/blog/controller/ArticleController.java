@@ -6,8 +6,11 @@ import com.blog.dto.ArticleNeighbors;
 import com.blog.dto.ArticlePageQuery;
 import com.blog.entity.Article;
 import com.blog.service.ArticleService;
+import com.blog.service.ReadingHistoryService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
 
 /**
@@ -15,12 +18,15 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/articles")
+@Slf4j
 public class ArticleController {
 
     private final ArticleService articleService;
+    private final ReadingHistoryService readingHistoryService;
 
-    public ArticleController(ArticleService articleService) {
+    public ArticleController(ArticleService articleService, ReadingHistoryService readingHistoryService) {
         this.articleService = articleService;
+        this.readingHistoryService = readingHistoryService;
     }
 
     @GetMapping
@@ -29,8 +35,17 @@ public class ArticleController {
     }
 
     @GetMapping("/{id}")
-    public Result<Article> detail(@PathVariable Long id) {
-        return Result.success(articleService.getPublicDetail(id));
+    public Result<Article> detail(@PathVariable Long id, Principal principal) {
+        Article article = articleService.getPublicDetail(id);
+        if (principal != null) {
+            try {
+                readingHistoryService.record(article, principal.getName());
+            } catch (RuntimeException exception) {
+                log.error("Failed to record reading history for article {} and user {}",
+                        article.getId(), principal.getName(), exception);
+            }
+        }
+        return Result.success(article);
     }
 
     @GetMapping("/{id}/neighbors")

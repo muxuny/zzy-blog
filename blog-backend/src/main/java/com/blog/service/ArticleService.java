@@ -7,6 +7,7 @@ import com.blog.dto.ArticlePageQuery;
 import com.blog.dto.ArticleRequest;
 import com.blog.entity.Article;
 
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -18,6 +19,10 @@ public interface ArticleService extends IService<Article> {
     IPage<Article> getPublicPage(ArticlePageQuery query);
 
     Article getPublicDetail(Long id);
+
+    Article getPublicArticleSummary(Long id);
+
+    List<Article> getPublicArticleSummaries(Collection<Long> articleIds);
 
     ArticleNeighbors getPublicNeighbors(Long id);
 
