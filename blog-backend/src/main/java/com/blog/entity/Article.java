@@ -2,6 +2,7 @@ package com.blog.entity;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.blog.dto.ReadingPositionState;
 import com.blog.common.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -46,4 +47,8 @@ public class Article extends BaseEntity {
     /** 作者昵称或用户名，不直接映射数据库列。 */
     @TableField(exist = false)
     private String authorName;
+
+    /** 当前登录读者的阅读位置状态，不直接映射数据库列。 */
+    @TableField(exist = false)
+    private ReadingPositionState readingPosition;
 }

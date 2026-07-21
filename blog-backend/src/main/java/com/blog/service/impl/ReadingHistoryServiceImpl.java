@@ -8,6 +8,8 @@ import com.blog.dto.ReadingHistoryItem;
 import com.blog.dto.ReadingHistoryOverview;
 import com.blog.dto.ReadingHistoryPageQuery;
 import com.blog.dto.ReadingHistoryRelationRow;
+import com.blog.dto.ReadingPositionRequest;
+import com.blog.dto.ReadingPositionState;
 import com.blog.entity.Article;
 import com.blog.entity.User;
 import com.blog.mapper.ArticleReadingHistoryMapper;
@@ -30,6 +32,9 @@ public class ReadingHistoryServiceImpl implements ReadingHistoryService {
 
     private static final long MAX_PAGE_SIZE = 100;
     private static final String UNAVAILABLE_MESSAGE = "该文章暂未公开";
+    private static final int MIN_RESUME_PROGRESS = 5;
+    private static final int MAX_PROGRESS = 100;
+    private static final int MAX_ANCHOR_ID_LENGTH = 160;
 
     private final ArticleReadingHistoryMapper historyMapper;
     private final ArticleService articleService;
@@ -75,6 +80,29 @@ public class ReadingHistoryServiceImpl implements ReadingHistoryService {
                 relationPage.getTotal());
         result.setRecords(items);
         return result;
+    }
+
+    @Override
+    @Transactional
+    public void savePosition(Long articleId, ReadingPositionRequest request, String username) {
+        validatePositionRequest(request);
+        User user = requireUser(username);
+        LocalDateTime now = LocalDateTime.now();
+        int updated = historyMapper.updatePosition(user.getId(), articleId,
+                request.getProgressPercent(), request.getScrollY(),
+                normalizeAnchorId(request.getAnchorId()), request.getAnchorOffset(),
+                request.getArticleUpdatedAt(), username, now);
+        if (updated == 0) {
+            throw new BusinessException("阅读历史不存在或文章暂不可用");
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ReadingPositionState getPositionState(Article article, String username) {
+        User user = requireUser(username);
+        ReadingHistoryRelationRow row = historyMapper.selectActiveHistory(user.getId(), article.getId());
+        return row == null ? emptyPositionState() : toPositionState(row);
     }
 
     @Override
@@ -157,6 +185,13 @@ public class ReadingHistoryServiceImpl implements ReadingHistoryService {
         item.setFirstReadAt(row.getFirstReadAt());
         item.setLastReadAt(row.getLastReadAt());
         item.setReadCount(row.getReadCount());
+        ReadingPositionState position = toPositionState(row);
+        item.setProgressPercent(position.getProgressPercent());
+        item.setPositionUpdatedAt(position.getPositionUpdatedAt());
+        item.setCanResume(position.isCanResume());
+        item.setResumeScrollY(position.getResumeScrollY());
+        item.setResumeAnchorId(position.getResumeAnchorId());
+        item.setResumeAnchorOffset(position.getResumeAnchorOffset());
         if (!row.isAvailable() || article == null) {
             item.setTitle(row.getTitleSnapshot());
             item.setAvailable(false);
@@ -183,6 +218,60 @@ public class ReadingHistoryServiceImpl implements ReadingHistoryService {
         if (recentSize < 1 || recentSize > MAX_PAGE_SIZE) {
             throw new BusinessException("分页参数不合法");
         }
+    }
+
+    private void validatePositionRequest(ReadingPositionRequest request) {
+        if (request == null || request.getProgressPercent() == null || request.getScrollY() == null
+                || request.getArticleUpdatedAt() == null
+                || request.getProgressPercent() < 0 || request.getProgressPercent() > MAX_PROGRESS
+                || request.getScrollY() < 0
+                || request.getAnchorOffset() != null && request.getAnchorOffset() < 0) {
+            throw new BusinessException("阅读位置参数不合法");
+        }
+        String anchorId = request.getAnchorId();
+        if (anchorId != null && anchorId.trim().length() > MAX_ANCHOR_ID_LENGTH) {
+            throw new BusinessException("阅读位置参数不合法");
+        }
+    }
+
+    private String normalizeAnchorId(String anchorId) {
+        if (anchorId == null) {
+            return null;
+        }
+        String trimmed = anchorId.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private ReadingPositionState emptyPositionState() {
+        ReadingPositionState state = new ReadingPositionState();
+        state.setProgressPercent(0);
+        state.setCanResume(false);
+        return state;
+    }
+
+    private ReadingPositionState toPositionState(ReadingHistoryRelationRow row) {
+        ReadingPositionState state = new ReadingPositionState();
+        int progress = normalizeProgress(row.getProgressPercent());
+        state.setProgressPercent(progress);
+        state.setPositionUpdatedAt(row.getPositionUpdatedAt());
+        boolean canResume = row.isAvailable()
+                && progress >= MIN_RESUME_PROGRESS
+                && row.getArticleUpdatedAtSnapshot() != null
+                && row.getArticleUpdatedAtSnapshot().equals(row.getArticleUpdatedAt());
+        state.setCanResume(canResume);
+        if (canResume) {
+            state.setResumeScrollY(row.getScrollY());
+            state.setResumeAnchorId(row.getAnchorId());
+            state.setResumeAnchorOffset(row.getAnchorOffset());
+        }
+        return state;
+    }
+
+    private int normalizeProgress(Integer progressPercent) {
+        if (progressPercent == null) {
+            return 0;
+        }
+        return Math.max(0, Math.min(MAX_PROGRESS, progressPercent));
     }
 
     private User requireUser(String username) {

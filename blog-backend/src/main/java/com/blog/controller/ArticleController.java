@@ -44,6 +44,12 @@ public class ArticleController {
                 log.error("Failed to record reading history for article {} and user {}",
                         article.getId(), principal.getName(), exception);
             }
+            try {
+                article.setReadingPosition(readingHistoryService.getPositionState(article, principal.getName()));
+            } catch (RuntimeException exception) {
+                log.error("Failed to attach reading position for article {} and user {}",
+                        article.getId(), principal.getName(), exception);
+            }
         }
         return Result.success(article);
     }

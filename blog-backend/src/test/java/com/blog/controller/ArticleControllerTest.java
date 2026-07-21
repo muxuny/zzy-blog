@@ -4,6 +4,7 @@ import com.blog.common.ArticleStatus;
 import com.blog.common.BusinessException;
 import com.blog.common.Result;
 import com.blog.dto.ArticleNeighbors;
+import com.blog.dto.ReadingPositionState;
 import com.blog.entity.Article;
 import com.blog.service.ArticleService;
 import com.blog.service.ReadingHistoryService;
@@ -56,6 +57,23 @@ class ArticleControllerTest {
         assertEquals(200, result.getCode());
         assertEquals(article, result.getData());
         verify(readingHistoryService).record(article, "alice");
+    }
+
+    @Test
+    void detailAttachesReadingPositionForAuthenticatedReader() {
+        Article article = article(1L);
+        ReadingPositionState state = new ReadingPositionState();
+        state.setProgressPercent(42);
+        Principal principal = () -> "alice";
+        when(articleService.getPublicDetail(1L)).thenReturn(article);
+        when(readingHistoryService.getPositionState(article, "alice")).thenReturn(state);
+
+        Result<Article> result = articleController.detail(1L, principal);
+
+        assertEquals(200, result.getCode());
+        assertEquals(state, result.getData().getReadingPosition());
+        verify(readingHistoryService).record(article, "alice");
+        verify(readingHistoryService).getPositionState(article, "alice");
     }
 
     @Test
