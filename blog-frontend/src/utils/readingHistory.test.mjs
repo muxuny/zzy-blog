@@ -191,13 +191,13 @@ test('reading space guards whole-item links and private snapshots', () => {
       name: 'last read',
       source: readingSpaceSource.match(/<template\s+v-else>\s*<div class="last-read-copy unavailable-copy">[\s\S]*?<\/template>/)?.[0] || '',
       fieldPattern: /overview\.lastRead\.([A-Za-z][A-Za-z0-9]*)/g,
-      allowedFields: ['lastReadAt', 'title']
+      allowedFields: ['lastReadAt', 'progressPercent', 'title']
     },
     {
       name: 'history',
       source: previewUnavailableBranches.find(source => source.includes('item.lastReadAt')) || '',
       fieldPattern: /item\.([A-Za-z][A-Za-z0-9]*)/g,
-      allowedFields: ['lastReadAt', 'title']
+      allowedFields: ['lastReadAt', 'progressPercent', 'title']
     },
     {
       name: 'favorites',
@@ -331,6 +331,13 @@ test('reading history item formats times and isolates the accessible remove acti
   assert.match(itemSource, /title="删除历史"/)
   assert.match(itemSource, /aria-label="删除历史"/)
   assert.match(itemSource, /\.remove-button\s*\{[^}]*z-index:\s*(?:[2-9]|\d{2,});/s)
+})
+
+test('reading space and history item display compact reading progress', () => {
+  assert.match(readingSpaceSource, /formatReadingProgress/)
+  assert.match(itemSource, /formatReadingProgress/)
+  assert.match(readingSpaceSource, /progressPercent/)
+  assert.match(itemSource, /progressPercent/)
 })
 
 test('reading history item has stable responsive media and root-only hover treatment', () => {
