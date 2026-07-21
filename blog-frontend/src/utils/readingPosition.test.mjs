@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import {
   buildReadingPositionPayload,
   calculateReadingProgress,
@@ -39,4 +40,38 @@ test('save gate throttles non-forced saves and always allows forced saves', () =
   assert.equal(shouldSaveReadingPosition({ now: 10000, lastSavedAt: 2000, intervalMs: 9000 }), false)
   assert.equal(shouldSaveReadingPosition({ now: 12000, lastSavedAt: 2000, intervalMs: 9000 }), true)
   assert.equal(shouldSaveReadingPosition({ now: 10000, lastSavedAt: 9999, intervalMs: 9000, force: true }), true)
+})
+
+test('article detail source wires resume prompt and silent position saving', () => {
+  const source = readFileSync(new URL('../views/ArticleDetail.vue', import.meta.url), 'utf8')
+
+  assert.match(source, /saveReadingPosition/)
+  assert.match(source, /resume-reading-panel/)
+  assert.match(source, /上次读到/)
+  assert.match(source, /continueReadingFromSavedPosition/)
+  assert.match(source, /resumePromptDismissed/)
+  assert.match(source, /skipErrorMessage:\s*true/)
+  assert.match(source, /document\.addEventListener\('visibilitychange'/)
+  assert.match(source, /onBeforeRouteLeave/)
+})
+
+test('article detail uses current article updated time and active heading when saving position', () => {
+  const source = readFileSync(new URL('../views/ArticleDetail.vue', import.meta.url), 'utf8')
+
+  assert.match(source, /article\.value\.updatedAt/)
+  assert.match(source, /activeHeadingId\.value/)
+  assert.match(source, /buildReadingPositionPayload/)
+  assert.match(source, /calculateReadingProgress/)
+  assert.match(source, /shouldSaveReadingPosition/)
+})
+
+test('article detail does not auto jump and lets the reader dismiss the resume prompt', () => {
+  const source = readFileSync(new URL('../views/ArticleDetail.vue', import.meta.url), 'utf8')
+
+  assert.doesNotMatch(
+    source,
+    /watch\(\s*(?:\(\) => )?(?:readingPosition|showResumePrompt)[\s\S]*?continueReadingFromSavedPosition/
+  )
+  assert.match(source, /@click="continueReadingFromSavedPosition"/)
+  assert.match(source, /@click="dismissResumePrompt"/)
 })

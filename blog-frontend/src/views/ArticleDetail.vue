@@ -64,6 +64,23 @@
           </div>
         </section>
 
+        <section
+          v-if="showResumePrompt"
+          class="resume-reading-panel"
+          role="status"
+          aria-live="polite"
+        >
+          <span>上次读到 {{ readingPosition.progressPercent }}%</span>
+          <div class="resume-actions">
+            <el-button type="primary" size="small" @click="continueReadingFromSavedPosition">
+              继续阅读
+            </el-button>
+            <el-button text size="small" @click="dismissResumePrompt">
+              关闭
+            </el-button>
+          </div>
+        </section>
+
         <div class="reading-layout">
           <main class="article-body">
             <nav v-if="toc.length" class="mobile-toc" aria-label="文章目录">
@@ -168,11 +185,12 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Star, StarFilled, Top } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getArticle, getArticleNeighbors, getRelatedArticles } from '../api/article'
 import { favoriteArticle, unfavoriteArticle, getFavoriteStatus } from '../api/favorite'
+import { saveReadingPosition } from '../api/reading'
 import { useAuthStore } from '../stores/auth'
 import { formatDate } from '../utils'
 import {
@@ -184,6 +202,12 @@ import {
 } from '../utils/favorite'
 import { shouldUseHistoryBack } from '../utils/navigation'
 import { extractMarkdownToc, getReadingStats } from '../utils/reading'
+import {
+  buildReadingPositionPayload,
+  calculateReadingProgress,
+  shouldSaveReadingPosition,
+  shouldShowResumePrompt
+} from '../utils/readingPosition'
 import { getActiveHeadingId, getScrollTopForVisibleItem } from '../utils/scrollSpy'
 import AppHeader from '../components/AppHeader.vue'
 import MarkdownRenderer from '../components/MarkdownRenderer.vue'
@@ -201,11 +225,14 @@ const neighbors = ref({ previous: null, next: null })
 const relatedArticles = ref([])
 const activeHeadingId = ref('')
 const showBackToTop = ref(false)
+const readingPosition = ref(null)
+const resumePromptDismissed = ref(false)
 const loadToken = ref(0)
 const tocPanelRef = ref(null)
 let componentActive = true
 let favoriteStateVersion = 0
 let favoriteOperationId = 0
+let lastPositionSavedAt = 0
 
 const articleTags = computed(() => article.value?.tags || [])
 const authorName = computed(() => article.value?.authorName || article.value?.createdBy || '匿名作者')
@@ -214,21 +241,34 @@ const readingStats = computed(() => getReadingStats(article.value?.content || ''
 const hasContinuation = computed(() =>
   neighbors.value.previous || neighbors.value.next || relatedArticles.value.length
 )
+const showResumePrompt = computed(() =>
+  authStore.isLoggedIn &&
+  !resumePromptDismissed.value &&
+  shouldShowResumePrompt(readingPosition.value)
+)
 
 onMounted(() => {
   loadArticle()
   window.addEventListener('scroll', updateScrollState, { passive: true })
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 onBeforeUnmount(() => {
+  flushReadingPosition()
   componentActive = false
   loadToken.value += 1
   favoriteStateVersion += 1
   favoriteOperationId += 1
   window.removeEventListener('scroll', updateScrollState)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+})
+
+onBeforeRouteLeave(() => {
+  flushReadingPosition()
 })
 
 watch(() => route.params.id, () => {
+  flushReadingPosition()
   scrollToTop(false)
   loadArticle()
 })
@@ -254,10 +294,16 @@ async function loadArticle() {
   neighbors.value = { previous: null, next: null }
   relatedArticles.value = []
   activeHeadingId.value = ''
+  readingPosition.value = null
+  resumePromptDismissed.value = false
+  lastPositionSavedAt = 0
   try {
     const r = await getArticle(route.params.id)
     if (token !== loadToken.value) return
     article.value = r.data
+    readingPosition.value = r.data?.readingPosition || null
+    resumePromptDismissed.value = false
+    lastPositionSavedAt = 0
     void initializeFavorite(r.data.id, token).catch(() => {})
     await nextTick()
     updateScrollState()
@@ -419,10 +465,84 @@ function scrollToHeading(id) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
+function getArticleBodyMetrics() {
+  const body = document.querySelector('.article-body')
+  if (!body) return null
+  const rect = body.getBoundingClientRect()
+  return {
+    articleTop: rect.top + window.scrollY,
+    articleHeight: body.scrollHeight,
+    viewportHeight: window.innerHeight
+  }
+}
+
+function getAnchorOffset(anchorId) {
+  if (!anchorId) return null
+  const element = document.getElementById(anchorId)
+  if (!element) return null
+  return Math.max(0, Math.round(window.scrollY - (element.getBoundingClientRect().top + window.scrollY)))
+}
+
+function buildCurrentReadingPositionPayload() {
+  if (!article.value?.id || !article.value?.updatedAt) return null
+  const metrics = getArticleBodyMetrics()
+  if (!metrics) return null
+  const progressPercent = calculateReadingProgress({
+    scrollY: window.scrollY,
+    articleTop: metrics.articleTop,
+    articleHeight: metrics.articleHeight,
+    viewportHeight: metrics.viewportHeight
+  })
+  return buildReadingPositionPayload({
+    progressPercent,
+    scrollY: window.scrollY,
+    anchorId: activeHeadingId.value,
+    anchorOffset: getAnchorOffset(activeHeadingId.value),
+    articleUpdatedAt: article.value.updatedAt
+  })
+}
+
+function scheduleReadingPositionSave(force = false) {
+  if (!authStore.isLoggedIn || !componentActive || !article.value?.id) return
+  const now = Date.now()
+  if (!shouldSaveReadingPosition({ now, lastSavedAt: lastPositionSavedAt, intervalMs: 9000, force })) {
+    return
+  }
+  const payload = buildCurrentReadingPositionPayload()
+  if (!payload) return
+  lastPositionSavedAt = now
+  void saveReadingPosition(article.value.id, payload, {
+    skipErrorMessage: true,
+    skipAuthRedirect: true
+  }).catch(() => {})
+}
+
+function flushReadingPosition() {
+  scheduleReadingPositionSave(true)
+}
+
+function handleVisibilityChange() {
+  if (document.visibilityState === 'hidden') {
+    flushReadingPosition()
+  }
+}
+
+function continueReadingFromSavedPosition() {
+  const scrollY = Number(readingPosition.value?.resumeScrollY)
+  if (!Number.isFinite(scrollY)) return
+  resumePromptDismissed.value = true
+  window.scrollTo({ top: Math.max(0, scrollY), behavior: 'smooth' })
+}
+
+function dismissResumePrompt() {
+  resumePromptDismissed.value = true
+}
+
 function updateScrollState() {
   showBackToTop.value = window.scrollY > 360
   if (!toc.value.length) {
     activeHeadingId.value = ''
+    scheduleReadingPositionSave(false)
     return
   }
   const headings = toc.value
@@ -436,6 +556,7 @@ function updateScrollState() {
     activeHeadingId.value = nextActiveHeadingId
   }
   if (nextActiveHeadingId) nextTick(scrollActiveTocItemIntoView)
+  scheduleReadingPositionSave(false)
 }
 
 function scrollActiveTocItemIntoView() {
@@ -657,6 +778,26 @@ function scrollToTop(smooth = true) {
   margin-top: 6px;
   color: var(--text-color);
   font-size: 16px;
+}
+
+.resume-reading-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 28%, var(--soft-border-color));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--primary-color) 7%, var(--panel-bg));
+  color: var(--text-color);
+  font-size: 14px;
+}
+
+.resume-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
 }
 
 .reading-layout {
@@ -905,6 +1046,11 @@ function scrollToTop(smooth = true) {
 
   .reading-summary {
     grid-template-columns: 1fr;
+  }
+
+  .resume-reading-panel {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .neighbor-grid,
