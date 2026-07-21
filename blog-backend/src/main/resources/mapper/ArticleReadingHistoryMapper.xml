@@ -6,10 +6,11 @@
     <insert id="upsertHistory">
         INSERT INTO article_reading_history
             (id, user_id, article_id, title_snapshot, first_read_at, last_read_at, read_count,
-             created_by, created_at, updated_by, updated_at, deleted, version)
+             progress_percent, scroll_y, anchor_id, anchor_offset, article_updated_at_snapshot,
+             position_updated_at, created_by, created_at, updated_by, updated_at, deleted, version)
         VALUES
             (#{id}, #{userId}, #{articleId}, #{titleSnapshot}, #{now}, #{now}, 1,
-             #{username}, #{now}, #{username}, #{now}, 0, 0)
+             0, 0, NULL, NULL, NULL, NULL, #{username}, #{now}, #{username}, #{now}, 0, 0)
         ON DUPLICATE KEY UPDATE
             title_snapshot = IF(deleted = 1 OR VALUES(last_read_at) >= last_read_at,
                                 VALUES(title_snapshot), title_snapshot),
@@ -17,6 +18,12 @@
             last_read_at = IF(deleted = 1, VALUES(last_read_at),
                               GREATEST(last_read_at, VALUES(last_read_at))),
             read_count = IF(deleted = 1, 1, read_count + 1),
+            progress_percent = if(deleted = 1, 0, progress_percent),
+            scroll_y = if(deleted = 1, 0, scroll_y),
+            anchor_id = if(deleted = 1, NULL, anchor_id),
+            anchor_offset = if(deleted = 1, NULL, anchor_offset),
+            article_updated_at_snapshot = if(deleted = 1, NULL, article_updated_at_snapshot),
+            position_updated_at = if(deleted = 1, NULL, position_updated_at),
             updated_by = VALUES(updated_by),
             updated_at = VALUES(updated_at),
             version = version + 1,
@@ -30,6 +37,13 @@
                h.first_read_at,
                h.last_read_at,
                h.read_count,
+               h.progress_percent,
+               h.scroll_y,
+               h.anchor_id,
+               h.anchor_offset,
+               h.article_updated_at_snapshot,
+               h.position_updated_at,
+               a.updated_at AS article_updated_at,
                CASE WHEN a.id IS NOT NULL
                          AND a.deleted = 0
                          AND a.status = 'published'
@@ -49,6 +63,13 @@
                h.first_read_at,
                h.last_read_at,
                h.read_count,
+               h.progress_percent,
+               h.scroll_y,
+               h.anchor_id,
+               h.anchor_offset,
+               h.article_updated_at_snapshot,
+               h.position_updated_at,
+               a.updated_at AS article_updated_at,
                1 AS available
         FROM article_reading_history h
         INNER JOIN article a ON a.id = h.article_id
@@ -61,6 +82,53 @@
         ORDER BY h.last_read_at DESC, h.id DESC
         LIMIT 1
     </select>
+
+    <select id="selectActiveHistory" resultType="com.blog.dto.ReadingHistoryRelationRow">
+        SELECT h.id AS history_id,
+               h.article_id,
+               h.title_snapshot,
+               h.first_read_at,
+               h.last_read_at,
+               h.read_count,
+               h.progress_percent,
+               h.scroll_y,
+               h.anchor_id,
+               h.anchor_offset,
+               h.article_updated_at_snapshot,
+               h.position_updated_at,
+               a.updated_at AS article_updated_at,
+               CASE WHEN a.id IS NOT NULL
+                         AND a.deleted = 0
+                         AND a.status = 'published'
+                         AND (a.visibility = 'public' OR a.visibility IS NULL)
+                    THEN 1 ELSE 0 END AS available
+        FROM article_reading_history h
+        LEFT JOIN article a ON a.id = h.article_id
+        WHERE h.user_id = #{userId}
+          AND h.article_id = #{articleId}
+          AND h.deleted = 0
+        LIMIT 1
+    </select>
+
+    <update id="updatePosition">
+        UPDATE article_reading_history h
+        INNER JOIN article a ON a.id = h.article_id
+            AND a.deleted = 0
+            AND a.status = 'published'
+            AND (a.visibility = 'public' OR a.visibility IS NULL)
+        SET h.progress_percent = #{progressPercent},
+            h.scroll_y = #{scrollY},
+            h.anchor_id = #{anchorId},
+            h.anchor_offset = #{anchorOffset},
+            h.article_updated_at_snapshot = #{articleUpdatedAt},
+            h.position_updated_at = #{now},
+            h.updated_by = #{username},
+            h.updated_at = #{now},
+            h.version = h.version + 1
+        WHERE h.user_id = #{userId}
+          AND h.article_id = #{articleId}
+          AND h.deleted = 0
+    </update>
 
     <update id="deleteHistory">
         UPDATE article_reading_history
