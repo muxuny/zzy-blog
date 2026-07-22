@@ -57,8 +57,8 @@ async function handleLogin() {
   place-items: center;
   padding: 32px 16px;
   background:
-    linear-gradient(90deg, rgba(47, 128, 237, 0.06) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(47, 128, 237, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, var(--theme-grid-x) 1px, transparent 1px),
+    linear-gradient(180deg, var(--theme-grid-y) 1px, transparent 1px),
     var(--bg-color);
   background-size: 34px 34px;
 }
