@@ -73,3 +73,38 @@ test('buildContentSignal keeps every bar at least sixteen percent high', () => {
   assert.equal(signal.bars.length, 7)
   assert.ok(signal.bars.every(day => Number.parseInt(day.height, 10) >= 16))
 })
+
+test('buildContentSignal tolerates null article and tag collections', () => {
+  let signal
+  assert.doesNotThrow(() => {
+    signal = buildContentSignal({
+      articles: null,
+      topTags: null,
+      now: new Date('2026-07-22T12:00:00+08:00')
+    })
+  })
+
+  assert.equal(signal.activeTopic, '暂无主题')
+  assert.equal(signal.updatedCount, 0)
+  assert.equal(signal.bars.length, 7)
+})
+
+test('buildContentSignal skips null articles and trims tag names', () => {
+  let signal
+  assert.doesNotThrow(() => {
+    signal = buildContentSignal({
+      now: new Date('2026-07-22T12:00:00+08:00'),
+      articles: [
+        null,
+        {
+          updatedAt: '2026-07-22T09:00:00+08:00',
+          tags: [null, { name: '   ' }, { name: '  Vue  ' }]
+        }
+      ]
+    })
+  })
+
+  assert.equal(signal.activeTopic, 'Vue')
+  assert.equal(signal.summary, '本周更新 1 篇，集中在 Vue')
+  assert.equal(signal.updatedCount, 1)
+})

@@ -15,6 +15,8 @@ function getLocalDateLabel(date) {
 }
 
 export function buildContentSignal({ articles = [], topTags = [], now = new Date() } = {}) {
+  const safeArticles = Array.isArray(articles) ? articles : []
+  const safeTopTags = Array.isArray(topTags) ? topTags : []
   const startDate = new Date(now)
   startDate.setHours(0, 0, 0, 0)
 
@@ -30,7 +32,9 @@ export function buildContentSignal({ articles = [], topTags = [], now = new Date
   const dayMap = new Map(days.map(day => [day.key, day]))
   const topicCounts = new Map()
 
-  articles.forEach(article => {
+  safeArticles.forEach(article => {
+    if (!article) return
+
     const time = article.updatedAt || article.createdAt
     if (time) {
       const date = new Date(time)
@@ -40,16 +44,18 @@ export function buildContentSignal({ articles = [], topTags = [], now = new Date
       }
     }
     ;(article.tags || []).forEach(tag => {
-      topicCounts.set(tag.name, (topicCounts.get(tag.name) || 0) + 1)
+      const name = String(tag?.name || '').trim()
+      if (name) topicCounts.set(name, (topicCounts.get(name) || 0) + 1)
     })
   })
 
   const maxCount = Math.max(1, ...days.map(day => day.count))
-  const activeTopic = [...topicCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || topTags[0]?.name || '暂无主题'
+  const fallbackTopic = safeTopTags.map(tag => String(tag?.name || '').trim()).find(Boolean)
+  const activeTopic = [...topicCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || fallbackTopic || '暂无主题'
   const updatedCount = days.reduce((sum, day) => sum + day.count, 0)
   return {
     activeTopic,
-    latestTitle: articles[0]?.title || '',
+    latestTitle: safeArticles[0]?.title || '',
     updatedCount,
     summary: updatedCount
       ? `本周更新 ${updatedCount} 篇，集中在 ${activeTopic}`
