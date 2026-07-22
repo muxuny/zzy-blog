@@ -64,23 +64,6 @@
           </div>
         </section>
 
-        <section
-          v-if="showResumePrompt"
-          class="resume-reading-panel"
-          role="status"
-          aria-live="polite"
-        >
-          <span>上次读到 {{ readingPosition.progressPercent }}%</span>
-          <div class="resume-actions">
-            <el-button type="primary" size="small" @click="continueReadingFromSavedPosition">
-              继续阅读
-            </el-button>
-            <el-button text size="small" @click="dismissResumePrompt">
-              关闭
-            </el-button>
-          </div>
-        </section>
-
         <div class="reading-layout">
           <main class="article-body">
             <nav v-if="toc.length" class="mobile-toc" aria-label="文章目录">
@@ -170,16 +153,52 @@
       </article>
     </el-main>
 
-    <button
-      v-show="showBackToTop"
-      type="button"
-      class="floating-top-button"
-      aria-label="返回顶部"
-      title="返回顶部"
-      @click="scrollToTop()"
+    <el-dialog
+      v-model="showResumeDialog"
+      class="resume-reading-dialog"
+      width="min(420px, calc(100vw - 32px))"
+      align-center
+      append-to-body
     >
-      <el-icon><Top /></el-icon>
-    </button>
+      <template #header>
+        <span class="resume-dialog-title">继续上次阅读</span>
+      </template>
+      <div class="resume-dialog-copy">
+        <strong>上次读到 {{ readingPosition?.progressPercent ?? 0 }}%</strong>
+        <p>可以从保存的位置继续，也可以先留在文章开头。</p>
+      </div>
+      <template #footer>
+        <div class="resume-dialog-actions">
+          <el-button @click="dismissResumePrompt">稍后再说</el-button>
+          <el-button type="primary" @click="continueReadingFromSavedPosition">
+            继续阅读
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <div v-show="showFloatingBackButton" class="floating-reading-tools" aria-label="阅读操作">
+      <button
+        type="button"
+        class="floating-back-button"
+        aria-label="返回"
+        title="返回"
+        @click="handleFloatingBack"
+      >
+        <el-icon><ArrowLeft /></el-icon>
+        <span>返回</span>
+      </button>
+      <button
+        v-show="showBackToTop"
+        type="button"
+        class="floating-top-button"
+        aria-label="返回顶部"
+        title="返回顶部"
+        @click="scrollToTop()"
+      >
+        <el-icon><Top /></el-icon>
+      </button>
+    </div>
   </div>
 </template>
 
@@ -246,6 +265,13 @@ const showResumePrompt = computed(() =>
   !resumePromptDismissed.value &&
   shouldShowResumePrompt(readingPosition.value)
 )
+const showResumeDialog = computed({
+  get: () => showResumePrompt.value,
+  set: value => {
+    if (!value) dismissResumePrompt()
+  }
+})
+const showFloatingBackButton = computed(() => !!article.value && showBackToTop.value)
 
 onMounted(() => {
   loadArticle()
@@ -461,6 +487,11 @@ function goBack() {
   else router.push('/')
 }
 
+function handleFloatingBack() {
+  flushReadingPosition()
+  goBack()
+}
+
 function scrollToHeading(id) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
@@ -629,6 +660,7 @@ function scrollToTop(smooth = true) {
 .toc-link:focus-visible,
 .neighbor-card:focus-visible,
 .related-card:focus-visible,
+.floating-back-button:focus-visible,
 .floating-top-button:focus-visible {
   outline: 2px solid var(--primary-color);
   outline-offset: 2px;
@@ -778,26 +810,6 @@ function scrollToTop(smooth = true) {
   margin-top: 6px;
   color: var(--text-color);
   font-size: 16px;
-}
-
-.resume-reading-panel {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 1px solid color-mix(in srgb, var(--primary-color) 28%, var(--soft-border-color));
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--primary-color) 7%, var(--panel-bg));
-  color: var(--text-color);
-  font-size: 14px;
-}
-
-.resume-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex: 0 0 auto;
 }
 
 .reading-layout {
@@ -970,22 +982,58 @@ function scrollToTop(smooth = true) {
   gap: 6px;
 }
 
-.floating-top-button {
+.resume-reading-dialog :deep(.el-dialog__header) {
+  padding-bottom: 0;
+}
+
+.resume-dialog-title {
+  color: var(--text-color);
+  font-size: 19px;
+  font-weight: 850;
+}
+
+.resume-dialog-copy {
+  display: grid;
+  gap: 8px;
+  color: var(--muted-text-color);
+  line-height: 1.7;
+}
+
+.resume-dialog-copy strong {
+  color: var(--text-color);
+  font-size: 26px;
+  line-height: 1.2;
+}
+
+.resume-dialog-copy p {
+  margin: 0;
+}
+
+.resume-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.floating-reading-tools {
   position: fixed;
   right: max(24px, calc((100vw - var(--content-width)) / 2 - 58px));
   bottom: calc(30px + env(safe-area-inset-bottom));
   z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.floating-back-button,
+.floating-top-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
   height: 44px;
-  padding: 0;
   border: 1px solid color-mix(in srgb, var(--primary-color) 34%, transparent);
   border-radius: 999px;
-  background:
-    linear-gradient(145deg, color-mix(in srgb, var(--primary-color) 92%, white), var(--primary-color));
-  color: #fff;
   font: inherit;
   font-weight: 800;
   box-shadow:
@@ -996,6 +1044,22 @@ function scrollToTop(smooth = true) {
   transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
 }
 
+.floating-back-button {
+  gap: 6px;
+  padding: 0 14px;
+  background: color-mix(in srgb, var(--panel-bg) 88%, var(--primary-color));
+  color: var(--primary-color);
+}
+
+.floating-top-button {
+  width: 44px;
+  padding: 0;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--primary-color) 92%, white), var(--primary-color));
+  color: #fff;
+}
+
+.floating-back-button:hover,
 .floating-top-button:hover {
   transform: translateY(-2px);
   filter: brightness(1.05);
@@ -1004,10 +1068,12 @@ function scrollToTop(smooth = true) {
     0 8px 20px rgba(15, 23, 42, 0.2);
 }
 
+.floating-back-button:active,
 .floating-top-button:active {
   transform: translateY(0) scale(0.96);
 }
 
+.floating-back-button .el-icon,
 .floating-top-button .el-icon {
   font-size: 18px;
 }
@@ -1028,7 +1094,7 @@ function scrollToTop(smooth = true) {
 }
 
 @media (min-width: 981px) and (max-width: 1320px) {
-  .floating-top-button {
+  .floating-reading-tools {
     right: 18px;
     bottom: calc(150px + env(safe-area-inset-bottom));
   }
@@ -1048,25 +1114,48 @@ function scrollToTop(smooth = true) {
     grid-template-columns: 1fr;
   }
 
-  .resume-reading-panel {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
   .neighbor-grid,
   .related-grid {
     grid-template-columns: 1fr;
   }
 
-  .floating-top-button {
+  .floating-reading-tools {
     right: 14px;
     bottom: calc(18px + env(safe-area-inset-bottom));
+    gap: 8px;
+  }
+
+  .floating-back-button,
+  .floating-top-button {
     width: 42px;
     height: 42px;
   }
 
+  .floating-back-button {
+    padding: 0;
+  }
+
+  .floating-back-button span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
   .article-cover img {
     min-height: 210px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floating-back-button,
+  .floating-top-button {
+    transition: none;
   }
 }
 </style>

@@ -46,8 +46,6 @@ test('article detail source wires resume prompt and silent position saving', () 
   const source = readFileSync(new URL('../views/ArticleDetail.vue', import.meta.url), 'utf8')
 
   assert.match(source, /saveReadingPosition/)
-  assert.match(source, /resume-reading-panel/)
-  assert.match(source, /上次读到/)
   assert.match(source, /continueReadingFromSavedPosition/)
   assert.match(source, /resumePromptDismissed/)
   assert.match(source, /skipErrorMessage:\s*true/)
@@ -74,4 +72,24 @@ test('article detail does not auto jump and lets the reader dismiss the resume p
   )
   assert.match(source, /@click="continueReadingFromSavedPosition"/)
   assert.match(source, /@click="dismissResumePrompt"/)
+})
+
+test('article detail surfaces resume as a dismissible dialog', () => {
+  const source = readFileSync(new URL('../views/ArticleDetail.vue', import.meta.url), 'utf8')
+
+  assert.match(source, /<el-dialog[\s\S]*v-model="showResumeDialog"/)
+  assert.match(source, /class="resume-reading-dialog"/)
+  assert.match(source, /上次读到/)
+  assert.match(source, /@click="continueReadingFromSavedPosition"/)
+  assert.match(source, /@click="dismissResumePrompt"/)
+  assert.doesNotMatch(source, /class="resume-reading-panel"/)
+})
+
+test('article detail offers a floating back action after scrolling and saves before leaving', () => {
+  const source = readFileSync(new URL('../views/ArticleDetail.vue', import.meta.url), 'utf8')
+
+  assert.match(source, /floating-back-button/)
+  assert.match(source, /showFloatingBackButton/)
+  assert.match(source, /@click="handleFloatingBack"/)
+  assert.match(source, /function handleFloatingBack\(\)[\s\S]*?flushReadingPosition\(\)[\s\S]*?goBack\(\)/)
 })
