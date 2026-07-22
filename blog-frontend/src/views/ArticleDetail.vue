@@ -153,26 +153,64 @@
       </article>
     </el-main>
 
-    <button
-      v-show="showBackToTop"
-      type="button"
-      class="floating-top-button"
-      aria-label="返回顶部"
-      title="返回顶部"
-      @click="scrollToTop()"
+    <el-dialog
+      v-model="showResumeDialog"
+      class="resume-reading-dialog"
+      width="min(420px, calc(100vw - 32px))"
+      align-center
+      append-to-body
     >
-      <el-icon><Top /></el-icon>
-    </button>
+      <template #header>
+        <span class="resume-dialog-title">继续上次阅读</span>
+      </template>
+      <div class="resume-dialog-copy">
+        <strong>上次读到 {{ readingPosition?.progressPercent ?? 0 }}%</strong>
+        <p>可以从保存的位置继续，也可以先留在文章开头。</p>
+      </div>
+      <template #footer>
+        <div class="resume-dialog-actions">
+          <el-button @click="dismissResumePrompt">稍后再说</el-button>
+          <el-button type="primary" @click="continueReadingFromSavedPosition">
+            继续阅读
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <div v-show="showFloatingBackButton" class="floating-reading-tools" aria-label="阅读操作">
+      <el-tooltip content="返回" placement="left">
+        <button
+          type="button"
+          class="floating-tool-button floating-back-button"
+          aria-label="返回"
+          @click="handleFloatingBack"
+        >
+          <el-icon><ArrowLeft /></el-icon>
+        </button>
+      </el-tooltip>
+      <el-tooltip content="返回顶部" placement="left">
+        <button
+          v-show="showBackToTop"
+          type="button"
+          class="floating-tool-button floating-top-button"
+          aria-label="返回顶部"
+          @click="scrollToTop()"
+        >
+          <el-icon><Top /></el-icon>
+        </button>
+      </el-tooltip>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Star, StarFilled, Top } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getArticle, getArticleNeighbors, getRelatedArticles } from '../api/article'
 import { favoriteArticle, unfavoriteArticle, getFavoriteStatus } from '../api/favorite'
+import { saveReadingPosition } from '../api/reading'
 import { useAuthStore } from '../stores/auth'
 import { formatDate } from '../utils'
 import {
@@ -184,6 +222,12 @@ import {
 } from '../utils/favorite'
 import { shouldUseHistoryBack } from '../utils/navigation'
 import { extractMarkdownToc, getReadingStats } from '../utils/reading'
+import {
+  buildReadingPositionPayload,
+  calculateReadingProgress,
+  shouldSaveReadingPosition,
+  shouldShowResumePrompt
+} from '../utils/readingPosition'
 import { getActiveHeadingId, getScrollTopForVisibleItem } from '../utils/scrollSpy'
 import AppHeader from '../components/AppHeader.vue'
 import MarkdownRenderer from '../components/MarkdownRenderer.vue'
@@ -201,11 +245,14 @@ const neighbors = ref({ previous: null, next: null })
 const relatedArticles = ref([])
 const activeHeadingId = ref('')
 const showBackToTop = ref(false)
+const readingPosition = ref(null)
+const resumePromptDismissed = ref(false)
 const loadToken = ref(0)
 const tocPanelRef = ref(null)
 let componentActive = true
 let favoriteStateVersion = 0
 let favoriteOperationId = 0
+let lastPositionSavedAt = 0
 
 const articleTags = computed(() => article.value?.tags || [])
 const authorName = computed(() => article.value?.authorName || article.value?.createdBy || '匿名作者')
@@ -214,21 +261,41 @@ const readingStats = computed(() => getReadingStats(article.value?.content || ''
 const hasContinuation = computed(() =>
   neighbors.value.previous || neighbors.value.next || relatedArticles.value.length
 )
+const showResumePrompt = computed(() =>
+  authStore.isLoggedIn &&
+  !resumePromptDismissed.value &&
+  shouldShowResumePrompt(readingPosition.value)
+)
+const showResumeDialog = computed({
+  get: () => showResumePrompt.value,
+  set: value => {
+    if (!value) dismissResumePrompt()
+  }
+})
+const showFloatingBackButton = computed(() => !!article.value && showBackToTop.value)
 
 onMounted(() => {
   loadArticle()
   window.addEventListener('scroll', updateScrollState, { passive: true })
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 onBeforeUnmount(() => {
+  flushReadingPosition()
   componentActive = false
   loadToken.value += 1
   favoriteStateVersion += 1
   favoriteOperationId += 1
   window.removeEventListener('scroll', updateScrollState)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+})
+
+onBeforeRouteLeave(() => {
+  flushReadingPosition()
 })
 
 watch(() => route.params.id, () => {
+  flushReadingPosition()
   scrollToTop(false)
   loadArticle()
 })
@@ -254,10 +321,16 @@ async function loadArticle() {
   neighbors.value = { previous: null, next: null }
   relatedArticles.value = []
   activeHeadingId.value = ''
+  readingPosition.value = null
+  resumePromptDismissed.value = false
+  lastPositionSavedAt = 0
   try {
     const r = await getArticle(route.params.id)
     if (token !== loadToken.value) return
     article.value = r.data
+    readingPosition.value = r.data?.readingPosition || null
+    resumePromptDismissed.value = false
+    lastPositionSavedAt = 0
     void initializeFavorite(r.data.id, token).catch(() => {})
     await nextTick()
     updateScrollState()
@@ -415,14 +488,93 @@ function goBack() {
   else router.push('/')
 }
 
+function handleFloatingBack() {
+  flushReadingPosition()
+  goBack()
+}
+
 function scrollToHeading(id) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function getArticleBodyMetrics() {
+  const body = document.querySelector('.article-body')
+  if (!body) return null
+  const rect = body.getBoundingClientRect()
+  return {
+    articleTop: rect.top + window.scrollY,
+    articleHeight: body.scrollHeight,
+    viewportHeight: window.innerHeight
+  }
+}
+
+function getAnchorOffset(anchorId) {
+  if (!anchorId) return null
+  const element = document.getElementById(anchorId)
+  if (!element) return null
+  return Math.max(0, Math.round(window.scrollY - (element.getBoundingClientRect().top + window.scrollY)))
+}
+
+function buildCurrentReadingPositionPayload() {
+  if (!article.value?.id || !article.value?.updatedAt) return null
+  const metrics = getArticleBodyMetrics()
+  if (!metrics) return null
+  const progressPercent = calculateReadingProgress({
+    scrollY: window.scrollY,
+    articleTop: metrics.articleTop,
+    articleHeight: metrics.articleHeight,
+    viewportHeight: metrics.viewportHeight
+  })
+  return buildReadingPositionPayload({
+    progressPercent,
+    scrollY: window.scrollY,
+    anchorId: activeHeadingId.value,
+    anchorOffset: getAnchorOffset(activeHeadingId.value),
+    articleUpdatedAt: article.value.updatedAt
+  })
+}
+
+function scheduleReadingPositionSave(force = false) {
+  if (!authStore.isLoggedIn || !componentActive || !article.value?.id) return
+  const now = Date.now()
+  if (!shouldSaveReadingPosition({ now, lastSavedAt: lastPositionSavedAt, intervalMs: 9000, force })) {
+    return
+  }
+  const payload = buildCurrentReadingPositionPayload()
+  if (!payload) return
+  lastPositionSavedAt = now
+  void saveReadingPosition(article.value.id, payload, {
+    skipErrorMessage: true,
+    skipAuthRedirect: true
+  }).catch(() => {})
+}
+
+function flushReadingPosition() {
+  scheduleReadingPositionSave(true)
+}
+
+function handleVisibilityChange() {
+  if (document.visibilityState === 'hidden') {
+    flushReadingPosition()
+  }
+}
+
+function continueReadingFromSavedPosition() {
+  const scrollY = Number(readingPosition.value?.resumeScrollY)
+  if (!Number.isFinite(scrollY)) return
+  resumePromptDismissed.value = true
+  window.scrollTo({ top: Math.max(0, scrollY), behavior: 'smooth' })
+}
+
+function dismissResumePrompt() {
+  resumePromptDismissed.value = true
 }
 
 function updateScrollState() {
   showBackToTop.value = window.scrollY > 360
   if (!toc.value.length) {
     activeHeadingId.value = ''
+    scheduleReadingPositionSave(false)
     return
   }
   const headings = toc.value
@@ -436,6 +588,7 @@ function updateScrollState() {
     activeHeadingId.value = nextActiveHeadingId
   }
   if (nextActiveHeadingId) nextTick(scrollActiveTocItemIntoView)
+  scheduleReadingPositionSave(false)
 }
 
 function scrollActiveTocItemIntoView() {
@@ -508,7 +661,7 @@ function scrollToTop(smooth = true) {
 .toc-link:focus-visible,
 .neighbor-card:focus-visible,
 .related-card:focus-visible,
-.floating-top-button:focus-visible {
+.floating-tool-button:focus-visible {
   outline: 2px solid var(--primary-color);
   outline-offset: 2px;
 }
@@ -829,45 +982,89 @@ function scrollToTop(smooth = true) {
   gap: 6px;
 }
 
-.floating-top-button {
+.resume-reading-dialog :deep(.el-dialog__header) {
+  padding-bottom: 0;
+}
+
+.resume-dialog-title {
+  color: var(--text-color);
+  font-size: 19px;
+  font-weight: 850;
+}
+
+.resume-dialog-copy {
+  display: grid;
+  gap: 8px;
+  color: var(--muted-text-color);
+  line-height: 1.7;
+}
+
+.resume-dialog-copy strong {
+  color: var(--text-color);
+  font-size: 26px;
+  line-height: 1.2;
+}
+
+.resume-dialog-copy p {
+  margin: 0;
+}
+
+.resume-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.floating-reading-tools {
   position: fixed;
-  right: max(24px, calc((100vw - var(--content-width)) / 2 - 58px));
-  bottom: calc(30px + env(safe-area-inset-bottom));
+  right: calc(24px + env(safe-area-inset-right));
+  bottom: calc(28px + env(safe-area-inset-bottom));
   z-index: 20;
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 6px;
+  border: 1px solid color-mix(in srgb, var(--soft-border-color) 86%, transparent);
+  border-radius: 999px;
+  background: var(--panel-bg);
+  box-shadow:
+    0 16px 36px rgba(15, 23, 42, 0.16),
+    0 4px 12px rgba(15, 23, 42, 0.12);
+}
+
+.floating-tool-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   padding: 0;
-  border: 1px solid color-mix(in srgb, var(--primary-color) 34%, transparent);
+  border: 0;
   border-radius: 999px;
-  background:
-    linear-gradient(145deg, color-mix(in srgb, var(--primary-color) 92%, white), var(--primary-color));
-  color: #fff;
+  background: transparent;
+  color: var(--text-color);
   font: inherit;
   font-weight: 800;
-  box-shadow:
-    0 14px 34px color-mix(in srgb, var(--primary-color) 28%, transparent),
-    0 6px 16px rgba(15, 23, 42, 0.16);
   cursor: pointer;
-  backdrop-filter: blur(10px);
-  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+  transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 
-.floating-top-button:hover {
-  transform: translateY(-2px);
-  filter: brightness(1.05);
-  box-shadow:
-    0 18px 42px color-mix(in srgb, var(--primary-color) 34%, transparent),
-    0 8px 20px rgba(15, 23, 42, 0.2);
+.floating-tool-button:hover {
+  background: color-mix(in srgb, var(--primary-color) 12%, var(--panel-bg));
+  color: var(--primary-color);
+  transform: translateY(-1px);
 }
 
-.floating-top-button:active {
+.floating-tool-button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary-color) 38%, transparent);
+  outline-offset: 2px;
+}
+
+.floating-tool-button:active {
   transform: translateY(0) scale(0.96);
 }
 
-.floating-top-button .el-icon {
+.floating-tool-button .el-icon {
   font-size: 18px;
 }
 
@@ -883,13 +1080,6 @@ function scrollToTop(smooth = true) {
 
   .mobile-toc {
     display: grid;
-  }
-}
-
-@media (min-width: 981px) and (max-width: 1320px) {
-  .floating-top-button {
-    right: 18px;
-    bottom: calc(150px + env(safe-area-inset-bottom));
   }
 }
 
@@ -912,15 +1102,25 @@ function scrollToTop(smooth = true) {
     grid-template-columns: 1fr;
   }
 
-  .floating-top-button {
-    right: 14px;
+  .floating-reading-tools {
+    right: calc(14px + env(safe-area-inset-right));
     bottom: calc(18px + env(safe-area-inset-bottom));
-    width: 42px;
-    height: 42px;
+    padding: 4px;
+  }
+
+  .floating-tool-button {
+    width: 36px;
+    height: 36px;
   }
 
   .article-cover img {
     min-height: 210px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floating-tool-button {
+    transition: none;
   }
 }
 </style>

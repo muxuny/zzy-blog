@@ -34,6 +34,13 @@ export function formatReadingTime(value) {
   }).format(date)
 }
 
+export function formatReadingProgress(value) {
+  if (value === null || value === undefined || value === '') return ''
+  const number = Number(value)
+  if (!Number.isFinite(number) || number < 0 || number > 100) return ''
+  return `读到 ${Math.round(number)}%`
+}
+
 export function getReadingHistoryGroupKey(lastReadAt, now = new Date()) {
   const lastReadDate = new Date(lastReadAt)
   if (Number.isNaN(lastReadDate.getTime())) return 'earlier'

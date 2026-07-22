@@ -23,6 +23,19 @@ public interface ArticleReadingHistoryMapper extends BaseMapper<ArticleReadingHi
 
     ReadingHistoryRelationRow selectLastAvailable(@Param("userId") Long userId);
 
+    ReadingHistoryRelationRow selectActiveHistory(@Param("userId") Long userId,
+                                                  @Param("articleId") Long articleId);
+
+    int updatePosition(@Param("userId") Long userId,
+                       @Param("articleId") Long articleId,
+                       @Param("progressPercent") Integer progressPercent,
+                       @Param("scrollY") Integer scrollY,
+                       @Param("anchorId") String anchorId,
+                       @Param("anchorOffset") Integer anchorOffset,
+                       @Param("articleUpdatedAt") LocalDateTime articleUpdatedAt,
+                       @Param("username") String username,
+                       @Param("now") LocalDateTime now);
+
     int deleteHistory(@Param("userId") Long userId,
                       @Param("articleId") Long articleId,
                       @Param("username") String username,

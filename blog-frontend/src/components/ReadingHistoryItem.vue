@@ -62,13 +62,16 @@
       <span>最近阅读 {{ formatReadingTime(item.lastReadAt) }}</span>
       <span>首次阅读 {{ formatReadingTime(item.firstReadAt) }}</span>
       <span>阅读 {{ item.readCount || 0 }} 次</span>
+      <span v-if="formatReadingProgress(item.progressPercent)">
+        {{ formatReadingProgress(item.progressPercent) }}
+      </span>
     </div>
   </article>
 </template>
 
 <script setup>
 import { Delete } from '@element-plus/icons-vue'
-import { formatReadingTime } from '../utils/readingHistory'
+import { formatReadingProgress, formatReadingTime } from '../utils/readingHistory'
 
 defineProps({
   item: { type: Object, required: true },

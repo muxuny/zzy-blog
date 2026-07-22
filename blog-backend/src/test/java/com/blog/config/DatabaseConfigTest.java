@@ -203,8 +203,6 @@ class DatabaseConfigTest {
         String migrationDefinition = normalizeSql(extractReadingHistoryTableDefinition(migration, "migration"));
         String initDefinition = normalizeSql(extractReadingHistoryTableDefinition(initSql, "init.sql"));
 
-        assertEquals(migrationDefinition, initDefinition,
-                "init.sql and migration must use the same article_reading_history table definition");
         for (String columnDefinition : Arrays.asList(
                 "`id` bigint not null comment '雪花id',",
                 "`user_id` bigint not null comment '阅读用户id',",
@@ -221,18 +219,33 @@ class DatabaseConfigTest {
                 "`version` int not null default 0 comment '乐观锁版本号',")) {
             assertTrue(migrationDefinition.contains(columnDefinition),
                     "Missing reading history column definition " + columnDefinition);
+            assertTrue(initDefinition.contains(columnDefinition),
+                    "Missing init reading history column definition " + columnDefinition);
         }
         assertTrue(migrationDefinition.contains("primary key (`id`)"));
+        assertTrue(initDefinition.contains("primary key (`id`)"));
         assertTrue(migrationDefinition.contains(
+                "unique key `uk_article_reading_history_user_article` (`user_id`, `article_id`)"));
+        assertTrue(initDefinition.contains(
                 "unique key `uk_article_reading_history_user_article` (`user_id`, `article_id`)"));
         assertTrue(migrationDefinition.contains(
                 "key `idx_article_reading_history_user_last` (`user_id`, `deleted`, `last_read_at`)"));
+        assertTrue(initDefinition.contains(
+                "key `idx_article_reading_history_user_last` (`user_id`, `deleted`, `last_read_at`)"));
         assertTrue(migrationDefinition.contains(
+                "key `idx_article_reading_history_article` (`article_id`, `deleted`)"));
+        assertTrue(initDefinition.contains(
                 "key `idx_article_reading_history_article` (`article_id`, `deleted`)"));
         assertTrue(migrationDefinition.contains(
                 "constraint `fk_article_reading_history_user` foreign key (`user_id`) references `user` (`id`) "
                         + "on delete cascade on update cascade"));
+        assertTrue(initDefinition.contains(
+                "constraint `fk_article_reading_history_user` foreign key (`user_id`) references `user` (`id`) "
+                        + "on delete cascade on update cascade"));
         assertTrue(migrationDefinition.contains(
+                "constraint `fk_article_reading_history_article` foreign key (`article_id`) references `article` (`id`) "
+                        + "on delete cascade on update cascade"));
+        assertTrue(initDefinition.contains(
                 "constraint `fk_article_reading_history_article` foreign key (`article_id`) references `article` (`id`) "
                         + "on delete cascade on update cascade"));
 
@@ -244,14 +257,59 @@ class DatabaseConfigTest {
     }
 
     @Test
+    void readingPositionMigrationAddsOnlyPositionColumns() throws IOException {
+        String migration = readString(Paths.get(
+                "src/main/resources/db/migration/2026-07-21-新增阅读位置与进度字段.sql"));
+        String normalized = normalizeSql(migration);
+
+        assertTrue(normalized.startsWith("alter table `article_reading_history`"));
+        for (String columnDefinition : Arrays.asList(
+                "add column `progress_percent` int not null default 0 comment '阅读进度百分比'",
+                "add column `scroll_y` int not null default 0 comment '最近阅读滚动位置'",
+                "add column `anchor_id` varchar(160) default null comment '最近阅读标题锚点'",
+                "add column `anchor_offset` int default null comment '相对锚点偏移'",
+                "add column `article_updated_at_snapshot` datetime default null comment '保存位置时文章更新时间快照'",
+                "add column `position_updated_at` datetime default null comment '最近保存阅读位置时间'")) {
+            assertTrue(normalized.contains(columnDefinition), "Missing position migration column " + columnDefinition);
+        }
+        assertTrue(!normalized.contains("drop "));
+        assertTrue(!normalized.contains("delete from"));
+        assertTrue(!normalized.contains("truncate "));
+        assertTrue(!normalized.contains("created_at datetime not null"));
+        assertTrue(!normalized.contains("updated_at datetime not null"));
+    }
+
+    @Test
+    void readingHistoryInitSchemaIncludesPositionFieldsWithoutAuditReuse() throws IOException {
+        String initSql = readString(Paths.get("src/main/resources/db/init.sql"));
+        String initDefinition = normalizeSql(extractReadingHistoryTableDefinition(initSql, "init.sql"));
+
+        for (String columnDefinition : Arrays.asList(
+                "`progress_percent` int not null default 0 comment '阅读进度百分比',",
+                "`scroll_y` int not null default 0 comment '最近阅读滚动位置',",
+                "`anchor_id` varchar(160) default null comment '最近阅读标题锚点',",
+                "`anchor_offset` int default null comment '相对锚点偏移',",
+                "`article_updated_at_snapshot` datetime default null comment '保存位置时文章更新时间快照',",
+                "`position_updated_at` datetime default null comment '最近保存阅读位置时间',")) {
+            assertTrue(initDefinition.contains(columnDefinition), "Missing init position column " + columnDefinition);
+        }
+        assertTrue(initDefinition.indexOf("`read_count` int not null default 1 comment '阅读次数',")
+                < initDefinition.indexOf("`progress_percent` int not null default 0 comment '阅读进度百分比',"));
+        assertTrue(initDefinition.indexOf("`position_updated_at` datetime default null comment '最近保存阅读位置时间',")
+                < initDefinition.indexOf("`created_by` varchar(50) default null comment '创建人',"));
+    }
+
+    @Test
     void readingHistoryMapperUsesAtomicRecordAndScopedDeleteContract() throws IOException {
         String xml = readString(Paths.get("src/main/resources/mapper/ArticleReadingHistoryMapper.xml"));
+        String upsertHistory = extractMapperStatement(xml, "insert", "upsertHistory");
         assertEquals(normalizeWhitespace(
                 "INSERT INTO article_reading_history "
                         + "(id, user_id, article_id, title_snapshot, first_read_at, last_read_at, read_count, "
-                        + "created_by, created_at, updated_by, updated_at, deleted, version) "
+                        + "progress_percent, scroll_y, anchor_id, anchor_offset, article_updated_at_snapshot, "
+                        + "position_updated_at, created_by, created_at, updated_by, updated_at, deleted, version) "
                         + "VALUES (#{id}, #{userId}, #{articleId}, #{titleSnapshot}, #{now}, #{now}, 1, "
-                        + "#{username}, #{now}, #{username}, #{now}, 0, 0) "
+                        + "0, 0, NULL, NULL, NULL, NULL, #{username}, #{now}, #{username}, #{now}, 0, 0) "
                         + "ON DUPLICATE KEY UPDATE "
                         + "title_snapshot = IF(deleted = 1 OR VALUES(last_read_at) >= last_read_at, "
                         + "VALUES(title_snapshot), title_snapshot), "
@@ -259,11 +317,17 @@ class DatabaseConfigTest {
                         + "last_read_at = IF(deleted = 1, VALUES(last_read_at), "
                         + "GREATEST(last_read_at, VALUES(last_read_at))), "
                         + "read_count = IF(deleted = 1, 1, read_count + 1), "
+                        + "progress_percent = if(deleted = 1, 0, progress_percent), "
+                        + "scroll_y = if(deleted = 1, 0, scroll_y), "
+                        + "anchor_id = if(deleted = 1, NULL, anchor_id), "
+                        + "anchor_offset = if(deleted = 1, NULL, anchor_offset), "
+                        + "article_updated_at_snapshot = if(deleted = 1, NULL, article_updated_at_snapshot), "
+                        + "position_updated_at = if(deleted = 1, NULL, position_updated_at), "
                         + "updated_by = VALUES(updated_by), "
                         + "updated_at = VALUES(updated_at), "
                         + "version = version + 1, "
                         + "deleted = 0"),
-                extractMapperStatement(xml, "insert", "upsertHistory"));
+                upsertHistory);
         assertEquals(normalizeWhitespace(
                 "UPDATE article_reading_history SET deleted = 1, updated_by = #{username}, "
                         + "updated_at = #{now}, version = version + 1 "
@@ -274,6 +338,37 @@ class DatabaseConfigTest {
                         + "updated_at = #{now}, version = version + 1 "
                         + "WHERE user_id = #{userId} AND deleted = 0"),
                 extractMapperStatement(xml, "update", "clearHistory"));
+    }
+
+    @Test
+    void readingHistoryMapperPersistsAndResetsPositionContract() throws IOException {
+        String xml = readString(Paths.get("src/main/resources/mapper/ArticleReadingHistoryMapper.xml"));
+        String upsert = extractMapperStatement(xml, "insert", "upsertHistory");
+        String savePosition = extractMapperStatement(xml, "update", "updatePosition");
+        String activeHistory = extractMapperStatement(xml, "select", "selectActiveHistory");
+        String normalizedUpsert = upsert.toLowerCase(Locale.ROOT);
+
+        assertTrue(normalizedUpsert.contains("progress_percent = if(deleted = 1, 0, progress_percent)"));
+        assertTrue(normalizedUpsert.contains("scroll_y = if(deleted = 1, 0, scroll_y)"));
+        assertTrue(normalizedUpsert.contains("anchor_id = if(deleted = 1, null, anchor_id)"));
+        assertTrue(normalizedUpsert.contains("anchor_offset = if(deleted = 1, null, anchor_offset)"));
+        assertTrue(normalizedUpsert.contains(
+                "article_updated_at_snapshot = if(deleted = 1, null, article_updated_at_snapshot)"));
+        assertTrue(normalizedUpsert.contains("position_updated_at = if(deleted = 1, null, position_updated_at)"));
+
+        assertTrue(savePosition.contains(normalizeWhitespace(
+                "UPDATE article_reading_history h INNER JOIN article a ON a.id = h.article_id "
+                        + "AND a.deleted = 0 AND a.status = 'published' "
+                        + "AND (a.visibility = 'public' OR a.visibility IS NULL)")));
+        assertTrue(savePosition.contains(normalizeWhitespace(
+                "WHERE h.user_id = #{userId} AND h.article_id = #{articleId} AND h.deleted = 0")));
+        assertTrue(savePosition.contains("h.progress_percent = #{progressPercent}"));
+        assertTrue(savePosition.contains("h.article_updated_at_snapshot = #{articleUpdatedAt}"));
+        assertTrue(savePosition.contains("h.position_updated_at = #{now}"));
+
+        assertTrue(activeHistory.contains(normalizeWhitespace(
+                "WHERE h.user_id = #{userId} AND h.article_id = #{articleId} AND h.deleted = 0")));
+        assertTrue(activeHistory.contains("a.updated_at AS article_updated_at"));
     }
 
     @Test

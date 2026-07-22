@@ -7,6 +7,8 @@ import com.blog.dto.ReadingHistoryItem;
 import com.blog.dto.ReadingHistoryOverview;
 import com.blog.dto.ReadingHistoryPageQuery;
 import com.blog.dto.ReadingHistoryRelationRow;
+import com.blog.dto.ReadingPositionRequest;
+import com.blog.dto.ReadingPositionState;
 import com.blog.entity.Article;
 import com.blog.entity.User;
 import com.blog.mapper.ArticleReadingHistoryMapper;
@@ -93,6 +95,93 @@ class ReadingHistoryServiceImplTest {
     }
 
     @Test
+    void savePosition_shouldValidateAndUpdateOnlyCurrentUserHistory() {
+        when(userService.getCurrentUser("alice")).thenReturn(user(10L, "alice"));
+        ReadingPositionRequest request = positionRequest(42, 3810, "section-2", 120,
+                LocalDateTime.of(2026, 7, 21, 16, 40));
+        when(historyMapper.updatePosition(eq(10L), eq(20L), eq(42), eq(3810), eq("section-2"),
+                eq(120), eq(request.getArticleUpdatedAt()), eq("alice"), any(LocalDateTime.class)))
+                .thenReturn(1);
+
+        readingHistoryService.savePosition(20L, request, "alice");
+
+        verify(userService).getCurrentUser("alice");
+        verify(historyMapper).updatePosition(eq(10L), eq(20L), eq(42), eq(3810), eq("section-2"),
+                eq(120), eq(request.getArticleUpdatedAt()), eq("alice"), any(LocalDateTime.class));
+        verifyNoInteractions(articleService);
+    }
+
+    @Test
+    void savePosition_shouldRejectInvalidValuesBeforeWriting() {
+        assertInvalidPosition(positionRequest(-1, 10, "section", 0, LocalDateTime.now()));
+        assertInvalidPosition(positionRequest(101, 10, "section", 0, LocalDateTime.now()));
+        assertInvalidPosition(positionRequest(10, -1, "section", 0, LocalDateTime.now()));
+        assertInvalidPosition(positionRequest(10, 0, repeated("a", 161), 0, LocalDateTime.now()));
+        assertInvalidPosition(positionRequest(10, 0, "section", -1, LocalDateTime.now()));
+        assertInvalidPosition(positionRequest(10, 0, "section", 0, null));
+    }
+
+    @Test
+    void savePosition_shouldRejectMissingOrUnavailableHistory() {
+        when(userService.getCurrentUser("alice")).thenReturn(user(10L, "alice"));
+        ReadingPositionRequest request = positionRequest(42, 3810, "section-2", 120,
+                LocalDateTime.of(2026, 7, 21, 16, 40));
+        when(historyMapper.updatePosition(eq(10L), eq(20L), eq(42), eq(3810), eq("section-2"),
+                eq(120), eq(request.getArticleUpdatedAt()), eq("alice"), any(LocalDateTime.class)))
+                .thenReturn(0);
+
+        assertThatThrownBy(() -> readingHistoryService.savePosition(20L, request, "alice"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("阅读历史不存在或文章暂不可用");
+    }
+
+    @Test
+    void getPositionState_shouldAllowResumeOnlyWhenProgressAndArticleSnapshotMatch() {
+        when(userService.getCurrentUser("alice")).thenReturn(user(10L, "alice"));
+        ReadingHistoryRelationRow row = relation(1L, 20L, "Saved title",
+                LocalDateTime.of(2026, 7, 20, 8, 0),
+                LocalDateTime.of(2026, 7, 21, 9, 0), 3, true);
+        row.setProgressPercent(42);
+        row.setScrollY(3810);
+        row.setAnchorId("section-2");
+        row.setAnchorOffset(120);
+        row.setArticleUpdatedAtSnapshot(LocalDateTime.of(2026, 7, 21, 16, 40));
+        row.setArticleUpdatedAt(LocalDateTime.of(2026, 7, 21, 16, 40));
+        row.setPositionUpdatedAt(LocalDateTime.of(2026, 7, 21, 17, 0));
+        when(historyMapper.selectActiveHistory(10L, 20L)).thenReturn(row);
+        Article article = article(20L, "Current title", "Summary", "cover.png", "Author", 42);
+
+        ReadingPositionState state = readingHistoryService.getPositionState(article, "alice");
+
+        assertThat(state.getProgressPercent()).isEqualTo(42);
+        assertThat(state.isCanResume()).isTrue();
+        assertThat(state.getResumeScrollY()).isEqualTo(3810);
+        assertThat(state.getResumeAnchorId()).isEqualTo("section-2");
+        assertThat(state.getResumeAnchorOffset()).isEqualTo(120);
+        assertThat(state.getPositionUpdatedAt()).isEqualTo(LocalDateTime.of(2026, 7, 21, 17, 0));
+    }
+
+    @Test
+    void getPositionState_shouldExposeProgressButNotResumeBelowThreshold() {
+        when(userService.getCurrentUser("alice")).thenReturn(user(10L, "alice"));
+        ReadingHistoryRelationRow row = relation(1L, 20L, "Saved title",
+                LocalDateTime.of(2026, 7, 20, 8, 0),
+                LocalDateTime.of(2026, 7, 21, 9, 0), 3, true);
+        row.setProgressPercent(4);
+        row.setScrollY(120);
+        row.setArticleUpdatedAtSnapshot(LocalDateTime.of(2026, 7, 21, 16, 40));
+        row.setArticleUpdatedAt(LocalDateTime.of(2026, 7, 21, 16, 40));
+        when(historyMapper.selectActiveHistory(10L, 20L)).thenReturn(row);
+
+        ReadingPositionState state = readingHistoryService.getPositionState(article(20L, "Current title",
+                "Summary", "cover.png", "Author", 42), "alice");
+
+        assertThat(state.getProgressPercent()).isEqualTo(4);
+        assertThat(state.isCanResume()).isFalse();
+        assertThat(state.getResumeScrollY()).isNull();
+    }
+
+    @Test
     void getHistory_shouldUseLivePublicDetailsAndUnavailableSnapshotsInOnePage() {
         when(userService.getCurrentUser("alice")).thenReturn(user(10L, "alice"));
         LocalDateTime firstReadAt = LocalDateTime.of(2026, 7, 19, 9, 0);
@@ -167,6 +256,32 @@ class ReadingHistoryServiceImplTest {
         assertThat(hidden.getUnavailableMessage()).isEqualTo("该文章暂未公开");
         assertThat(Arrays.asList(hidden.getSummary(), hidden.getCoverImage(),
                 hidden.getAuthorName(), hidden.getViewCount())).containsOnlyNulls();
+    }
+
+    @Test
+    void getHistory_shouldExposeProgressButNotResumeWhenSnapshotDoesNotMatch() {
+        when(userService.getCurrentUser("alice")).thenReturn(user(10L, "alice"));
+        ReadingHistoryRelationRow row = relation(1L, 20L, "Saved title",
+                LocalDateTime.of(2026, 7, 20, 8, 0),
+                LocalDateTime.of(2026, 7, 21, 9, 0), 3, true);
+        row.setProgressPercent(42);
+        row.setScrollY(3810);
+        row.setArticleUpdatedAtSnapshot(LocalDateTime.of(2026, 7, 20, 16, 40));
+        row.setArticleUpdatedAt(LocalDateTime.of(2026, 7, 21, 16, 40));
+        Page<ReadingHistoryRelationRow> rows = new Page<>(1, 10);
+        rows.setTotal(1);
+        rows.setRecords(Collections.singletonList(row));
+        when(historyMapper.selectHistoryPage(any(Page.class), eq(10L))).thenReturn(rows);
+        when(articleService.getPublicArticleSummaries(Collections.singletonList(20L)))
+                .thenReturn(Collections.singletonList(article(20L, "Current title", "Summary", "cover.png",
+                        "Author", 42)));
+
+        IPage<ReadingHistoryItem> result = readingHistoryService.getHistory(query(1, 10), "alice");
+
+        ReadingHistoryItem item = result.getRecords().get(0);
+        assertThat(item.getProgressPercent()).isEqualTo(42);
+        assertThat(item.isCanResume()).isFalse();
+        assertThat(item.getResumeScrollY()).isNull();
     }
 
     @Test
@@ -416,7 +531,9 @@ class ReadingHistoryServiceImplTest {
 
         assertThat(fieldNames).containsExactlyInAnyOrder(
                 "articleId", "title", "summary", "coverImage", "authorName", "viewCount",
-                "firstReadAt", "lastReadAt", "readCount", "available", "unavailableMessage");
+                "firstReadAt", "lastReadAt", "readCount", "available", "unavailableMessage",
+                "progressPercent", "positionUpdatedAt", "canResume", "resumeScrollY",
+                "resumeAnchorId", "resumeAnchorOffset");
         assertThat(ReadingHistoryItem.class.getDeclaredFields())
                 .filteredOn(field -> field.getName().equals("articleId"))
                 .singleElement()
@@ -432,6 +549,11 @@ class ReadingHistoryServiceImplTest {
                 .singleElement()
                 .extracting(field -> field.getType())
                 .isEqualTo(Integer.class);
+        assertThat(ReadingHistoryItem.class.getDeclaredFields())
+                .filteredOn(field -> field.getName().equals("progressPercent"))
+                .singleElement()
+                .extracting(field -> field.getType())
+                .isEqualTo(Integer.class);
     }
 
     private void assertInvalidPage(ReadingHistoryPageQuery query) {
@@ -441,11 +563,34 @@ class ReadingHistoryServiceImplTest {
         verifyNoInteractions(userService, historyMapper, articleService);
     }
 
+    private void assertInvalidPosition(ReadingPositionRequest request) {
+        assertThatThrownBy(() -> readingHistoryService.savePosition(20L, request, "alice"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("阅读位置参数不合法");
+        verifyNoInteractions(userService, historyMapper, articleService);
+    }
+
     private static ReadingHistoryPageQuery query(long page, long size) {
         ReadingHistoryPageQuery query = new ReadingHistoryPageQuery();
         query.setPage(page);
         query.setSize(size);
         return query;
+    }
+
+    private static ReadingPositionRequest positionRequest(Integer progressPercent, Integer scrollY,
+                                                          String anchorId, Integer anchorOffset,
+                                                          LocalDateTime articleUpdatedAt) {
+        ReadingPositionRequest request = new ReadingPositionRequest();
+        request.setProgressPercent(progressPercent);
+        request.setScrollY(scrollY);
+        request.setAnchorId(anchorId);
+        request.setAnchorOffset(anchorOffset);
+        request.setArticleUpdatedAt(articleUpdatedAt);
+        return request;
+    }
+
+    private static String repeated(String value, int count) {
+        return String.join("", java.util.Collections.nCopies(count, value));
     }
 
     private static User user(Long id, String username) {

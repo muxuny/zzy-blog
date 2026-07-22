@@ -6,10 +6,12 @@ import {
   clearReadingHistory,
   deleteReadingHistory,
   getReadingHistory,
-  getReadingOverview
+  getReadingOverview,
+  saveReadingPosition
 } from '../api/reading.js'
 import {
   buildReadingHistoryParams,
+  formatReadingProgress,
   formatReadingTime,
   getReadingHistoryGroupKey,
   groupReadingHistory,
@@ -189,13 +191,13 @@ test('reading space guards whole-item links and private snapshots', () => {
       name: 'last read',
       source: readingSpaceSource.match(/<template\s+v-else>\s*<div class="last-read-copy unavailable-copy">[\s\S]*?<\/template>/)?.[0] || '',
       fieldPattern: /overview\.lastRead\.([A-Za-z][A-Za-z0-9]*)/g,
-      allowedFields: ['lastReadAt', 'title']
+      allowedFields: ['lastReadAt', 'progressPercent', 'title']
     },
     {
       name: 'history',
       source: previewUnavailableBranches.find(source => source.includes('item.lastReadAt')) || '',
       fieldPattern: /item\.([A-Za-z][A-Za-z0-9]*)/g,
-      allowedFields: ['lastReadAt', 'title']
+      allowedFields: ['lastReadAt', 'progressPercent', 'title']
     },
     {
       name: 'favorites',
@@ -331,6 +333,13 @@ test('reading history item formats times and isolates the accessible remove acti
   assert.match(itemSource, /\.remove-button\s*\{[^}]*z-index:\s*(?:[2-9]|\d{2,});/s)
 })
 
+test('reading space and history item display compact reading progress', () => {
+  assert.match(readingSpaceSource, /formatReadingProgress/)
+  assert.match(itemSource, /formatReadingProgress/)
+  assert.match(readingSpaceSource, /progressPercent/)
+  assert.match(itemSource, /progressPercent/)
+})
+
 test('reading history item has stable responsive media and root-only hover treatment', () => {
   assert.match(itemSource, /width:\s*144px;/)
   assert.match(itemSource, /height:\s*96px;/)
@@ -464,12 +473,18 @@ test('reading API wrappers execute the expected requests', async () => {
     await getReadingOverview()
     await getReadingHistory({ page: 2, size: 10 })
     await deleteReadingHistory('758902345678901401')
+    await saveReadingPosition('758902345678901401', {
+      progressPercent: 42,
+      scrollY: 3810,
+      articleUpdatedAt: '2026-07-21T16:40:00'
+    })
     await clearReadingHistory()
 
     assert.deepEqual(capturedConfigs.map(({ method, url, params }) => ({ method, url, params })), [
       { method: 'get', url: '/my/reading/overview', params: undefined },
       { method: 'get', url: '/my/reading/history', params: { page: 2, size: 10 } },
       { method: 'delete', url: '/my/reading/history/758902345678901401', params: undefined },
+      { method: 'put', url: '/my/reading/history/758902345678901401/position', params: undefined },
       { method: 'delete', url: '/my/reading/history', params: undefined }
     ])
   } finally {
@@ -514,6 +529,14 @@ test('format reading time returns empty text for invalid nullish and empty value
   for (const value of ['invalid', null, undefined, '']) {
     assert.equal(formatReadingTime(value), '')
   }
+})
+
+test('format reading progress returns compact Chinese progress text', () => {
+  assert.equal(formatReadingProgress(42), '读到 42%')
+  assert.equal(formatReadingProgress('42.8'), '读到 43%')
+  assert.equal(formatReadingProgress(-1), '')
+  assert.equal(formatReadingProgress(101), '')
+  assert.equal(formatReadingProgress(null), '')
 })
 
 test('reading history group key handles local day boundaries', () => {

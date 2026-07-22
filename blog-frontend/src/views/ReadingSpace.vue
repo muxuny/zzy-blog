@@ -62,6 +62,12 @@
                 <span class="last-read-time">
                   上次阅读 {{ formatReadingTime(overview.lastRead.lastReadAt) }}
                 </span>
+                <span
+                  v-if="formatReadingProgress(overview.lastRead.progressPercent)"
+                  class="reading-progress"
+                >
+                  {{ formatReadingProgress(overview.lastRead.progressPercent) }}
+                </span>
               </div>
             </template>
 
@@ -76,6 +82,12 @@
                 </el-tooltip>
                 <span class="last-read-time">
                   上次阅读 {{ formatReadingTime(overview.lastRead.lastReadAt) }}
+                </span>
+                <span
+                  v-if="formatReadingProgress(overview.lastRead.progressPercent)"
+                  class="reading-progress"
+                >
+                  {{ formatReadingProgress(overview.lastRead.progressPercent) }}
                 </span>
                 <span class="unavailable-note">该文章暂未公开</span>
               </div>
@@ -126,6 +138,9 @@
                   <h3 class="preview-title">{{ item.title }}</h3>
                   <div class="preview-meta">
                     <span>{{ formatReadingTime(item.lastReadAt) }}</span>
+                    <span v-if="formatReadingProgress(item.progressPercent)">
+                      {{ formatReadingProgress(item.progressPercent) }}
+                    </span>
                     <span v-if="item.authorName">{{ item.authorName }}</span>
                   </div>
                 </div>
@@ -142,6 +157,9 @@
                   </el-tooltip>
                   <div class="preview-meta">
                     <span>{{ formatReadingTime(item.lastReadAt) }}</span>
+                    <span v-if="formatReadingProgress(item.progressPercent)">
+                      {{ formatReadingProgress(item.progressPercent) }}
+                    </span>
                     <span class="unavailable-note">该文章暂未公开</span>
                   </div>
                 </div>
@@ -231,7 +249,7 @@ import { useRouter } from 'vue-router'
 import { ArrowRight, Refresh } from '@element-plus/icons-vue'
 import AppHeader from '../components/AppHeader.vue'
 import { getReadingOverview } from '../api/reading'
-import { formatReadingTime } from '../utils/readingHistory'
+import { formatReadingProgress, formatReadingTime } from '../utils/readingHistory'
 
 const overview = ref({
   lastRead: null,
@@ -593,6 +611,11 @@ function goDiscover() {
   margin-top: 7px;
   color: var(--muted-text-color);
   font-size: 12px;
+}
+
+.reading-progress {
+  color: var(--accent-color);
+  font-weight: 750;
 }
 
 .favorite-grid {

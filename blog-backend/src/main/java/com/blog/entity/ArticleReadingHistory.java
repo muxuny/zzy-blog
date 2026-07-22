@@ -18,4 +18,10 @@ public class ArticleReadingHistory extends BaseEntity {
     private LocalDateTime firstReadAt;
     private LocalDateTime lastReadAt;
     private Integer readCount;
+    private Integer progressPercent;
+    private Integer scrollY;
+    private String anchorId;
+    private Integer anchorOffset;
+    private LocalDateTime articleUpdatedAtSnapshot;
+    private LocalDateTime positionUpdatedAt;
 }

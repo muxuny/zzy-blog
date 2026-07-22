@@ -6,12 +6,14 @@ import com.blog.common.Result;
 import com.blog.dto.ReadingHistoryItem;
 import com.blog.dto.ReadingHistoryPageQuery;
 import com.blog.dto.ReadingOverview;
+import com.blog.dto.ReadingPositionRequest;
 import com.blog.service.ReadingHistoryService;
 import com.blog.service.ReadingSpaceService;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.lang.reflect.Method;
@@ -87,6 +89,19 @@ class ReadingControllerTest {
     }
 
     @Test
+    void savePosition_shouldUseCurrentPrincipalAndReturnEmptySuccess() {
+        ReadingPositionRequest request = new ReadingPositionRequest();
+        request.setProgressPercent(42);
+
+        Result<Void> result = controller.savePosition(42L, request, principal);
+
+        assertThat(result.getCode()).isEqualTo(200);
+        assertThat(result.getData()).isNull();
+        verify(readingHistoryService).savePosition(42L, request, "alice");
+        verifyNoMoreInteractions(readingSpaceService, readingHistoryService);
+    }
+
+    @Test
     void mappings_andAuthorization_shouldBeExactAndUnambiguous() throws NoSuchMethodException {
         RequestMapping requestMapping = ReadingController.class.getAnnotation(RequestMapping.class);
         PreAuthorize preAuthorize = ReadingController.class.getAnnotation(PreAuthorize.class);
@@ -101,6 +116,8 @@ class ReadingControllerTest {
         assertMapping("deleteHistory", new Class[]{Long.class, Principal.class},
                 DeleteMapping.class, "/history/{articleId}");
         assertMapping("clearHistory", new Class[]{Principal.class}, DeleteMapping.class, "/history");
+        assertMapping("savePosition", new Class[]{Long.class, ReadingPositionRequest.class, Principal.class},
+                PutMapping.class, "/history/{articleId}/position");
     }
 
     private static void assertMapping(String methodName, Class<?>[] parameterTypes,
@@ -109,8 +126,11 @@ class ReadingControllerTest {
         Method method = ReadingController.class.getMethod(methodName, parameterTypes);
         assertThat(method.getAnnotationsByType(GetMapping.class)).hasSize(mappingType == GetMapping.class ? 1 : 0);
         assertThat(method.getAnnotationsByType(DeleteMapping.class)).hasSize(mappingType == DeleteMapping.class ? 1 : 0);
+        assertThat(method.getAnnotationsByType(PutMapping.class)).hasSize(mappingType == PutMapping.class ? 1 : 0);
         if (mappingType == GetMapping.class) {
             assertThat(method.getAnnotation(GetMapping.class).value()).containsExactly(path);
+        } else if (mappingType == PutMapping.class) {
+            assertThat(method.getAnnotation(PutMapping.class).value()).containsExactly(path);
         } else {
             assertThat(method.getAnnotation(DeleteMapping.class).value()).containsExactly(path);
         }
