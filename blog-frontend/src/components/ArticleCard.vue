@@ -58,6 +58,8 @@ function goArticle() {
 
 <style scoped>
 .article-card {
+  position: relative;
+  overflow: hidden;
   margin-bottom: 0;
   cursor: pointer;
   background: var(--card-bg);
@@ -67,15 +69,36 @@ function goArticle() {
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
 
+.article-card::before {
+  position: absolute;
+  top: 16px;
+  bottom: 16px;
+  left: -1px;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--primary-color), var(--accent-color));
+  content: '';
+  opacity: 0;
+  transform: scaleY(0.55);
+  transform-origin: center;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
 .article-card :deep(.el-card__body) {
   padding: 20px;
+}
+
+.article-card:hover::before,
+.article-card:focus-visible::before {
+  opacity: 1;
+  transform: scaleY(1);
 }
 
 .article-card:hover,
 .article-card:focus-visible {
   transform: translateY(-2px);
   border-color: color-mix(in srgb, var(--primary-color) 38%, var(--soft-border-color));
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 18px 42px var(--theme-glow-color);
 }
 
 .article-card:focus-visible {
@@ -98,7 +121,7 @@ function goArticle() {
   border-radius: var(--radius-md);
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 18%, transparent), transparent),
-    var(--bg-color);
+    color-mix(in srgb, var(--accent-color) 8%, var(--bg-color));
   color: var(--primary-color);
   font-weight: 900;
 }
@@ -202,6 +225,21 @@ function goArticle() {
   .card-image img {
     height: auto;
     aspect-ratio: 16 / 9;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .article-card,
+  .article-card::before,
+  .tag-link,
+  .tag-link :deep(.el-tag) {
+    transition: none;
+  }
+
+  .article-card:hover,
+  .article-card:focus-visible,
+  .tag-link:hover {
+    transform: none;
   }
 }
 </style>

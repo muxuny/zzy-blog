@@ -82,3 +82,12 @@ test('home page exposes weekly content signal instead of reading ranking', () =>
   assert.match(source, /formatDate\(article\.updatedAt \|\| article\.createdAt\)/)
   assert.doesNotMatch(source, /formatDate\(article\.createdAt\)/)
 })
+
+test('article cards include focused line and reduced motion styling', () => {
+  const source = read('../components/ArticleCard.vue')
+
+  assert.match(source, /\.article-card::before/)
+  assert.match(source, /transform:\s*scaleY/)
+  assert.match(source, /theme-glow-color/)
+  assert.match(source, /prefers-reduced-motion:\s*reduce/)
+})
