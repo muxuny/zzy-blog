@@ -77,4 +77,6 @@ test('home page exposes weekly content signal instead of reading ranking', () =>
   assert.doesNotMatch(source, /signal-card/)
   assert.doesNotMatch(source, /已读/)
   assert.doesNotMatch(source, /hot|ranking|热门|排行/)
+  assert.doesNotMatch(source, /featuredArticle\.viewCount/)
+  assert.doesNotMatch(source, /viewCount\s*\|\|\s*0/)
 })

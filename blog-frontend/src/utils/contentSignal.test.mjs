@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { buildContentSignal } from './contentSignal.js'
 
-test('buildContentSignal assigns same-day articles to the local today bucket', () => {
+test('buildContentSignal assigns same-day articles to the Hong Kong today bucket', () => {
   const signal = buildContentSignal({
     now: new Date('2026-07-22T12:00:00+08:00'),
     articles: [
@@ -61,7 +61,7 @@ test('buildContentSignal falls back to top tag and then empty topic text', () =>
   })
 
   assert.equal(topTagSignal.activeTopic, 'Design')
-  assert.equal(topTagSignal.summary, '本周暂无新更新，可从专题继续阅读')
+  assert.equal(topTagSignal.summary, '当前列表本周暂无新更新，可从专题继续阅读')
   assert.equal(emptySignal.activeTopic, '暂无主题')
 })
 
@@ -105,8 +105,25 @@ test('buildContentSignal skips null articles and trims tag names', () => {
   })
 
   assert.equal(signal.activeTopic, 'Vue')
-  assert.equal(signal.summary, '本周更新 1 篇，集中在 Vue')
+  assert.equal(signal.summary, '当前列表本周更新 1 篇，集中在 Vue')
   assert.equal(signal.updatedCount, 1)
+})
+
+test('buildContentSignal ignores truthy non-array tag collections', () => {
+  const signal = buildContentSignal({
+    now: new Date('2026-07-22T12:00:00+08:00'),
+    topTags: [{ name: 'Fallback' }],
+    articles: [
+      {
+        updatedAt: '2026-07-22T09:00:00+08:00',
+        tags: 'Vue'
+      }
+    ]
+  })
+
+  assert.equal(signal.updatedCount, 1)
+  assert.equal(signal.activeTopic, 'Fallback')
+  assert.equal(signal.summary, '当前列表本周更新 1 篇，集中在 Fallback')
 })
 
 test('buildContentSignal only counts current-week tags for the active topic', () => {
@@ -134,5 +151,5 @@ test('buildContentSignal only counts current-week tags for the active topic', ()
 
   assert.equal(signal.updatedCount, 1)
   assert.equal(signal.activeTopic, 'Weekly')
-  assert.equal(signal.summary, '本周更新 1 篇，集中在 Weekly')
+  assert.equal(signal.summary, '当前列表本周更新 1 篇，集中在 Weekly')
 })

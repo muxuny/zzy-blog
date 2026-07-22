@@ -1,31 +1,40 @@
-function padDatePart(value) {
-  return String(value).padStart(2, '0')
+const hongKongDateFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'Asia/Hong_Kong',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit'
+})
+
+function getHongKongDateParts(date) {
+  const parts = Object.fromEntries(hongKongDateFormatter.formatToParts(date).map(part => [part.type, part.value]))
+  return {
+    year: Number(parts.year),
+    month: Number(parts.month),
+    day: Number(parts.day)
+  }
 }
 
-function getLocalDateKey(date) {
-  return [
-    date.getFullYear(),
-    padDatePart(date.getMonth() + 1),
-    padDatePart(date.getDate())
-  ].join('-')
+function getHongKongDateKey(date) {
+  const { year, month, day } = getHongKongDateParts(date)
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
-function getLocalDateLabel(date) {
-  return `${date.getMonth() + 1}/${date.getDate()}`
+function getHongKongDateLabel(date) {
+  const { month, day } = getHongKongDateParts(date)
+  return `${month}/${day}`
 }
 
 export function buildContentSignal({ articles = [], topTags = [], now = new Date() } = {}) {
   const safeArticles = Array.isArray(articles) ? articles : []
   const safeTopTags = Array.isArray(topTags) ? topTags : []
-  const startDate = new Date(now)
-  startDate.setHours(0, 0, 0, 0)
+  const { year, month, day } = getHongKongDateParts(new Date(now))
+  const todayAnchor = Date.UTC(year, month - 1, day)
 
   const days = Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(startDate)
-    date.setDate(startDate.getDate() - (6 - index))
+    const date = new Date(todayAnchor - (6 - index) * 24 * 60 * 60 * 1000)
     return {
-      key: getLocalDateKey(date),
-      label: getLocalDateLabel(date),
+      key: getHongKongDateKey(date),
+      label: getHongKongDateLabel(date),
       count: 0
     }
   })
@@ -39,10 +48,11 @@ export function buildContentSignal({ articles = [], topTags = [], now = new Date
     if (time) {
       const date = new Date(time)
       if (!Number.isNaN(date.getTime())) {
-        const day = dayMap.get(getLocalDateKey(date))
+        const day = dayMap.get(getHongKongDateKey(date))
         if (day) {
           day.count += 1
-          ;(article.tags || []).forEach(tag => {
+          const articleTags = Array.isArray(article.tags) ? article.tags : []
+          articleTags.forEach(tag => {
             const name = String(tag?.name || '').trim()
             if (name) topicCounts.set(name, (topicCounts.get(name) || 0) + 1)
           })
@@ -60,8 +70,8 @@ export function buildContentSignal({ articles = [], topTags = [], now = new Date
     latestTitle: safeArticles[0]?.title || '',
     updatedCount,
     summary: updatedCount
-      ? `本周更新 ${updatedCount} 篇，集中在 ${activeTopic}`
-      : '本周暂无新更新，可从专题继续阅读',
+      ? `当前列表本周更新 ${updatedCount} 篇，集中在 ${activeTopic}`
+      : '当前列表本周暂无新更新，可从专题继续阅读',
     bars: days.map(day => ({
       ...day,
       height: `${Math.max(16, Math.round((day.count / maxCount) * 100))}%`

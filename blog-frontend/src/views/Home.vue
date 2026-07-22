@@ -34,9 +34,8 @@
             <span v-else>{{ featuredInitial }}</span>
           </div>
           <div class="spotlight-meta">
-            <span>{{ formatDate(featuredArticle.createdAt) }}</span>
+            <span>{{ formatDate(featuredArticle.updatedAt || featuredArticle.createdAt) }}</span>
             <span v-if="featuredArticle.authorName">{{ featuredArticle.authorName }}</span>
-            <span>阅读 {{ featuredArticle.viewCount || 0 }}</span>
           </div>
           <h2>{{ featuredArticle.title }}</h2>
           <p>{{ featuredArticle.summary || truncate(featuredArticle.content, 110) }}</p>
