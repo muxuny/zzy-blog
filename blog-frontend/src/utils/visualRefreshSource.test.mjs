@@ -91,3 +91,12 @@ test('article cards include focused line and reduced motion styling', () => {
   assert.match(source, /theme-glow-color/)
   assert.match(source, /prefers-reduced-motion:\s*reduce/)
 })
+
+test('article detail styles toc active indicator and themed resume dialog', () => {
+  const source = read('../views/ArticleDetail.vue')
+
+  assert.match(source, /\.toc-link::before/)
+  assert.match(source, /\.toc-link\.active::before/)
+  assert.match(source, /resume-reading-dialog/)
+  assert.match(source, /theme-glow-color/)
+})

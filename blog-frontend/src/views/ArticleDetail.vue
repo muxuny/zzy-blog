@@ -1,6 +1,14 @@
 <template>
   <div class="layout">
     <AppHeader />
+    <div
+      v-if="article"
+      class="article-progress-bar"
+      aria-hidden="true"
+      :style="{ '--article-read-progress': `${currentReadingProgress}%` }"
+    >
+      <span />
+    </div>
     <el-main class="main">
       <button type="button" class="back-button" @click="goBack">
         <el-icon><ArrowLeft /></el-icon>
@@ -244,6 +252,7 @@ const favoriteLoading = ref(false)
 const neighbors = ref({ previous: null, next: null })
 const relatedArticles = ref([])
 const activeHeadingId = ref('')
+const currentReadingProgress = ref(0)
 const showBackToTop = ref(false)
 const readingPosition = ref(null)
 const resumePromptDismissed = ref(false)
@@ -321,6 +330,7 @@ async function loadArticle() {
   neighbors.value = { previous: null, next: null }
   relatedArticles.value = []
   activeHeadingId.value = ''
+  currentReadingProgress.value = 0
   readingPosition.value = null
   resumePromptDismissed.value = false
   lastPositionSavedAt = 0
@@ -572,6 +582,15 @@ function dismissResumePrompt() {
 
 function updateScrollState() {
   showBackToTop.value = window.scrollY > 360
+  const metrics = getArticleBodyMetrics()
+  if (metrics) {
+    currentReadingProgress.value = calculateReadingProgress({
+      scrollY: window.scrollY,
+      articleTop: metrics.articleTop,
+      articleHeight: metrics.articleHeight,
+      viewportHeight: metrics.viewportHeight
+    })
+  }
   if (!toc.value.length) {
     activeHeadingId.value = ''
     scheduleReadingPositionSave(false)
@@ -626,6 +645,25 @@ function scrollToTop(smooth = true) {
 </script>
 
 <style scoped>
+.article-progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 120;
+  width: 100%;
+  height: 3px;
+  pointer-events: none;
+}
+
+.article-progress-bar span {
+  display: block;
+  width: var(--article-read-progress);
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-color), var(--accent-color), var(--danger-color));
+  box-shadow: 0 0 16px var(--theme-glow-color);
+  transition: width 0.12s linear;
+}
+
 .main {
   width: min(100%, var(--content-width));
   margin: 0 auto;
@@ -865,6 +903,7 @@ function scrollToTop(smooth = true) {
 }
 
 .toc-link {
+  position: relative;
   width: 100%;
   padding: 7px 8px;
   border: 0;
@@ -876,6 +915,25 @@ function scrollToTop(smooth = true) {
   line-height: 1.45;
   text-align: left;
   cursor: pointer;
+}
+
+.toc-link::before {
+  position: absolute;
+  top: 50%;
+  left: -7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  content: '';
+  opacity: 0;
+  transform: translateY(-50%) scale(0.45);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.toc-link.active::before {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
 }
 
 .toc-link:hover {
@@ -1028,8 +1086,8 @@ function scrollToTop(smooth = true) {
   border-radius: 999px;
   background: var(--panel-bg);
   box-shadow:
-    0 16px 36px rgba(15, 23, 42, 0.16),
-    0 4px 12px rgba(15, 23, 42, 0.12);
+    0 16px 36px var(--theme-glow-color),
+    0 4px 12px rgba(15, 23, 42, 0.1);
 }
 
 .floating-tool-button {
@@ -1119,6 +1177,9 @@ function scrollToTop(smooth = true) {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .article-progress-bar span,
+  .toc-link,
+  .toc-link::before,
   .floating-tool-button {
     transition: none;
   }

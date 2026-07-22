@@ -107,7 +107,7 @@ test('article detail keeps floating reading tools quiet and icon only', () => {
   assert.match(floatingToolsSource, /<el-tooltip[\s\S]*content="返回"/)
   assert.match(floatingToolsSource, /<el-tooltip[\s\S]*content="返回顶部"/)
   assert.match(toolStyles, /background:\s*var\(--panel-bg\);/)
-  assert.match(toolStyles, /0 16px 36px rgba\(15, 23, 42, 0\.16\)/)
+  assert.match(toolStyles, /0 16px 36px var\(--theme-glow-color\)/)
   assert.match(buttonStyles, /color:\s*var\(--text-color\);/)
   assert.match(source, /\.floating-tool-button:hover\s*\{[\s\S]*?background:\s*color-mix\(in srgb, var\(--primary-color\) 12%, var\(--panel-bg\)\);[\s\S]*?color:\s*var\(--primary-color\);/)
   assert.doesNotMatch(floatingToolsSource, /<span>返回<\/span>/)
@@ -122,4 +122,12 @@ test('article detail pins floating reading tools to the viewport corner', () => 
   assert.match(toolStyles, /bottom:\s*calc\(28px \+ env\(safe-area-inset-bottom\)\);/)
   assert.doesNotMatch(toolStyles, /--content-width/)
   assert.doesNotMatch(source, /bottom:\s*calc\(150px \+ env\(safe-area-inset-bottom\)\);/)
+})
+
+test('article detail exposes a visible progress bar driven by current reading progress', () => {
+  const source = readFileSync(new URL('../views/ArticleDetail.vue', import.meta.url), 'utf8')
+
+  assert.match(source, /class="article-progress-bar"/)
+  assert.match(source, /currentReadingProgress/)
+  assert.match(source, /--article-read-progress/)
 })
