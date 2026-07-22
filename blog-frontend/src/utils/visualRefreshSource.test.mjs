@@ -100,3 +100,12 @@ test('article detail styles toc active indicator and themed resume dialog', () =
   assert.match(source, /resume-reading-dialog/)
   assert.match(source, /theme-glow-color/)
 })
+
+test('reading space uses continuation-focused visual classes', () => {
+  const source = read('../views/ReadingSpace.vue')
+
+  assert.match(source, /reading-main::before/)
+  assert.match(source, /\.last-read::before/)
+  assert.match(source, /reading-progress-track/)
+  assert.match(source, /theme-glow-color/)
+})

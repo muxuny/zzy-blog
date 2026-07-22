@@ -68,6 +68,14 @@
                 >
                   {{ formatReadingProgress(overview.lastRead.progressPercent) }}
                 </span>
+                <span
+                  v-if="formatReadingProgress(overview.lastRead.progressPercent)"
+                  class="reading-progress-track"
+                  aria-hidden="true"
+                  :style="{ '--reading-progress': `${overview.lastRead.progressPercent || 0}%` }"
+                >
+                  <i />
+                </span>
               </div>
             </template>
 
@@ -318,9 +326,23 @@ function goDiscover() {
 
 <style scoped>
 .reading-main {
+  position: relative;
   width: min(100%, var(--content-width));
   margin: 0 auto;
   padding: 30px 24px 64px;
+}
+
+.reading-main::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, var(--theme-grid-x) 1px, transparent 1px),
+    linear-gradient(180deg, var(--theme-grid-y) 1px, transparent 1px);
+  background-size: 44px 44px;
+  content: '';
+  opacity: 0.62;
+  pointer-events: none;
 }
 
 .page-heading,
@@ -436,14 +458,33 @@ function goDiscover() {
   transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
+.last-read::before {
+  position: absolute;
+  top: 18px;
+  bottom: 18px;
+  left: -1px;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--primary-color), var(--accent-color));
+  content: '';
+  opacity: 0;
+  transform: scaleY(0.55);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
 .last-read.has-cover {
   grid-template-columns: minmax(220px, 36%) minmax(0, 1fr);
 }
 
 .last-read:not(.is-unavailable):hover {
   border-color: color-mix(in srgb, var(--primary-color) 36%, var(--soft-border-color));
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-sm), 0 18px 42px var(--theme-glow-color);
   transform: translateY(-2px);
+}
+
+.last-read:not(.is-unavailable):hover::before {
+  opacity: 1;
+  transform: scaleY(1);
 }
 
 .last-read-cover {
@@ -618,6 +659,24 @@ function goDiscover() {
   font-weight: 750;
 }
 
+.reading-progress-track {
+  display: block;
+  width: min(100%, 320px);
+  height: 7px;
+  margin-top: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border-color) 70%, transparent);
+}
+
+.reading-progress-track i {
+  display: block;
+  width: var(--reading-progress);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+}
+
 .favorite-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -728,7 +787,9 @@ function goDiscover() {
   }
 
   .last-read,
+  .last-read::before,
   .history-preview,
+  .reading-progress-track i,
   .favorite-preview {
     transition: none;
   }
