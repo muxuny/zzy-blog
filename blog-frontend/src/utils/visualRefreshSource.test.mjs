@@ -17,3 +17,16 @@ test('theme toggle renders an appearance popover with palette and mode choices',
   assert.match(source, /setMode/)
   assert.match(source, /class="palette-swatch"/)
 })
+
+test('theme css defines fixed palette packages and reduced motion support', () => {
+  const theme = read('../styles/theme.css')
+  const global = read('../styles/global.css')
+
+  assert.match(theme, /\[data-palette="juniper"\]/)
+  assert.match(theme, /\[data-palette="fog"\]/)
+  assert.match(theme, /\[data-palette="copper"\]/)
+  assert.match(theme, /--theme-grid-x/)
+  assert.match(theme, /--header-backdrop-bg/)
+  assert.match(global, /prefers-reduced-motion:\s*reduce/)
+  assert.doesNotMatch(global, /rgba\(47,\s*128,\s*237,\s*0\.08\)/)
+})

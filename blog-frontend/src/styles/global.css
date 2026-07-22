@@ -64,7 +64,7 @@ select {
 
 .el-button.is-text:hover {
   color: var(--primary-color);
-  background: rgba(47, 128, 237, 0.08);
+  background: color-mix(in srgb, var(--primary-color) 8%, transparent);
 }
 
 .el-input__wrapper,
@@ -113,9 +113,9 @@ select {
 
 .el-table {
   --el-table-border-color: var(--soft-border-color);
-  --el-table-header-bg-color: rgba(47, 128, 237, 0.06);
+  --el-table-header-bg-color: color-mix(in srgb, var(--primary-color) 6%, var(--panel-bg));
   --el-table-tr-bg-color: var(--panel-bg);
-  --el-table-row-hover-bg-color: rgba(47, 128, 237, 0.06);
+  --el-table-row-hover-bg-color: color-mix(in srgb, var(--primary-color) 6%, var(--panel-bg));
   color: var(--text-color);
   border-radius: var(--radius-md);
   overflow: hidden;
@@ -246,4 +246,15 @@ select {
   color: var(--text-color) !important;
   box-shadow: var(--shadow-md) !important;
   backdrop-filter: blur(16px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
