@@ -21,21 +21,35 @@
       </section>
 
       <article v-else-if="article" class="preview-page">
-        <header class="preview-head">
-          <span class="page-kicker">文章预览</span>
-          <h1>{{ article.title }}</h1>
-          <div class="preview-meta">
-            <el-tag :type="statusType(article.status)">{{ statusText(article.status) }}</el-tag>
-            <el-tag :type="articleVisibilityType(article.visibility)" effect="plain">
-              {{ articleVisibilityText(article.visibility) }}
-            </el-tag>
-            <span>{{ formatDate(article.updatedAt || article.createdAt) }}</span>
-            <span v-if="article.createdBy">{{ article.createdBy }}</span>
+        <header class="detail-head preview-head">
+          <div class="detail-copy">
+            <span class="eyebrow">文章预览</span>
+            <h1>{{ article.title }}</h1>
+            <div class="preview-meta">
+              <span class="status-pill" :data-status="article.status">{{ statusText(article.status) }}</span>
+              <span class="status-pill visibility-pill">{{ articleVisibilityText(article.visibility) }}</span>
+              <span>{{ formatDate(article.updatedAt || article.createdAt) }}</span>
+              <span v-if="article.createdBy">{{ article.createdBy }}</span>
+            </div>
+            <p v-if="article.summary" class="preview-summary">{{ article.summary }}</p>
+            <div v-if="article.tags?.length" class="preview-tags">
+              <span v-for="tag in article.tags" :key="tag.id" class="tag-chip">{{ tag.name }}</span>
+            </div>
           </div>
-          <p v-if="article.summary" class="preview-summary">{{ article.summary }}</p>
-          <div v-if="article.tags?.length" class="preview-tags">
-            <el-tag v-for="tag in article.tags" :key="tag.id" size="small">{{ tag.name }}</el-tag>
-          </div>
+          <aside class="detail-meta" aria-label="预览摘要">
+            <div class="meta-line">
+              <span class="meta-label">状态</span>
+              <span class="meta-value">{{ statusText(article.status) }}</span>
+            </div>
+            <div class="meta-line">
+              <span class="meta-label">可见性</span>
+              <span class="meta-value">{{ articleVisibilityText(article.visibility) }}</span>
+            </div>
+            <div class="meta-line">
+              <span class="meta-label">更新</span>
+              <span class="meta-value">{{ formatDate(article.updatedAt || article.createdAt) }}</span>
+            </div>
+          </aside>
         </header>
 
         <el-alert
@@ -51,27 +65,37 @@
           <img :src="article.coverImage" :alt="article.title" />
         </figure>
 
-        <div class="preview-reading-layout" :class="{ 'has-toc': toc.length }">
-          <section class="preview-body">
-            <nav v-if="toc.length" class="mobile-toc" aria-label="文章目录">
-              <span class="page-kicker">目录</span>
+        <div class="reading-canvas preview-reading-layout" :class="{ 'has-toc': toc.length }">
+          <section class="article-body preview-body">
+            <section v-if="toc.length" class="section-meter mobile-section-meter" aria-label="章节位置">
               <button
                 v-for="item in toc"
                 :key="item.id"
                 type="button"
-                :class="['toc-link', `level-${item.level}`, { active: activeHeadingId === item.id }]"
+                class="meter-dot"
+                :class="{ active: activeHeadingId === item.id }"
+                :title="item.text"
                 @click="scrollToHeading(item.id)"
-              >
-                {{ item.text }}
-              </button>
-            </nav>
+              />
+            </section>
 
             <MarkdownRenderer :content="article.content" />
           </section>
 
-          <aside v-if="toc.length" class="preview-sidebar">
+          <aside v-if="toc.length" class="reading-sidebar preview-sidebar">
+            <section class="section-meter" aria-label="章节位置">
+              <button
+                v-for="item in toc"
+                :key="item.id"
+                type="button"
+                class="meter-dot"
+                :class="{ active: activeHeadingId === item.id }"
+                :title="item.text"
+                @click="scrollToHeading(item.id)"
+              />
+            </section>
             <nav ref="tocPanelRef" class="toc-panel" aria-label="文章目录">
-              <span class="page-kicker">目录</span>
+              <span class="eyebrow">目录</span>
               <button
                 v-for="item in toc"
                 :key="item.id"
@@ -97,7 +121,7 @@ import { ArrowLeft, Edit } from '@element-plus/icons-vue'
 import AppHeader from '../../components/AppHeader.vue'
 import MarkdownRenderer from '../../components/MarkdownRenderer.vue'
 import { getMyArticle } from '../../api/myArticle'
-import { articleVisibilityText, articleVisibilityType } from '../../utils/articleVisibility'
+import { articleVisibilityText } from '../../utils/articleVisibility'
 import { getCreatorEditRoute } from '../../utils/creatorPreview'
 import { formatDate } from '../../utils'
 import { extractMarkdownToc } from '../../utils/reading'
@@ -209,17 +233,29 @@ function statusText(status) {
   return statusMap[status]?.text || status || '-'
 }
 
-function statusType(status) {
-  return statusMap[status]?.type || 'info'
-}
 </script>
 
 <style scoped>
 .main {
-  width: min(100%, var(--content-width));
+  position: relative;
+  isolation: isolate;
+  width: min(1180px, calc(100% - 36px));
   margin: 0 auto;
-  padding: 32px 24px 72px;
+  padding: 22px 0 72px;
   overflow: visible;
+}
+
+.main::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, var(--theme-grid-x) 1px, transparent 1px),
+    linear-gradient(180deg, var(--theme-grid-y) 1px, transparent 1px);
+  background-size: 44px 44px;
+  content: '';
+  opacity: 0.52;
+  pointer-events: none;
 }
 
 .page-actions {
@@ -228,7 +264,9 @@ function statusType(status) {
   gap: 10px;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 22px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--soft-border-color);
 }
 
 .back-button,
@@ -238,33 +276,42 @@ function statusType(status) {
   gap: 6px;
   min-height: 36px;
   padding: 0 12px;
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-sm);
-  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-bg) 92%, transparent);
   color: var(--muted-text-color);
   font: inherit;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .edit-button {
   border-color: color-mix(in srgb, var(--primary-color) 42%, var(--soft-border-color));
-  background: var(--primary-color);
-  color: #fff;
+  background: var(--surface-wash-color);
+  color: var(--primary-color);
 }
 
 .back-button:hover,
 .back-button:focus-visible {
   border-color: var(--primary-color);
   color: var(--primary-color);
-  background: color-mix(in srgb, var(--primary-color) 8%, var(--panel-bg));
+  background: var(--surface-wash-color);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
 .edit-button:hover,
 .edit-button:focus-visible {
   border-color: var(--primary-hover-color);
-  background: var(--primary-hover-color);
+  background: color-mix(in srgb, var(--primary-color) 14%, transparent);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
 .back-button:focus-visible,
@@ -274,21 +321,12 @@ function statusType(status) {
   outline-offset: 2px;
 }
 
-.empty-state,
-.preview-head,
-.preview-body,
-.toc-panel,
-.mobile-toc {
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-lg);
-  background: var(--panel-bg);
-  box-shadow: var(--shadow-sm);
-}
-
 .empty-state {
   max-width: var(--reading-width);
   margin: 0 auto;
   padding: 40px 24px;
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--soft-border-color);
   text-align: center;
 }
 
@@ -305,25 +343,39 @@ function statusType(status) {
 
 .preview-page {
   display: grid;
-  gap: 16px;
+  gap: 28px;
 }
 
-.preview-head {
-  padding: clamp(24px, 4vw, 36px);
+.detail-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  gap: 30px;
+  align-items: end;
+  padding-top: 6px;
 }
 
-.page-kicker {
-  color: var(--accent-color);
+.detail-copy {
+  min-width: 0;
+}
+
+.eyebrow {
+  display: inline-flex;
+  margin: 0 0 12px;
+  color: var(--primary-color);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 760;
+  letter-spacing: 0;
 }
 
-.preview-head h1 {
-  margin: 10px 0 14px;
+.detail-head h1 {
+  max-width: 900px;
+  margin: 0 0 18px;
   color: var(--text-color);
-  font-size: clamp(32px, 5vw, 54px);
-  line-height: 1.08;
-  font-weight: 900;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(42px, 7vw, 82px);
+  font-weight: 500;
+  line-height: 0.98;
+  overflow-wrap: anywhere;
 }
 
 .preview-meta,
@@ -342,12 +394,84 @@ function statusType(status) {
 .preview-summary {
   margin: 18px 0 0;
   color: var(--muted-text-color);
-  font-size: 15px;
-  line-height: 1.8;
+  font-size: 17px;
+  line-height: 1.85;
 }
 
 .preview-tags {
   margin-top: 18px;
+}
+
+.tag-chip,
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.tag-chip {
+  padding: 4px 10px;
+  border: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--panel-bg) 92%, transparent);
+  color: var(--muted-text-color);
+}
+
+.status-pill {
+  padding: 4px 10px;
+  background: color-mix(in srgb, var(--muted-text-color) 12%, transparent);
+  color: var(--muted-text-color);
+}
+
+.status-pill[data-status="pending"] {
+  background: color-mix(in srgb, var(--warning-color) 18%, transparent);
+  color: var(--warning-color);
+}
+
+.status-pill[data-status="published"],
+.visibility-pill {
+  background: color-mix(in srgb, var(--primary-color) 14%, transparent);
+  color: var(--primary-color);
+}
+
+.status-pill[data-status="rejected"] {
+  background: color-mix(in srgb, var(--danger-color) 14%, transparent);
+  color: var(--danger-color);
+}
+
+.detail-meta {
+  border-left: 1px solid var(--border-color);
+  padding-left: 18px;
+}
+
+.meta-line {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--soft-border-color);
+}
+
+.meta-line:last-child {
+  border-bottom: 0;
+}
+
+.meta-label {
+  color: var(--accent-color);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.meta-value {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-color);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .review-alert {
@@ -363,38 +487,47 @@ function statusType(status) {
   width: 100%;
   max-height: 380px;
   object-fit: cover;
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
 }
 
-.preview-reading-layout {
+.reading-canvas {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 26px;
+  grid-template-columns: minmax(0, var(--reading-width));
+  gap: 34px;
   align-items: start;
-  max-width: var(--reading-width);
-  margin: 0 auto;
-  width: 100%;
 }
 
-.preview-reading-layout.has-toc {
+.reading-canvas.has-toc {
   grid-template-columns: minmax(0, 1fr) 260px;
   max-width: none;
   margin: 0;
 }
 
-.preview-body {
+.article-body {
   min-width: 0;
-  padding: clamp(22px, 4vw, 34px);
+  padding: clamp(20px, 3vw, 34px) 0;
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--soft-border-color);
 }
 
-.preview-sidebar {
+.reading-sidebar {
   position: sticky;
   top: calc(var(--app-header-height) + 22px);
+  display: grid;
+  gap: 14px;
 }
 
 .toc-panel,
-.mobile-toc {
+.section-meter {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
+  box-shadow: var(--shadow-sm);
+}
+
+.toc-panel {
   display: grid;
   gap: 6px;
   padding: 16px;
@@ -407,13 +540,43 @@ function statusType(status) {
   scrollbar-gutter: stable;
 }
 
-.mobile-toc {
+.section-meter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 16px;
+}
+
+.mobile-section-meter {
   display: none;
   margin-bottom: 22px;
-  box-shadow: none;
+}
+
+.meter-dot {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 38%, var(--border-color));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-bg) 92%, transparent);
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.meter-dot:hover,
+.meter-dot.active {
+  transform: scale(1.18);
+  border-color: var(--primary-color);
+  background: var(--primary-color);
+  box-shadow: 0 0 0 6px var(--surface-wash-color);
 }
 
 .toc-link {
+  position: relative;
   width: 100%;
   padding: 7px 8px;
   border: 0;
@@ -427,6 +590,20 @@ function statusType(status) {
   cursor: pointer;
 }
 
+.toc-link::before {
+  position: absolute;
+  top: 50%;
+  left: -7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  content: '';
+  opacity: 0;
+  transform: translateY(-50%) scale(0.72);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
 .toc-link:hover {
   background: color-mix(in srgb, var(--primary-color) 8%, transparent);
   color: var(--primary-color);
@@ -436,6 +613,11 @@ function statusType(status) {
   background: color-mix(in srgb, var(--primary-color) 12%, transparent);
   color: var(--primary-color);
   font-weight: 800;
+}
+
+.toc-link.active::before {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
 }
 
 .toc-link.level-3 {
@@ -448,24 +630,33 @@ function statusType(status) {
 }
 
 @media (max-width: 980px) {
-  .preview-reading-layout.has-toc {
+  .detail-head,
+  .reading-canvas.has-toc {
     grid-template-columns: 1fr;
     max-width: var(--reading-width);
     margin: 0 auto;
   }
 
-  .preview-sidebar {
+  .detail-meta {
+    border-left: 0;
+    border-top: 1px solid var(--border-color);
+    padding-top: 12px;
+    padding-left: 0;
+  }
+
+  .reading-sidebar {
     display: none;
   }
 
-  .mobile-toc {
-    display: grid;
+  .mobile-section-meter {
+    display: flex;
   }
 }
 
 @media (max-width: 640px) {
   .main {
-    padding: 24px 14px 56px;
+    width: min(100% - 28px, var(--content-width));
+    padding: 16px 0 56px;
   }
 
   .page-actions {
@@ -478,9 +669,30 @@ function statusType(status) {
     justify-content: center;
   }
 
-  .preview-head,
-  .preview-body {
-    padding: 18px;
+  .detail-head h1 {
+    font-size: 42px;
+  }
+
+  .meta-line {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .back-button,
+  .edit-button,
+  .toc-link::before,
+  .meter-dot {
+    transition: none;
+  }
+
+  .back-button:hover,
+  .back-button:focus-visible,
+  .edit-button:hover,
+  .edit-button:focus-visible,
+  .meter-dot:hover,
+  .meter-dot.active {
+    transform: none;
   }
 }
 </style>

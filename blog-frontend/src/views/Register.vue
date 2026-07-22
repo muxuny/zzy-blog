@@ -1,7 +1,27 @@
 <template>
-  <div class="auth-page">
-    <el-card class="auth-card">
-      <h1>注册</h1>
+  <main class="auth-shell">
+    <section class="auth-copy">
+      <span class="eyebrow">新入口</span>
+      <h1>给自己的内容留一个稳定身份。</h1>
+      <p>注册后等待审核，通过后就可以继续阅读、写文章和进入对应的管理入口。</p>
+      <div class="auth-index" aria-label="注册后可使用的区域">
+        <div class="meta-line">
+          <span class="meta-label">阅读</span>
+          <span class="meta-value">保存阅读进度</span>
+        </div>
+        <div class="meta-line">
+          <span class="meta-label">收藏</span>
+          <span class="meta-value">整理常看的文章</span>
+        </div>
+        <div class="meta-line">
+          <span class="meta-label">创作</span>
+          <span class="meta-value">维护自己的文章</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="auth-panel" aria-label="注册表单">
+      <span class="panel-kicker">注册</span>
       <p class="auth-subtitle">创建账号后，需要管理员审核才能登录后台。</p>
       <el-form :model="form" :rules="rules" ref="formRef">
         <el-form-item prop="username">
@@ -19,8 +39,8 @@
         </el-form-item>
       </el-form>
       <div class="auth-link">已有账号？<router-link to="/login">立即登录</router-link></div>
-    </el-card>
-  </div>
+    </section>
+  </main>
 </template>
 
 <script setup>
@@ -57,59 +77,148 @@ async function handleRegister() {
 </script>
 
 <style scoped>
-.auth-page {
+.auth-shell {
   min-height: 100vh;
   display: grid;
-  place-items: center;
-  padding: 32px 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
+  gap: clamp(28px, 6vw, 72px);
+  align-items: center;
+  width: min(1120px, calc(100% - 36px));
+  margin: 0 auto;
+  padding: 48px 0;
   background:
     linear-gradient(90deg, var(--theme-grid-x) 1px, transparent 1px),
     linear-gradient(180deg, var(--theme-grid-y) 1px, transparent 1px),
     var(--bg-color);
-  background-size: 34px 34px;
+  background-size: 44px 44px;
 }
 
-.auth-card {
-  width: min(100%, 420px);
-  border: 1px solid var(--soft-border-color);
+.auth-copy {
+  min-width: 0;
 }
 
-.auth-card :deep(.el-card__body) {
-  padding: 30px;
+.eyebrow {
+  display: inline-flex;
+  margin: 0 0 14px;
+  color: var(--primary-color);
+  font-size: 12px;
+  font-weight: 760;
+  letter-spacing: 0;
 }
 
 h1 {
-  margin-bottom: 6px;
+  max-width: 700px;
+  margin: 0 0 18px;
   color: var(--text-color);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(42px, 7vw, 74px);
+  font-weight: 500;
+  line-height: 0.98;
+}
+
+.auth-copy p {
+  max-width: 600px;
+  margin: 0;
+  color: var(--muted-text-color);
+  font-size: 17px;
+  line-height: 1.85;
+}
+
+.auth-index {
+  max-width: 430px;
+  margin-top: 34px;
+  border-left: 1px solid var(--border-color);
+  padding-left: 18px;
+}
+
+.meta-line {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--soft-border-color);
+}
+
+.meta-line:last-child {
+  border-bottom: 0;
+}
+
+.meta-label {
+  color: var(--accent-color);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.meta-value {
+  color: var(--text-color);
+  font-size: 13px;
+}
+
+.auth-panel {
+  position: relative;
+  overflow: hidden;
+  padding: 28px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
+  box-shadow: var(--shadow-sm);
+}
+
+.auth-panel::before {
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 22px, var(--theme-grid-x) 22px 23px),
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-color) 10%, transparent), transparent 48%);
+  content: '';
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.auth-panel > * {
+  position: relative;
+}
+
+.panel-kicker {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-color);
+  font-family: Georgia, "Times New Roman", serif;
   font-size: 30px;
-  line-height: 1.2;
-  font-weight: 850;
-  text-align: center;
+  font-weight: 500;
+  line-height: 1.1;
 }
 
 .auth-subtitle {
-  margin-bottom: 24px;
+  margin: 0 0 24px;
   color: var(--muted-text-color);
-  text-align: center;
+  line-height: 1.7;
+}
+
+.auth-panel :deep(.el-input__wrapper) {
+  min-height: 42px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
 }
 
 .auth-submit {
   width: 100%;
-  min-height: 40px;
+  min-height: 42px;
+  border-radius: 999px;
 }
 
 .auth-notice {
   margin-bottom: 14px;
   padding: 10px 12px;
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  border: 1px solid color-mix(in srgb, var(--warning-color) 32%, transparent);
   border-radius: var(--radius-sm);
-  color: #9a5a00;
-  background: rgba(245, 158, 11, 0.11);
+  color: color-mix(in srgb, var(--warning-color) 76%, var(--text-color));
+  background: color-mix(in srgb, var(--warning-color) 12%, transparent);
   text-align: center;
 }
 
 [data-theme="dark"] .auth-notice {
-  color: #ffd28a;
+  color: var(--warning-color);
 }
 
 .auth-link {
@@ -117,5 +226,35 @@ h1 {
   color: var(--muted-text-color);
   font-size: 14px;
   text-align: center;
+}
+
+@media (max-width: 860px) {
+  .auth-shell {
+    grid-template-columns: 1fr;
+    align-content: center;
+  }
+
+  .auth-index {
+    max-width: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .auth-shell {
+    width: min(100% - 28px, 1120px);
+    padding: 28px 0;
+  }
+
+  h1 {
+    font-size: 42px;
+  }
+
+  .auth-panel {
+    padding: 22px;
+  }
+
+  .meta-line {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

@@ -110,10 +110,13 @@ test('home page exposes weekly content signal instead of reading ranking', () =>
 test('article cards include focused line and reduced motion styling', () => {
   const source = read('../components/ArticleCard.vue')
 
+  assert.match(source, /<article\b[\s\S]*class="article-card article-entry"/)
   assert.match(source, /\.article-card::before/)
   assert.match(source, /transform:\s*scaleY/)
   assert.match(source, /theme-glow-color/)
   assert.match(source, /prefers-reduced-motion:\s*reduce/)
+  assert.doesNotMatch(source, /<el-card\b/)
+  assert.doesNotMatch(source, /:deep\(\.el-card__body\)/)
   assert.doesNotMatch(source, /viewCount/)
   assert.doesNotMatch(source, />\s*阅读\s*\{\{\s*article\.viewCount\s*\|\|\s*0\s*\}\}\s*</)
 })
@@ -216,4 +219,68 @@ test('creator article workspace uses control-console visual treatment', () => {
   assert.doesNotMatch(source, /<el-table\b/)
   assert.doesNotMatch(source, /#2f80ed/)
   assert.doesNotMatch(source, /#7c5cff/)
+})
+
+test('secondary public and auth pages no longer expose legacy visual shells', () => {
+  const tagArticles = read('../views/TagArticles.vue')
+  const login = read('../views/Login.vue')
+  const register = read('../views/Register.vue')
+
+  assert.match(tagArticles, /class="tag-shell"/)
+  assert.match(tagArticles, /class="page-head"/)
+  assert.match(tagArticles, /class="head-meta"/)
+  assert.match(tagArticles, /class="article-stream"/)
+  assert.doesNotMatch(tagArticles, /tag-page-head/)
+
+  for (const source of [login, register]) {
+    assert.match(source, /class="auth-shell"/)
+    assert.match(source, /class="auth-panel"/)
+    assert.match(source, /class="auth-index"/)
+    assert.match(source, /class="eyebrow"/)
+    assert.doesNotMatch(source, /<el-card\b/)
+    assert.doesNotMatch(source, /auth-card/)
+  }
+})
+
+test('creator writing and preview pages use the prototype surface system', () => {
+  const write = read('../views/creator/ArticleWrite.vue')
+  const preview = read('../views/creator/ArticlePreview.vue')
+
+  assert.match(write, /class="compose-shell"/)
+  assert.match(write, /class="page-head"/)
+  assert.match(write, /class="head-meta"/)
+  assert.match(write, /class="compose-grid"/)
+  assert.match(write, /class="compose-panel"/)
+  assert.match(write, /class="compose-rail"/)
+  assert.doesNotMatch(write, /class="page-header"/)
+  assert.doesNotMatch(write, /\.page-header/)
+
+  assert.match(preview, /class="detail-head preview-head"/)
+  assert.match(preview, /class="detail-meta"/)
+  assert.match(preview, /class="reading-canvas/)
+  assert.match(preview, /class="article-body preview-body"/)
+  assert.match(preview, /class="section-meter"/)
+  assert.doesNotMatch(preview, /preview-head,\s*\n\s*\.preview-body,[\s\S]*background:\s*var\(--panel-bg\)/)
+})
+
+test('primary page summaries use index rails instead of card shells', () => {
+  const indexedPages = [
+    read('../views/ReadingSpace.vue'),
+    read('../views/ReadingHistory.vue'),
+    read('../views/Favorites.vue'),
+    read('../views/creator/MyArticles.vue')
+  ]
+  const articleDetail = read('../views/ArticleDetail.vue')
+
+  for (const source of indexedPages) {
+    assert.match(source, /\.head-meta\s*\{[\s\S]*border-left:\s*1px solid var\(--border-color\)/)
+    assert.doesNotMatch(source, /\.head-meta\s*\{[^}]*border-radius/)
+    assert.doesNotMatch(source, /\.head-meta\s*\{[^}]*box-shadow/)
+    assert.doesNotMatch(source, /\.head-meta\s*\{[^}]*background:\s*color-mix/)
+  }
+
+  assert.match(articleDetail, /\.detail-meta\s*\{[\s\S]*border-left:\s*1px solid var\(--border-color\)/)
+  assert.doesNotMatch(articleDetail, /\.detail-meta\s*\{[^}]*border-radius/)
+  assert.doesNotMatch(articleDetail, /\.detail-meta\s*\{[^}]*box-shadow/)
+  assert.doesNotMatch(articleDetail, /\.detail-meta\s*\{[^}]*background:\s*color-mix/)
 })

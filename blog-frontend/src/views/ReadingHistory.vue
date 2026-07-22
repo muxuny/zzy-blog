@@ -338,17 +338,15 @@ async function clearAllHistory() {
 }
 
 .head-meta {
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
-  box-shadow: var(--shadow-sm);
+  border-left: 1px solid var(--border-color);
+  padding-left: 18px;
 }
 
 .meta-line {
   display: grid;
   grid-template-columns: 72px minmax(0, 1fr);
   gap: 12px;
-  padding: 13px 16px;
+  padding: 10px 0;
   border-bottom: 1px solid var(--soft-border-color);
 }
 
@@ -364,9 +362,10 @@ async function clearAllHistory() {
 }
 
 .clear-button {
-  width: calc(100% - 32px);
+  width: 100%;
   min-height: 38px;
-  margin: 14px 16px 16px;
+  margin-top: 14px;
+  border-radius: 999px;
 }
 
 .back-link:focus-visible,
@@ -472,6 +471,13 @@ async function clearAllHistory() {
 @media (max-width: 900px) {
   .page-head {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .head-meta {
+    border-left: 0;
+    border-top: 1px solid var(--border-color);
+    padding-top: 12px;
+    padding-left: 0;
   }
 }
 

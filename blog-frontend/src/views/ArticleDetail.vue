@@ -863,17 +863,15 @@ function scrollToTop(smooth = true) {
 }
 
 .detail-meta {
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
-  box-shadow: var(--shadow-sm);
+  border-left: 1px solid var(--border-color);
+  padding-left: 18px;
 }
 
 .meta-line {
   display: grid;
   grid-template-columns: 78px minmax(0, 1fr);
   gap: 12px;
-  padding: 13px 16px;
+  padding: 10px 0;
   border-bottom: 1px solid var(--soft-border-color);
 }
 
@@ -1236,6 +1234,13 @@ function scrollToTop(smooth = true) {
   .detail-head,
   .reading-canvas {
     grid-template-columns: 1fr;
+  }
+
+  .detail-meta {
+    border-left: 0;
+    border-top: 1px solid var(--border-color);
+    padding-top: 12px;
+    padding-left: 0;
   }
 
   .reading-sidebar {
