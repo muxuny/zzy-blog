@@ -1,7 +1,7 @@
 <template>
   <div class="layout">
     <AppHeader />
-    <el-main class="main">
+    <el-main class="main creator-shell">
       <div class="page-header">
         <div>
           <span class="page-kicker">创作中心</span>
@@ -94,7 +94,7 @@
             </el-table-column>
             <el-table-column prop="status" label="状态" width="110">
               <template #default="{ row }">
-                <el-tag :type="statusType(row.status)">{{ statusText(row.status) }}</el-tag>
+                <el-tag class="status-token" :type="statusType(row.status)">{{ statusText(row.status) }}</el-tag>
               </template>
             </el-table-column>
             <el-table-column prop="visibility" label="可见性" width="130">
@@ -542,6 +542,24 @@ async function remove(id) {
   padding: 32px 24px 64px;
 }
 
+.creator-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.creator-shell::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, var(--theme-grid-x) 1px, transparent 1px),
+    linear-gradient(180deg, var(--theme-grid-y) 1px, transparent 1px);
+  background-size: 44px 44px;
+  content: '';
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -606,7 +624,9 @@ async function remove(id) {
 }
 
 .group-item {
+  position: relative;
   display: flex;
+  overflow: hidden;
   width: 100%;
   min-height: 38px;
   align-items: center;
@@ -620,14 +640,31 @@ async function remove(id) {
   cursor: pointer;
 }
 
+.group-item::before {
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  left: 0;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--primary-color), var(--accent-color));
+  content: '';
+  opacity: 0;
+  pointer-events: none;
+  transform: scaleY(0.55);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
 .group-item:hover,
 .group-item.is-active {
   background: color-mix(in srgb, var(--primary-color) 10%, var(--panel-bg));
   color: var(--text-color);
 }
 
-.group-item.is-active {
-  box-shadow: inset 3px 0 0 var(--accent-color);
+.group-item:hover::before,
+.group-item.is-active::before {
+  opacity: 1;
+  transform: scaleY(1);
 }
 
 .group-item-with-actions {
@@ -668,6 +705,14 @@ async function remove(id) {
 
 .article-table {
   margin-top: 12px;
+}
+
+.status-token {
+  font-weight: 750;
+}
+
+.article-table :deep(.el-table__body tr) {
+  transition: background-color 0.18s ease;
 }
 
 .article-title-button {
@@ -757,25 +802,25 @@ async function remove(id) {
 .article-primary-action.article-primary-action--edit,
 .article-primary-action.article-primary-action--edit:hover,
 .article-primary-action.article-primary-action--edit:focus {
-  --action-border-color: color-mix(in srgb, #7c5cff 54%, transparent);
-  --action-bg-color: color-mix(in srgb, #7c5cff 13%, var(--panel-bg));
-  --action-text-color: #5d42d6;
+  --action-border-color: color-mix(in srgb, var(--accent-color) 54%, transparent);
+  --action-bg-color: color-mix(in srgb, var(--accent-color) 13%, var(--panel-bg));
+  --action-text-color: var(--accent-color);
 }
 
 .article-primary-action.article-primary-action--view,
 .article-primary-action.article-primary-action--view:hover,
 .article-primary-action.article-primary-action--view:focus {
-  --action-border-color: color-mix(in srgb, #2f80ed 52%, transparent);
-  --action-bg-color: color-mix(in srgb, #2f80ed 12%, var(--panel-bg));
-  --action-text-color: #1f6fd8;
+  --action-border-color: color-mix(in srgb, var(--primary-color) 52%, transparent);
+  --action-bg-color: color-mix(in srgb, var(--primary-color) 12%, var(--panel-bg));
+  --action-text-color: var(--primary-color);
 }
 
 .article-primary-action.article-primary-action--withdraw,
 .article-primary-action.article-primary-action--withdraw:hover,
 .article-primary-action.article-primary-action--withdraw:focus {
-  --action-border-color: color-mix(in srgb, #d97706 52%, transparent);
-  --action-bg-color: color-mix(in srgb, #f59e0b 14%, var(--panel-bg));
-  --action-text-color: #a85f00;
+  --action-border-color: color-mix(in srgb, var(--warning-color) 52%, transparent);
+  --action-bg-color: color-mix(in srgb, var(--warning-color) 14%, var(--panel-bg));
+  --action-text-color: var(--warning-color);
 }
 
 .article-primary-action:not(.is-disabled):hover {
@@ -785,26 +830,14 @@ async function remove(id) {
 
 [data-theme="dark"] .article-primary-action.article-primary-action--edit,
 [data-theme="dark"] .article-primary-action.article-primary-action--edit:hover,
-[data-theme="dark"] .article-primary-action.article-primary-action--edit:focus {
-  --action-border-color: color-mix(in srgb, #8b7cf6 58%, transparent);
-  --action-bg-color: color-mix(in srgb, #8b7cf6 22%, var(--panel-bg));
-  --action-text-color: #d9d5ff;
-}
-
+[data-theme="dark"] .article-primary-action.article-primary-action--edit:focus,
 [data-theme="dark"] .article-primary-action.article-primary-action--view,
 [data-theme="dark"] .article-primary-action.article-primary-action--view:hover,
-[data-theme="dark"] .article-primary-action.article-primary-action--view:focus {
-  --action-border-color: color-mix(in srgb, #4ea2ff 58%, transparent);
-  --action-bg-color: color-mix(in srgb, #4ea2ff 22%, var(--panel-bg));
-  --action-text-color: #d7ebff;
-}
-
+[data-theme="dark"] .article-primary-action.article-primary-action--view:focus,
 [data-theme="dark"] .article-primary-action.article-primary-action--withdraw,
 [data-theme="dark"] .article-primary-action.article-primary-action--withdraw:hover,
 [data-theme="dark"] .article-primary-action.article-primary-action--withdraw:focus {
-  --action-border-color: color-mix(in srgb, #f2a64a 58%, transparent);
-  --action-bg-color: color-mix(in srgb, #f2a64a 22%, var(--panel-bg));
-  --action-text-color: #ffe6ba;
+  --action-bg-color: color-mix(in srgb, currentColor 18%, var(--panel-bg));
 }
 
 .article-more-button {
@@ -915,6 +948,15 @@ async function remove(id) {
 
   .filters .el-select {
     width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .group-item::before,
+  .article-table :deep(.el-table__body tr),
+  .article-primary-action,
+  .article-more-button {
+    transition: none;
   }
 }
 </style>

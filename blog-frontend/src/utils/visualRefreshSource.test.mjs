@@ -121,3 +121,13 @@ test('reading space decorative continuation line ignores pointer events', () => 
 
   assert.match(source, /\.last-read::before\s*\{(?=[^}]*pointer-events:\s*none;)[^}]*\}/)
 })
+
+test('creator article workspace uses control-console visual treatment', () => {
+  const source = read('../views/creator/MyArticles.vue')
+
+  assert.match(source, /creator-shell/)
+  assert.match(source, /\.group-item::before/)
+  assert.match(source, /status-token/)
+  assert.doesNotMatch(source, /#2f80ed/)
+  assert.doesNotMatch(source, /#7c5cff/)
+})
