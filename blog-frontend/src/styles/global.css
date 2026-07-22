@@ -238,3 +238,12 @@ select {
     font-size: 15px;
   }
 }
+
+.appearance-popover {
+  border-color: var(--soft-border-color) !important;
+  border-radius: var(--radius-md) !important;
+  background: color-mix(in srgb, var(--panel-bg) 96%, transparent) !important;
+  color: var(--text-color) !important;
+  box-shadow: var(--shadow-md) !important;
+  backdrop-filter: blur(16px);
+}
