@@ -24,6 +24,28 @@ function getHongKongDateLabel(date) {
   return `${month}/${day}`
 }
 
+function isValidDateParts(year, month, day) {
+  const date = new Date(Date.UTC(year, month - 1, day))
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+}
+
+function getHongKongDateKeyFromValue(value) {
+  if (typeof value === 'string') {
+    const localMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s]|$)/)
+    const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value.trim())
+    if (localMatch && !hasTimezone) {
+      const [, yearText, monthText, dayText] = localMatch
+      const year = Number(yearText)
+      const month = Number(monthText)
+      const day = Number(dayText)
+      return isValidDateParts(year, month, day) ? `${yearText}-${monthText}-${dayText}` : null
+    }
+  }
+
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : getHongKongDateKey(date)
+}
+
 export function buildContentSignal({ articles = [], topTags = [], now = new Date() } = {}) {
   const safeArticles = Array.isArray(articles) ? articles : []
   const safeTopTags = Array.isArray(topTags) ? topTags : []
@@ -46,17 +68,15 @@ export function buildContentSignal({ articles = [], topTags = [], now = new Date
 
     const time = article.updatedAt || article.createdAt
     if (time) {
-      const date = new Date(time)
-      if (!Number.isNaN(date.getTime())) {
-        const day = dayMap.get(getHongKongDateKey(date))
-        if (day) {
-          day.count += 1
-          const articleTags = Array.isArray(article.tags) ? article.tags : []
-          articleTags.forEach(tag => {
-            const name = String(tag?.name || '').trim()
-            if (name) topicCounts.set(name, (topicCounts.get(name) || 0) + 1)
-          })
-        }
+      const key = getHongKongDateKeyFromValue(time)
+      const day = key ? dayMap.get(key) : null
+      if (day) {
+        day.count += 1
+        const articleTags = Array.isArray(article.tags) ? article.tags : []
+        articleTags.forEach(tag => {
+          const name = String(tag?.name || '').trim()
+          if (name) topicCounts.set(name, (topicCounts.get(name) || 0) + 1)
+        })
       }
     }
   })

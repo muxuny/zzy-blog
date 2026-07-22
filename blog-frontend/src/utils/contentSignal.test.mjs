@@ -20,6 +20,30 @@ test('buildContentSignal assigns same-day articles to the Hong Kong today bucket
   assert.equal(signal.updatedCount, 1)
 })
 
+test('buildContentSignal treats offsetless API timestamps as Hong Kong local dates', () => {
+  const signal = buildContentSignal({
+    now: new Date('2026-07-22T12:00:00+08:00'),
+    articles: [
+      {
+        updatedAt: '2026-07-15T23:30:00',
+        tags: [{ name: 'Boundary Old' }]
+      },
+      {
+        updatedAt: '2026-07-22T00:30:00',
+        tags: [{ name: 'Boundary Today' }]
+      }
+    ]
+  })
+
+  const today = signal.bars.at(-1)
+  const firstDay = signal.bars[0]
+  assert.equal(firstDay.key, '2026-07-16')
+  assert.equal(today.key, '2026-07-22')
+  assert.equal(today.count, 1)
+  assert.equal(signal.updatedCount, 1)
+  assert.equal(signal.activeTopic, 'Boundary Today')
+})
+
 test('buildContentSignal prefers updatedAt over createdAt for weekly buckets', () => {
   const signal = buildContentSignal({
     now: new Date('2026-07-22T12:00:00+08:00'),

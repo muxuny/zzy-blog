@@ -115,7 +115,7 @@
             <ul class="latest-list">
               <li v-for="article in recentArticles" :key="article.id">
                 <button type="button" @click="goArticle(article)">
-                  <span>{{ formatDate(article.createdAt) }}</span>
+                  <span>{{ formatDate(article.updatedAt || article.createdAt) }}</span>
                   <strong>{{ article.title }}</strong>
                 </button>
               </li>
