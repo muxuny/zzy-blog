@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import {
   APPEARANCE_STORAGE_KEY,
   DEFAULT_APPEARANCE,
@@ -113,4 +114,16 @@ test('resolveThemeName respects explicit and system modes', () => {
 test('resolveThemeName defaults missing appearance to light', () => {
   assert.equal(resolveThemeName(), 'light')
   assert.equal(resolveThemeName({}), 'light')
+})
+
+test('theme store applies palette and resolved theme attributes', () => {
+  const source = readFileSync(new URL('../stores/theme.js', import.meta.url), 'utf8')
+
+  assert.match(source, /palette:\s*DEFAULT_APPEARANCE\.palette/)
+  assert.match(source, /mode:\s*DEFAULT_APPEARANCE\.mode/)
+  assert.match(source, /setPalette\(palette\)/)
+  assert.match(source, /setMode\(mode\)/)
+  assert.match(source, /document\.documentElement\.setAttribute\('data-palette'/)
+  assert.match(source, /document\.documentElement\.setAttribute\('data-theme'/)
+  assert.match(source, /resolveThemeName/)
 })
