@@ -1,7 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  APPEARANCE_STORAGE_KEY,
   DEFAULT_APPEARANCE,
+  LEGACY_THEME_STORAGE_KEY,
   THEME_MODES,
   THEME_PALETTES,
   normalizeAppearance,
@@ -30,8 +32,19 @@ function createStorage(initial = {}) {
 
 test('theme constants expose three palettes and three modes', () => {
   assert.deepEqual(THEME_PALETTES.map(item => item.value), ['juniper', 'fog', 'copper'])
+  assert.deepEqual(
+    THEME_PALETTES.map(({ label, description }) => ({ label, description })),
+    [
+      { label: '松针绿', description: '清爽克制，默认主题' },
+      { label: '雾蓝灰', description: '冷静耐读，适合长文' },
+      { label: '暖铜绿', description: '更有温度，适合创作' }
+    ]
+  )
   assert.deepEqual(THEME_MODES.map(item => item.value), ['light', 'dark', 'system'])
+  assert.deepEqual(THEME_MODES.map(item => item.label), ['浅色', '深色', '跟随系统'])
   assert.deepEqual(DEFAULT_APPEARANCE, { palette: 'juniper', mode: 'light' })
+  assert.equal(APPEARANCE_STORAGE_KEY, 'themeAppearance')
+  assert.equal(LEGACY_THEME_STORAGE_KEY, 'theme')
 })
 
 test('normalizeAppearance falls back to defaults for unknown values', () => {
@@ -86,6 +99,7 @@ test('writeStoredAppearance persists normalized appearance and ignores storage e
   assert.equal(writeStoredAppearance(storage, { palette: 'fog', mode: 'dark' }), true)
   assert.deepEqual(JSON.parse(storage.snapshot().themeAppearance), { palette: 'fog', mode: 'dark' })
   assert.equal(writeStoredAppearance(broken, { palette: 'copper', mode: 'system' }), false)
+  assert.equal(writeStoredAppearance({}, { palette: 'fog', mode: 'dark' }), false)
   assert.equal(writeStoredAppearance(undefined, { palette: 'fog', mode: 'dark' }), false)
 })
 
