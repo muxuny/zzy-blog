@@ -108,3 +108,13 @@ test('article detail keeps floating reading tools quiet and icon only', () => {
   assert.doesNotMatch(floatingToolsSource, /<span>返回<\/span>/)
   assert.doesNotMatch(source, /linear-gradient\(145deg/)
 })
+
+test('article detail pins floating reading tools to the viewport corner', () => {
+  const source = readFileSync(new URL('../views/ArticleDetail.vue', import.meta.url), 'utf8')
+  const toolStyles = source.match(/\.floating-reading-tools\s*\{[\s\S]*?\n\}/)?.[0] || ''
+
+  assert.match(toolStyles, /right:\s*calc\(24px \+ env\(safe-area-inset-right\)\);/)
+  assert.match(toolStyles, /bottom:\s*calc\(28px \+ env\(safe-area-inset-bottom\)\);/)
+  assert.doesNotMatch(toolStyles, /--content-width/)
+  assert.doesNotMatch(source, /bottom:\s*calc\(150px \+ env\(safe-area-inset-bottom\)\);/)
+})

@@ -1017,8 +1017,8 @@ function scrollToTop(smooth = true) {
 
 .floating-reading-tools {
   position: fixed;
-  right: max(24px, calc((100vw - var(--content-width)) / 2 - 58px));
-  bottom: calc(30px + env(safe-area-inset-bottom));
+  right: calc(24px + env(safe-area-inset-right));
+  bottom: calc(28px + env(safe-area-inset-bottom));
   z-index: 20;
   display: inline-flex;
   gap: 4px;
@@ -1079,13 +1079,6 @@ function scrollToTop(smooth = true) {
   }
 }
 
-@media (min-width: 981px) and (max-width: 1320px) {
-  .floating-reading-tools {
-    right: 18px;
-    bottom: calc(150px + env(safe-area-inset-bottom));
-  }
-}
-
 @media (max-width: 640px) {
   .main {
     padding: 22px 14px 48px;
@@ -1106,7 +1099,7 @@ function scrollToTop(smooth = true) {
   }
 
   .floating-reading-tools {
-    right: 14px;
+    right: calc(14px + env(safe-area-inset-right));
     bottom: calc(18px + env(safe-area-inset-bottom));
     padding: 4px;
   }
