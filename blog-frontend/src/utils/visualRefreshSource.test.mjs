@@ -62,13 +62,37 @@ test('app header uses a full-width translucent sticky backdrop without top gap',
   assert.doesNotMatch(source, /border-radius:\s*0 0 24px 24px/)
 })
 
+test('global background keeps the prototype grid visible across light and dark themes', () => {
+  const theme = read('../styles/theme.css')
+
+  assert.match(theme, /body\s*\{[\s\S]*linear-gradient\(90deg,\s*var\(--theme-grid-x\)\s*1px,\s*transparent\s*1px\)/)
+  assert.match(theme, /body\s*\{[\s\S]*linear-gradient\(180deg,\s*var\(--theme-grid-y\)\s*1px,\s*transparent\s*1px\)/)
+  assert.match(theme, /background-size:\s*44px 44px/)
+  assert.doesNotMatch(
+    theme,
+    /body\s*\{[\s\S]*linear-gradient\(180deg,\s*color-mix\(in srgb,\s*var\(--panel-bg\)\s*82%,\s*transparent\),\s*var\(--bg-color\)\)/
+  )
+})
+
+test('home page uses the prototype index composition instead of the old hero card layout', () => {
+  const source = read('../views/Home.vue')
+
+  assert.match(source, /class="index-hero"/)
+  assert.match(source, /class="signal-panel"/)
+  assert.match(source, /class="toolbar"/)
+  assert.match(source, /class="content-grid"/)
+  assert.match(source, /class="article-entry"/)
+  assert.doesNotMatch(source, /hero-board|hero-panel|spotlight-card|content-layout/)
+  assert.doesNotMatch(source, /<ArticleCard\b/)
+})
+
 test('home page exposes weekly content signal instead of reading ranking', () => {
   const source = read('../views/Home.vue')
 
   assert.match(source, /contentSignal/)
   assert.match(source, /本周内容信号/)
   assert.match(source, /aria-label="本周内容信号"/)
-  assert.match(source, /content-signal/)
+  assert.match(source, /signal-panel/)
   assert.match(source, /signal-bars/)
   assert.match(source, /buildContentSignal/)
   assert.doesNotMatch(source, /filterSummary/)

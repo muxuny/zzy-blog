@@ -225,14 +225,18 @@ html {
 
 body {
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--panel-bg) 82%, transparent), var(--bg-color)),
+    linear-gradient(90deg, var(--theme-grid-x) 1px, transparent 1px),
+    linear-gradient(180deg, var(--theme-grid-y) 1px, transparent 1px),
     var(--bg-color);
+  background-size: 44px 44px;
   color: var(--text-color);
   transition: background-color 0.24s ease, color 0.24s ease;
 }
 
 [data-theme="dark"] body {
   background:
-    radial-gradient(circle at 20% 0%, var(--theme-glow-color), transparent 34%),
+    linear-gradient(90deg, var(--theme-grid-x) 1px, transparent 1px),
+    linear-gradient(180deg, var(--theme-grid-y) 1px, transparent 1px),
     var(--bg-color);
+  background-size: 44px 44px;
 }
