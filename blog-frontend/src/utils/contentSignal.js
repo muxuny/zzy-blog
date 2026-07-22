@@ -40,13 +40,15 @@ export function buildContentSignal({ articles = [], topTags = [], now = new Date
       const date = new Date(time)
       if (!Number.isNaN(date.getTime())) {
         const day = dayMap.get(getLocalDateKey(date))
-        if (day) day.count += 1
+        if (day) {
+          day.count += 1
+          ;(article.tags || []).forEach(tag => {
+            const name = String(tag?.name || '').trim()
+            if (name) topicCounts.set(name, (topicCounts.get(name) || 0) + 1)
+          })
+        }
       }
     }
-    ;(article.tags || []).forEach(tag => {
-      const name = String(tag?.name || '').trim()
-      if (name) topicCounts.set(name, (topicCounts.get(name) || 0) + 1)
-    })
   })
 
   const maxCount = Math.max(1, ...days.map(day => day.count))

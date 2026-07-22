@@ -108,3 +108,31 @@ test('buildContentSignal skips null articles and trims tag names', () => {
   assert.equal(signal.summary, '本周更新 1 篇，集中在 Vue')
   assert.equal(signal.updatedCount, 1)
 })
+
+test('buildContentSignal only counts current-week tags for the active topic', () => {
+  const signal = buildContentSignal({
+    now: new Date('2026-07-22T12:00:00+08:00'),
+    articles: [
+      {
+        updatedAt: '2026-07-22T09:00:00+08:00',
+        tags: [{ name: 'Weekly' }]
+      },
+      {
+        updatedAt: '2026-07-01T09:00:00+08:00',
+        tags: [{ name: 'Old' }]
+      },
+      {
+        updatedAt: '2026-07-02T09:00:00+08:00',
+        tags: [{ name: 'Old' }]
+      },
+      {
+        updatedAt: 'not-a-date',
+        tags: [{ name: 'Invalid' }]
+      }
+    ]
+  })
+
+  assert.equal(signal.updatedCount, 1)
+  assert.equal(signal.activeTopic, 'Weekly')
+  assert.equal(signal.summary, '本周更新 1 篇，集中在 Weekly')
+})

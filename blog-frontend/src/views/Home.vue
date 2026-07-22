@@ -514,6 +514,8 @@ function goArticle(article) {
   color: var(--primary-color);
   font: inherit;
   font-weight: 750;
+  overflow-wrap: anywhere;
+  text-align: left;
   cursor: pointer;
 }
 
