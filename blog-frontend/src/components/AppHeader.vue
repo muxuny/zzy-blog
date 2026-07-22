@@ -57,11 +57,43 @@ function logout() { authStore.logout(); router.push('/') }
   position: sticky;
   top: 0;
   z-index: 100;
+  isolation: isolate;
   height: var(--app-header-height);
   padding: 0;
-  border-bottom: 1px solid var(--soft-border-color);
-  background: color-mix(in srgb, var(--panel-bg) 88%, transparent);
-  backdrop-filter: blur(14px);
+  border-bottom: 0;
+  background: transparent;
+}
+
+.app-header::before {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: -18px;
+  z-index: -2;
+  width: 100vw;
+  background:
+    linear-gradient(
+      180deg,
+      var(--header-backdrop-bg) 0%,
+      color-mix(in srgb, var(--header-backdrop-bg) 84%, transparent) 62%,
+      transparent 100%
+    );
+  backdrop-filter: blur(16px) saturate(1.08);
+  content: '';
+  mask-image: linear-gradient(180deg, #000 0%, #000 64%, transparent 100%);
+  transform: translateX(-50%);
+}
+
+.app-header::after {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  z-index: -1;
+  width: 100vw;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--header-divider-color), transparent);
+  content: '';
+  transform: translateX(-50%);
 }
 
 .header-inner {
@@ -92,7 +124,7 @@ function logout() { authStore.logout(); router.push('/') }
   border-radius: var(--radius-sm);
   background: var(--primary-color);
   color: #fff;
-  box-shadow: 0 10px 24px rgba(47, 128, 237, 0.24);
+  box-shadow: 0 10px 24px var(--theme-glow-color);
 }
 
 .logo-text {
@@ -122,7 +154,7 @@ function logout() { authStore.logout(); router.push('/') }
 }
 
 .user-info:hover {
-  background: rgba(47, 128, 237, 0.08);
+  background: color-mix(in srgb, var(--primary-color) 8%, transparent);
 }
 
 .user-info:focus-visible {

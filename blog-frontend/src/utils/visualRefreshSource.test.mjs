@@ -47,3 +47,14 @@ test('theme css defines fixed palette packages and reduced motion support', () =
   assert.match(register, /var\(--theme-grid-x\)/)
   assert.match(register, /var\(--theme-grid-y\)/)
 })
+
+test('app header uses a full-width translucent sticky backdrop without top gap', () => {
+  const source = read('../components/AppHeader.vue')
+
+  assert.match(source, /\.app-header::before/)
+  assert.match(source, /width:\s*100vw/)
+  assert.match(source, /backdrop-filter:\s*blur/)
+  assert.match(source, /mask-image:\s*linear-gradient/)
+  assert.match(source, /top:\s*0/)
+  assert.doesNotMatch(source, /border-radius:\s*0 0 24px 24px/)
+})
