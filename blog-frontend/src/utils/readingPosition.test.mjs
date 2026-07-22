@@ -99,12 +99,17 @@ test('article detail keeps floating reading tools quiet and icon only', () => {
   const floatingToolsSource = source.match(
     /<div v-show="showFloatingBackButton" class="floating-reading-tools"[\s\S]*?<\/div>/
   )?.[0] || ''
+  const toolStyles = source.match(/\.floating-reading-tools\s*\{[\s\S]*?\n\}/)?.[0] || ''
+  const buttonStyles = source.match(/\.floating-tool-button\s*\{[\s\S]*?\n\}/)?.[0] || ''
 
   assert.match(floatingToolsSource, /class="floating-tool-button floating-back-button"/)
   assert.match(floatingToolsSource, /class="floating-tool-button floating-top-button"/)
   assert.match(floatingToolsSource, /<el-tooltip[\s\S]*content="返回"/)
   assert.match(floatingToolsSource, /<el-tooltip[\s\S]*content="返回顶部"/)
-  assert.match(source, /\.floating-reading-tools\s*\{[\s\S]*?backdrop-filter:\s*blur\(14px\);/s)
+  assert.match(toolStyles, /background:\s*var\(--panel-bg\);/)
+  assert.match(toolStyles, /0 16px 36px rgba\(15, 23, 42, 0\.16\)/)
+  assert.match(buttonStyles, /color:\s*var\(--text-color\);/)
+  assert.match(source, /\.floating-tool-button:hover\s*\{[\s\S]*?background:\s*color-mix\(in srgb, var\(--primary-color\) 12%, var\(--panel-bg\)\);[\s\S]*?color:\s*var\(--primary-color\);/)
   assert.doesNotMatch(floatingToolsSource, /<span>返回<\/span>/)
   assert.doesNotMatch(source, /linear-gradient\(145deg/)
 })

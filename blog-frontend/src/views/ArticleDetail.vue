@@ -1023,14 +1023,13 @@ function scrollToTop(smooth = true) {
   display: inline-flex;
   gap: 4px;
   align-items: center;
-  padding: 5px;
-  border: 1px solid color-mix(in srgb, var(--soft-border-color) 76%, transparent);
+  padding: 6px;
+  border: 1px solid color-mix(in srgb, var(--soft-border-color) 86%, transparent);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--panel-bg) 88%, transparent);
+  background: var(--panel-bg);
   box-shadow:
-    0 10px 28px rgba(15, 23, 42, 0.08),
-    0 2px 8px rgba(15, 23, 42, 0.08);
-  backdrop-filter: blur(14px);
+    0 16px 36px rgba(15, 23, 42, 0.16),
+    0 4px 12px rgba(15, 23, 42, 0.12);
 }
 
 .floating-tool-button {
@@ -1043,7 +1042,7 @@ function scrollToTop(smooth = true) {
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: var(--muted-text-color);
+  color: var(--text-color);
   font: inherit;
   font-weight: 800;
   cursor: pointer;
@@ -1051,9 +1050,14 @@ function scrollToTop(smooth = true) {
 }
 
 .floating-tool-button:hover {
-  background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+  background: color-mix(in srgb, var(--primary-color) 12%, var(--panel-bg));
   color: var(--primary-color);
   transform: translateY(-1px);
+}
+
+.floating-tool-button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary-color) 38%, transparent);
+  outline-offset: 2px;
 }
 
 .floating-tool-button:active {
