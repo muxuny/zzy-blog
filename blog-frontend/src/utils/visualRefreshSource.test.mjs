@@ -109,3 +109,15 @@ test('reading space uses continuation-focused visual classes', () => {
   assert.match(source, /reading-progress-track/)
   assert.match(source, /theme-glow-color/)
 })
+
+test('reading space isolates its fixed continuation backdrop', () => {
+  const source = read('../views/ReadingSpace.vue')
+
+  assert.match(source, /\.reading-main\s*\{(?=[^}]*position:\s*relative;)(?=[^}]*isolation:\s*isolate;)[^}]*\}/)
+})
+
+test('reading space decorative continuation line ignores pointer events', () => {
+  const source = read('../views/ReadingSpace.vue')
+
+  assert.match(source, /\.last-read::before\s*\{(?=[^}]*pointer-events:\s*none;)[^}]*\}/)
+})

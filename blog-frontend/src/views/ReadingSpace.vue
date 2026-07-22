@@ -327,6 +327,7 @@ function goDiscover() {
 <style scoped>
 .reading-main {
   position: relative;
+  isolation: isolate;
   width: min(100%, var(--content-width));
   margin: 0 auto;
   padding: 30px 24px 64px;
@@ -468,6 +469,7 @@ function goDiscover() {
   background: linear-gradient(180deg, var(--primary-color), var(--accent-color));
   content: '';
   opacity: 0;
+  pointer-events: none;
   transform: scaleY(0.55);
   transition: opacity 0.18s ease, transform 0.18s ease;
 }
