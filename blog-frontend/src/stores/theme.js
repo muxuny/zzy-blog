@@ -7,7 +7,15 @@ import {
   readStoredAppearance,
   resolveThemeName,
   writeStoredAppearance
-} from '../utils/themeAppearance'
+} from '../utils/themeAppearance.js'
+
+function getLocalStorage() {
+  try {
+    return globalThis.localStorage
+  } catch {
+    return null
+  }
+}
 
 function getSystemMediaQuery() {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return null
@@ -35,7 +43,7 @@ export const useThemeStore = defineStore('theme', {
   },
   actions: {
     init() {
-      const stored = readStoredAppearance(typeof localStorage === 'undefined' ? null : localStorage)
+      const stored = readStoredAppearance(getLocalStorage())
       const next = normalizeAppearance(stored)
       this.palette = next.palette
       this.mode = next.mode
@@ -50,7 +58,7 @@ export const useThemeStore = defineStore('theme', {
 
       this.mediaQueryHandler = event => {
         this.systemPrefersDark = !!event.matches
-        if (this.mode === 'system') this.apply(false)
+        if (this.mode === 'system') this.apply()
       }
 
       if (typeof query.addEventListener === 'function') {
@@ -60,7 +68,7 @@ export const useThemeStore = defineStore('theme', {
       }
     },
     persist() {
-      writeStoredAppearance(typeof localStorage === 'undefined' ? null : localStorage, {
+      writeStoredAppearance(getLocalStorage(), {
         palette: this.palette,
         mode: this.mode
       })
