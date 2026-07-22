@@ -53,18 +53,27 @@
         </section>
       </section>
 
-      <section class="signal-strip">
-        <div class="signal-card">
-          <strong>{{ total }}</strong>
-          <span>公开文章</span>
+      <section class="content-signal" aria-label="本周内容信号">
+        <div>
+          <span class="eyebrow">本周内容信号</span>
+          <h2>{{ contentSignal.activeTopic }}</h2>
+          <p>{{ contentSignal.summary }}</p>
+          <button
+            v-if="featuredArticle"
+            type="button"
+            class="signal-link"
+            @click="goArticle(featuredArticle)"
+          >
+            最近更新：{{ contentSignal.latestTitle }}
+          </button>
         </div>
-        <div class="signal-card">
-          <strong>{{ tags.length }}</strong>
-          <span>话题标签</span>
-        </div>
-        <div class="signal-card wide">
-          <strong>{{ filterSummary }}</strong>
-          <span>当前视图</span>
+        <div class="signal-bars" aria-hidden="true">
+          <span
+            v-for="day in contentSignal.bars"
+            :key="day.key"
+            class="signal-bar"
+            :style="{ '--signal-height': day.height }"
+          />
         </div>
       </section>
 
@@ -182,6 +191,51 @@ const featuredInitial = computed(() => featuredArticle.value?.title?.trim()?.cha
 const featuredTags = computed(() => featuredArticle.value?.tags?.slice(0, 3) || [])
 const streamArticles = computed(() => articles.value)
 const recentArticles = computed(() => articles.value.slice(0, 3))
+const contentSignal = computed(() => {
+  const days = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date()
+    date.setHours(0, 0, 0, 0)
+    date.setDate(date.getDate() - (6 - index))
+    return {
+      key: date.toISOString().slice(0, 10),
+      label: `${date.getMonth() + 1}/${date.getDate()}`,
+      count: 0
+    }
+  })
+  const dayMap = new Map(days.map(day => [day.key, day]))
+  const topicCounts = new Map()
+
+  articles.value.forEach(article => {
+    const time = article.updatedAt || article.createdAt
+    if (time) {
+      const date = new Date(time)
+      if (!Number.isNaN(date.getTime())) {
+        const key = date.toISOString().slice(0, 10)
+        const day = dayMap.get(key)
+        if (day) day.count += 1
+      }
+    }
+    ;(article.tags || []).forEach(tag => {
+      topicCounts.set(tag.name, (topicCounts.get(tag.name) || 0) + 1)
+    })
+  })
+
+  const maxCount = Math.max(1, ...days.map(day => day.count))
+  const activeTopic = [...topicCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || topTags.value[0]?.name || '暂无主题'
+  const updatedCount = days.reduce((sum, day) => sum + day.count, 0)
+  return {
+    activeTopic,
+    latestTitle: featuredArticle.value?.title || '',
+    updatedCount,
+    summary: updatedCount
+      ? `本周更新 ${updatedCount} 篇，集中在 ${activeTopic}`
+      : '本周暂无新更新，可从专题继续阅读',
+    bars: days.map(day => ({
+      ...day,
+      height: `${Math.max(16, Math.round((day.count / maxCount) * 100))}%`
+    }))
+  }
+})
 const topTags = computed(() => tags.value.slice(0, 12))
 const filterSummary = computed(() => {
   const parts = []
@@ -471,39 +525,62 @@ function goArticle(article) {
   font-weight: 700;
 }
 
-.signal-strip {
+.content-signal {
   display: grid;
-  grid-template-columns: minmax(130px, auto) minmax(130px, auto) minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 320px);
+  gap: 18px;
+  align-items: stretch;
   margin-bottom: 22px;
-}
-
-.signal-card {
-  display: grid;
-  gap: 5px;
-  min-height: 84px;
-  padding: 16px 18px;
+  padding: 20px;
   border: 1px solid var(--soft-border-color);
   border-radius: var(--radius-md);
-  background: var(--panel-bg);
+  background:
+    linear-gradient(90deg, var(--surface-wash-color), transparent 72%),
+    var(--panel-bg);
   box-shadow: var(--shadow-sm);
 }
 
-.signal-card.wide {
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--primary-color) 10%, transparent), transparent),
-    var(--panel-bg);
-}
-
-.signal-card strong {
+.content-signal h2 {
+  margin: 6px 0 8px;
   color: var(--text-color);
-  font-size: 25px;
-  line-height: 1.1;
+  font-size: 26px;
+  line-height: 1.2;
 }
 
-.signal-card span {
+.content-signal p {
+  margin: 0;
   color: var(--muted-text-color);
-  font-size: 14px;
+}
+
+.signal-link {
+  margin-top: 14px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary-color);
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.signal-bars {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 9px;
+  align-items: end;
+  min-height: 130px;
+}
+
+.signal-bar {
+  height: var(--signal-height);
+  min-height: 16px;
+  border-radius: 999px 999px 4px 4px;
+  background: linear-gradient(180deg, var(--accent-color), var(--primary-color));
+  opacity: 0.86;
+}
+
+.signal-bar:nth-child(4) {
+  background: linear-gradient(180deg, var(--danger-color), var(--warning-color));
 }
 
 .content-layout {
@@ -676,12 +753,8 @@ function goArticle(article) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .signal-strip {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .signal-card.wide {
-    grid-column: 1 / -1;
+  .content-signal {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -705,7 +778,6 @@ function goArticle(article) {
   }
 
   .hero-search,
-  .signal-strip,
   .home-sidebar {
     grid-template-columns: 1fr;
   }

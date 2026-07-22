@@ -61,3 +61,13 @@ test('app header uses a full-width translucent sticky backdrop without top gap',
   assert.doesNotMatch(source, /width:\s*100vw/)
   assert.doesNotMatch(source, /border-radius:\s*0 0 24px 24px/)
 })
+
+test('home page exposes weekly content signal instead of reading ranking', () => {
+  const source = read('../views/Home.vue')
+
+  assert.match(source, /contentSignal/)
+  assert.match(source, /本周内容信号/)
+  assert.match(source, /content-signal/)
+  assert.match(source, /signal-bars/)
+  assert.doesNotMatch(source, /本周阅读信号/)
+})
