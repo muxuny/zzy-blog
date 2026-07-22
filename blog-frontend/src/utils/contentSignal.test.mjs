@@ -7,7 +7,7 @@ test('buildContentSignal assigns same-day articles to the local today bucket', (
     now: new Date('2026-07-22T12:00:00+08:00'),
     articles: [
       {
-        updatedAt: '2026-07-22T09:00:00+08:00',
+        updatedAt: '2026-07-22T00:30:00+08:00',
         tags: [{ name: 'Vue' }]
       }
     ]
