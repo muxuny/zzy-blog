@@ -711,7 +711,7 @@ async function remove(id) {
   font-weight: 750;
 }
 
-.article-table :deep(.el-table__body tr) {
+.article-table :deep(.el-table__body td.el-table__cell) {
   transition: background-color 0.18s ease;
 }
 
@@ -804,7 +804,7 @@ async function remove(id) {
 .article-primary-action.article-primary-action--edit:focus {
   --action-border-color: color-mix(in srgb, var(--accent-color) 54%, transparent);
   --action-bg-color: color-mix(in srgb, var(--accent-color) 13%, var(--panel-bg));
-  --action-text-color: var(--accent-color);
+  --action-text-color: color-mix(in srgb, var(--accent-color) 58%, var(--text-color));
 }
 
 .article-primary-action.article-primary-action--view,
@@ -812,7 +812,7 @@ async function remove(id) {
 .article-primary-action.article-primary-action--view:focus {
   --action-border-color: color-mix(in srgb, var(--primary-color) 52%, transparent);
   --action-bg-color: color-mix(in srgb, var(--primary-color) 12%, var(--panel-bg));
-  --action-text-color: var(--primary-color);
+  --action-text-color: color-mix(in srgb, var(--primary-color) 60%, var(--text-color));
 }
 
 .article-primary-action.article-primary-action--withdraw,
@@ -820,7 +820,7 @@ async function remove(id) {
 .article-primary-action.article-primary-action--withdraw:focus {
   --action-border-color: color-mix(in srgb, var(--warning-color) 52%, transparent);
   --action-bg-color: color-mix(in srgb, var(--warning-color) 14%, var(--panel-bg));
-  --action-text-color: var(--warning-color);
+  --action-text-color: color-mix(in srgb, var(--warning-color) 55%, var(--text-color));
 }
 
 .article-primary-action:not(.is-disabled):hover {
@@ -953,7 +953,7 @@ async function remove(id) {
 
 @media (prefers-reduced-motion: reduce) {
   .group-item::before,
-  .article-table :deep(.el-table__body tr),
+  .article-table :deep(.el-table__body td.el-table__cell),
   .article-primary-action,
   .article-more-button {
     transition: none;

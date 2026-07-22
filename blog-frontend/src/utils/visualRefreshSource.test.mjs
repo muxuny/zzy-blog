@@ -128,6 +128,14 @@ test('creator article workspace uses control-console visual treatment', () => {
   assert.match(source, /creator-shell/)
   assert.match(source, /\.group-item::before/)
   assert.match(source, /status-token/)
+  assert.match(source, /--action-text-color:\s*color-mix\(in srgb,\s*var\(--accent-color\)\s*58%,\s*var\(--text-color\)\);/)
+  assert.match(source, /--action-text-color:\s*color-mix\(in srgb,\s*var\(--primary-color\)\s*60%,\s*var\(--text-color\)\);/)
+  assert.match(source, /--action-text-color:\s*color-mix\(in srgb,\s*var\(--warning-color\)\s*55%,\s*var\(--text-color\)\);/)
+  assert.match(source, /\.article-table :deep\(\.el-table__body td\.el-table__cell\)/)
   assert.doesNotMatch(source, /#2f80ed/)
   assert.doesNotMatch(source, /#7c5cff/)
+  assert.doesNotMatch(
+    source,
+    /\.article-table :deep\(\.el-table__body tr\)\s*\{\s*transition:\s*background-color 0\.18s ease;\s*\}/
+  )
 })
