@@ -7,15 +7,25 @@
         <span>返回我的阅读</span>
       </RouterLink>
 
-      <header class="page-heading">
-        <div>
-          <span class="page-kicker">阅读清单</span>
+      <header class="page-head">
+        <div class="head-copy">
+          <span class="eyebrow">Pinned index</span>
           <h1>我的收藏</h1>
+          <p>把值得回看的文章收进一个轻量索引，筛选仍然服务于快速返回内容本身。</p>
         </div>
-        <span class="favorite-count">共 {{ total }} 篇</span>
+        <aside class="head-meta" aria-label="收藏摘要">
+          <div class="meta-line">
+            <span class="meta-label">收藏</span>
+            <span class="meta-value">{{ total }} 篇文章</span>
+          </div>
+          <div class="meta-line">
+            <span class="meta-label">筛选</span>
+            <span class="meta-value">{{ hasFilters ? '已启用条件' : '全部收藏' }}</span>
+          </div>
+        </aside>
       </header>
 
-      <form class="filter-toolbar" @submit.prevent="submitSearch">
+      <form class="creator-toolbar" @submit.prevent="submitSearch">
         <el-input
           v-model="keywordInput"
           class="keyword-field"
@@ -58,7 +68,7 @@
       </div>
 
       <template v-else-if="!loadError">
-        <div v-if="items.length" class="favorite-list">
+        <div v-if="items.length" class="favorite-index">
           <FavoriteArticleItem
             v-for="item in items"
             :key="item.articleId"
@@ -248,9 +258,24 @@ async function removeFavorite(item) {
 
 <style scoped>
 .favorites-main {
-  width: min(100%, var(--content-width));
+  position: relative;
+  isolation: isolate;
+  width: min(1180px, calc(100% - 36px));
   margin: 0 auto;
-  padding: 30px 24px 56px;
+  padding: 22px 0 64px;
+}
+
+.favorites-main::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, var(--theme-grid-x) 1px, transparent 1px),
+    linear-gradient(180deg, var(--theme-grid-y) 1px, transparent 1px);
+  background-size: 44px 44px;
+  content: '';
+  opacity: 0.56;
+  pointer-events: none;
 }
 
 .back-to-reading {
@@ -258,14 +283,14 @@ async function removeFavorite(item) {
   align-items: center;
   gap: 5px;
   min-height: 36px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   color: var(--muted-text-color);
   font-size: 13px;
   font-weight: 700;
 }
 
 .back-to-reading:hover {
-  color: var(--text-color);
+  color: var(--primary-color);
 }
 
 .back-to-reading:focus-visible {
@@ -273,46 +298,96 @@ async function removeFavorite(item) {
   outline-offset: 2px;
 }
 
-.page-heading {
-  display: flex;
+.page-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  gap: 30px;
   align-items: end;
-  justify-content: space-between;
-  gap: 18px;
-  margin-bottom: 18px;
+  margin-bottom: 24px;
 }
 
-.page-kicker {
+.head-copy {
+  min-width: 0;
+}
+
+.eyebrow {
+  display: inline-flex;
+  margin: 0 0 12px;
+  color: var(--primary-color);
+  font-size: 12px;
+  font-weight: 760;
+  letter-spacing: 0;
+}
+
+.page-head h1 {
+  max-width: 820px;
+  margin: 0 0 18px;
+  color: var(--text-color);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(42px, 7vw, 76px);
+  font-weight: 500;
+  line-height: 0.98;
+}
+
+.head-copy p {
+  max-width: 640px;
+  margin: 0;
+  color: var(--muted-text-color);
+  font-size: 17px;
+  line-height: 1.85;
+}
+
+.head-meta {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
+  box-shadow: var(--shadow-sm);
+}
+
+.meta-line {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 12px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--soft-border-color);
+}
+
+.meta-line:last-child {
+  border-bottom: 0;
+}
+
+.meta-label {
   color: var(--accent-color);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 760;
 }
 
-.page-heading h1 {
-  margin: 3px 0 0;
+.meta-value {
   color: var(--text-color);
-  font-size: 30px;
-  line-height: 1.25;
-}
-
-.favorite-count {
-  color: var(--muted-text-color);
   font-size: 13px;
 }
 
-.filter-toolbar {
+.creator-toolbar {
   display: grid;
   grid-template-columns: minmax(240px, 1fr) 210px auto auto;
   gap: 10px;
   align-items: center;
-  margin-bottom: 18px;
+  margin-bottom: 22px;
   padding: 14px 0;
   border-top: 1px solid var(--soft-border-color);
   border-bottom: 1px solid var(--soft-border-color);
 }
 
-.filter-toolbar .el-button {
+.creator-toolbar .el-button {
   min-height: 40px;
   margin-left: 0;
+}
+
+.creator-toolbar :deep(.el-input__wrapper),
+.creator-toolbar :deep(.el-select__wrapper) {
+  min-height: 40px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
 }
 
 .keyword-field,
@@ -348,7 +423,7 @@ async function removeFavorite(item) {
   border: 0;
 }
 
-.favorite-list {
+.favorite-index {
   display: grid;
   gap: 12px;
 }
@@ -356,23 +431,26 @@ async function removeFavorite(item) {
 .pagination {
   display: flex;
   justify-content: center;
-  margin-top: 26px;
+  margin-top: 28px;
+}
+
+@media (max-width: 900px) {
+  .page-head {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 720px) {
   .favorites-main {
-    padding: 22px 14px 40px;
+    width: min(100% - 28px, var(--content-width));
+    padding: 16px 0 44px;
   }
 
-  .page-heading {
-    align-items: start;
+  .page-head h1 {
+    font-size: 42px;
   }
 
-  .page-heading h1 {
-    font-size: 26px;
-  }
-
-  .filter-toolbar {
+  .creator-toolbar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -387,6 +465,13 @@ async function removeFavorite(item) {
 
   .error-row .el-button {
     justify-self: end;
+  }
+}
+
+@media (max-width: 440px) {
+  .meta-line,
+  .creator-toolbar {
+    grid-template-columns: 1fr;
   }
 }
 </style>

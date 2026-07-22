@@ -127,13 +127,59 @@ test('article detail styles toc active indicator and themed resume dialog', () =
   assert.match(source, /theme-glow-color/)
 })
 
+test('article detail uses the reading-surface prototype skeleton', () => {
+  const source = read('../views/ArticleDetail.vue')
+
+  assert.match(source, /class="detail-head"/)
+  assert.match(source, /class="detail-meta"/)
+  assert.match(source, /class="reading-canvas"/)
+  assert.match(source, /class="article-body"/)
+  assert.match(source, /class="section-meter"/)
+  assert.match(source, /class="meter-dot"/)
+  assert.doesNotMatch(source, /class="article-hero"/)
+  assert.doesNotMatch(source, /class="reading-summary"/)
+})
+
 test('reading space uses continuation-focused visual classes', () => {
   const source = read('../views/ReadingSpace.vue')
 
   assert.match(source, /reading-main::before/)
-  assert.match(source, /\.last-read::before/)
+  assert.match(source, /\.continue-panel::before/)
   assert.match(source, /reading-progress-track/)
   assert.match(source, /theme-glow-color/)
+})
+
+test('reading space uses the private reading prototype skeleton', () => {
+  const source = read('../views/ReadingSpace.vue')
+
+  assert.match(source, /class="page-head"/)
+  assert.match(source, /class="head-meta"/)
+  assert.match(source, /class="reading-layout"/)
+  assert.match(source, /class="continue-panel"/)
+  assert.match(source, /class="reading-side"/)
+  assert.match(source, /class="favorite-index"/)
+  assert.doesNotMatch(source, /class="page-heading"/)
+  assert.doesNotMatch(source, /last-read-section/)
+})
+
+test('reading history and favorites share the private index skeleton', () => {
+  const history = read('../views/ReadingHistory.vue')
+  const favorites = read('../views/Favorites.vue')
+
+  assert.match(history, /class="page-head"/)
+  assert.match(history, /class="head-meta"/)
+  assert.match(history, /class="history-timeline"/)
+  assert.match(history, /class="timeline-group"/)
+  assert.doesNotMatch(history, /class="page-heading"/)
+
+  assert.match(favorites, /class="page-head"/)
+  assert.match(favorites, /class="head-meta"/)
+  assert.match(favorites, /class="creator-toolbar"/)
+  assert.match(favorites, /class="favorite-index"/)
+  assert.match(favorites, /class="back-to-reading"/)
+  assert.doesNotMatch(favorites, /class="page-heading"/)
+  assert.doesNotMatch(favorites, /class="filter-toolbar"/)
+  assert.doesNotMatch(favorites, /class="favorite-list"/)
 })
 
 test('reading space isolates its fixed continuation backdrop', () => {
@@ -145,23 +191,29 @@ test('reading space isolates its fixed continuation backdrop', () => {
 test('reading space decorative continuation line ignores pointer events', () => {
   const source = read('../views/ReadingSpace.vue')
 
-  assert.match(source, /\.last-read::before\s*\{(?=[^}]*pointer-events:\s*none;)[^}]*\}/)
+  assert.match(source, /\.continue-panel::before,[\s\S]*?pointer-events:\s*none;/)
 })
 
 test('creator article workspace uses control-console visual treatment', () => {
   const source = read('../views/creator/MyArticles.vue')
 
   assert.match(source, /creator-shell/)
+  assert.match(source, /class="page-head"/)
+  assert.match(source, /class="head-meta"/)
+  assert.match(source, /class="creator-toolbar"/)
+  assert.match(source, /class="creator-workspace"/)
+  assert.match(source, /class="group-rail"/)
+  assert.match(source, /class="table-wrap"/)
+  assert.match(source, /class="article-row"/)
   assert.match(source, /\.group-item::before/)
-  assert.match(source, /status-token/)
+  assert.match(source, /status-pill/)
   assert.match(source, /--action-text-color:\s*color-mix\(in srgb,\s*var\(--accent-color\)\s*58%,\s*var\(--text-color\)\);/)
   assert.match(source, /--action-text-color:\s*color-mix\(in srgb,\s*var\(--primary-color\)\s*60%,\s*var\(--text-color\)\);/)
   assert.match(source, /--action-text-color:\s*color-mix\(in srgb,\s*var\(--warning-color\)\s*55%,\s*var\(--text-color\)\);/)
-  assert.match(source, /\.article-table :deep\(\.el-table__body td\.el-table__cell\)/)
+  assert.doesNotMatch(source, /class="page-header"/)
+  assert.doesNotMatch(source, /class="workspace"/)
+  assert.doesNotMatch(source, /class="group-panel"/)
+  assert.doesNotMatch(source, /<el-table\b/)
   assert.doesNotMatch(source, /#2f80ed/)
   assert.doesNotMatch(source, /#7c5cff/)
-  assert.doesNotMatch(
-    source,
-    /\.article-table :deep\(\.el-table__body tr\)\s*\{\s*transition:\s*background-color 0\.18s ease;\s*\}/
-  )
 })

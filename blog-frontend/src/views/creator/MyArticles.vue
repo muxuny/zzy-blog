@@ -2,17 +2,51 @@
   <div class="layout">
     <AppHeader />
     <el-main class="main creator-shell">
-      <div class="page-header">
-        <div>
-          <span class="page-kicker">创作中心</span>
+      <header class="page-head">
+        <div class="head-copy">
+          <span class="eyebrow">Creator console</span>
           <h1>我的文章</h1>
+          <p>创作空间保持控制台效率，重点放在分组、状态和下一步动作，而不是展示型卡片。</p>
         </div>
-        <el-button type="primary" @click="$router.push('/creator/articles/create')">写文章</el-button>
-      </div>
+        <aside class="head-meta" aria-label="创作摘要">
+          <div class="meta-line">
+            <span class="meta-label">当前范围</span>
+            <span class="meta-value">{{ activeGroupTitle }}</span>
+          </div>
+          <div class="meta-line">
+            <span class="meta-label">文章</span>
+            <span class="meta-value">{{ total }} 篇</span>
+          </div>
+          <div class="meta-line">
+            <span class="meta-label">待处理</span>
+            <span class="meta-value">{{ attentionCount }} 篇</span>
+          </div>
+        </aside>
+      </header>
 
-      <div class="workspace">
-        <aside v-loading="groupsLoading" class="group-panel">
-          <div class="group-panel-head">
+      <section class="creator-toolbar" aria-label="创作筛选">
+        <div class="toolbar-title">
+          <strong>{{ activeGroupTitle }}</strong>
+          <span class="article-count">共 {{ total }} 篇</span>
+        </div>
+        <div class="toolbar-controls">
+          <el-select v-model="status" placeholder="全部状态" clearable @change="handleStatusChange">
+            <el-option label="草稿" value="draft" />
+            <el-option label="待审核" value="pending" />
+            <el-option label="已发布" value="published" />
+            <el-option label="已驳回" value="rejected" />
+          </el-select>
+          <el-select v-model="visibility" placeholder="全部可见性" clearable @change="handleVisibilityChange">
+            <el-option label="公开" value="public" />
+            <el-option label="仅自己可见" value="private" />
+          </el-select>
+          <el-button type="primary" @click="$router.push('/creator/articles/create')">写文章</el-button>
+        </div>
+      </section>
+
+      <section class="creator-workspace">
+        <aside v-loading="groupsLoading" class="group-rail">
+          <div class="rail-head">
             <span>文章分组</span>
             <el-button size="small" text @click="createGroup">新建</el-button>
           </div>
@@ -60,110 +94,83 @@
         </aside>
 
         <section class="article-section">
-          <div class="filters">
-            <div>
-              <strong>{{ activeGroupTitle }}</strong>
-              <span class="article-count">共 {{ total }} 篇</span>
+          <div v-loading="loading" class="table-wrap" aria-label="我的文章">
+            <div class="article-row table-head" aria-hidden="true">
+              <span>标题</span>
+              <span>分组</span>
+              <span>状态</span>
+              <span>可见性</span>
+              <span>审核反馈</span>
+              <span>更新时间</span>
+              <span>操作</span>
             </div>
-            <el-select v-model="status" placeholder="全部状态" clearable @change="handleStatusChange">
-              <el-option label="草稿" value="draft" />
-              <el-option label="待审核" value="pending" />
-              <el-option label="已发布" value="published" />
-              <el-option label="已驳回" value="rejected" />
-            </el-select>
-            <el-select v-model="visibility" placeholder="全部可见性" clearable @change="handleVisibilityChange">
-              <el-option label="公开" value="public" />
-              <el-option label="仅自己可见" value="private" />
-            </el-select>
-          </div>
 
-          <el-table v-loading="loading" :data="articles" stripe class="article-table">
-            <el-table-column prop="title" label="标题" min-width="220">
-              <template #default="{ row }">
+            <article
+              v-for="row in articles"
+              :key="row.id"
+              class="article-row"
+              :class="`article-row--${row.status || 'unknown'}`"
+            >
+              <div class="row-title">
                 <button type="button" class="article-title-button" @click="openPreview(row)">
                   {{ row.title }}
                 </button>
-              </template>
-            </el-table-column>
-            <el-table-column label="分组" min-width="130">
-              <template #default="{ row }">
-                <span class="group-cell" :class="{ 'is-empty': !row.groups?.length }">
-                  {{ formatArticleGroupNames(row.groups || []) }}
-                </span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="status" label="状态" width="110">
-              <template #default="{ row }">
-                <el-tag class="status-token" :type="statusType(row.status)">{{ statusText(row.status) }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="visibility" label="可见性" width="130">
-              <template #default="{ row }">
-                <el-tag :type="articleVisibilityType(row.visibility)" effect="plain">
-                  {{ articleVisibilityText(row.visibility) }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="reviewReason" label="审核反馈" min-width="180">
-              <template #default="{ row }">{{ row.reviewReason || '-' }}</template>
-            </el-table-column>
-            <el-table-column label="更新时间" width="180">
-              <template #default="{ row }">{{ formatDate(row.updatedAt || row.createdAt) }}</template>
-            </el-table-column>
-            <el-table-column
-              label="操作"
-              width="124"
-              fixed="right"
-              class-name="article-action-column"
-              header-class-name="article-action-header"
-            >
-              <template #default="{ row }">
-                <div class="article-actions">
-                  <el-button
-                    size="small"
-                    class="article-primary-action"
-                    :class="`article-primary-action--${primaryAction(row).tone}`"
-                    :loading="rowAction[row.id] === primaryAction(row).loading"
+                <p>
+                  {{ row.status === 'published' ? '已发布，可从预览或公开页检查展示' : '继续处理草稿、审核或可见性设置' }}
+                </p>
+              </div>
+              <span class="group-cell" :class="{ 'is-empty': !row.groups?.length }">
+                {{ formatArticleGroupNames(row.groups || []) }}
+              </span>
+              <span class="status-pill" :data-status="row.status">{{ statusText(row.status) }}</span>
+              <span class="visibility-cell">{{ articleVisibilityText(row.visibility) }}</span>
+              <span class="review-cell">{{ row.reviewReason || '-' }}</span>
+              <span class="time-cell">{{ formatDate(row.updatedAt || row.createdAt) }}</span>
+              <div class="article-actions">
+                <el-button
+                  size="small"
+                  class="article-primary-action"
+                  :class="`article-primary-action--${primaryAction(row).tone}`"
+                  :loading="rowAction[row.id] === primaryAction(row).loading"
+                  :disabled="isRowBusy(row.id)"
+                  @click="handlePrimaryAction(row)"
+                >
+                  {{ primaryAction(row).text }}
+                </el-button>
+                <el-dropdown
+                  trigger="click"
+                  popper-class="article-action-menu"
+                  :disabled="isRowBusy(row.id)"
+                  @command="command => handleArticleCommand(row, command)"
+                >
+                  <button
+                    type="button"
+                    class="article-more-button"
                     :disabled="isRowBusy(row.id)"
-                    @click="handlePrimaryAction(row)"
+                    aria-label="更多操作"
                   >
-                    {{ primaryAction(row).text }}
-                  </el-button>
-                  <el-dropdown
-                    trigger="click"
-                    popper-class="article-action-menu"
-                    :disabled="isRowBusy(row.id)"
-                    @command="command => handleArticleCommand(row, command)"
-                  >
-                    <button
-                      type="button"
-                      class="article-more-button"
-                      :disabled="isRowBusy(row.id)"
-                      aria-label="更多操作"
-                    >
-                      <el-icon><MoreFilled /></el-icon>
-                    </button>
-                    <template #dropdown>
-                      <el-dropdown-menu>
-                        <el-dropdown-item command="groups">分组</el-dropdown-item>
-                        <el-dropdown-item v-if="row.status === 'published'" command="edit">编辑</el-dropdown-item>
-                        <el-dropdown-item
-                          v-if="row.status === 'draft' || row.status === 'rejected'"
-                          command="submit"
-                        >
-                          提交审核
-                        </el-dropdown-item>
-                        <el-dropdown-item command="visibility">
-                          {{ nextVisibilityText(row.visibility) }}
-                        </el-dropdown-item>
-                        <el-dropdown-item command="delete" class="danger-command">删除</el-dropdown-item>
-                      </el-dropdown-menu>
-                    </template>
-                  </el-dropdown>
-                </div>
-              </template>
-            </el-table-column>
-          </el-table>
+                    <el-icon><MoreFilled /></el-icon>
+                  </button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="groups">分组</el-dropdown-item>
+                      <el-dropdown-item v-if="row.status === 'published'" command="edit">编辑</el-dropdown-item>
+                      <el-dropdown-item
+                        v-if="row.status === 'draft' || row.status === 'rejected'"
+                        command="submit"
+                      >
+                        提交审核
+                      </el-dropdown-item>
+                      <el-dropdown-item command="visibility">
+                        {{ nextVisibilityText(row.visibility) }}
+                      </el-dropdown-item>
+                      <el-dropdown-item command="delete" class="danger-command">删除</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
+            </article>
+          </div>
 
           <el-empty v-if="!articles.length && !loading" description="暂无文章" />
           <el-pagination
@@ -176,7 +183,7 @@
             @current-change="load"
           />
         </section>
-      </div>
+      </section>
 
       <el-dialog v-model="groupAssignDialog.visible" title="调整文章分组" width="420px" @closed="closeGroupAssign">
         <p class="group-assign-intro">
@@ -218,7 +225,6 @@ import { getCreatorPreviewRoute } from '../../utils/creatorPreview'
 import {
   ARTICLE_VISIBILITY_PUBLIC,
   articleVisibilityText,
-  articleVisibilityType,
   normalizeArticleVisibility,
   nextArticleVisibility
 } from '../../utils/articleVisibility'
@@ -268,6 +274,9 @@ const activeGroupTitle = computed(() => {
   }
   return '全部文章'
 })
+const attentionCount = computed(() =>
+  articles.value.filter(article => article.status === 'pending' || article.status === 'rejected').length
+)
 
 onMounted(() => {
   loadGroups()
@@ -276,10 +285,6 @@ onMounted(() => {
 
 function statusText(value) {
   return statusMap[value]?.text || value
-}
-
-function statusType(value) {
-  return statusMap[value]?.type || 'info'
 }
 
 async function load() {
@@ -537,9 +542,9 @@ async function remove(id) {
 
 <style scoped>
 .main {
-  width: min(100%, var(--content-width));
+  width: min(1180px, calc(100% - 36px));
   margin: 0 auto;
-  padding: 32px 24px 64px;
+  padding: 22px 0 72px;
 }
 
 .creator-shell {
@@ -556,70 +561,157 @@ async function remove(id) {
     linear-gradient(180deg, var(--theme-grid-y) 1px, transparent 1px);
   background-size: 44px 44px;
   content: '';
-  opacity: 0.5;
+  opacity: 0.52;
   pointer-events: none;
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: center;
-  margin-bottom: 18px;
+.page-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: 30px;
+  align-items: end;
+  margin-bottom: 26px;
+  padding-top: 22px;
 }
 
-.page-kicker {
+.head-copy {
+  min-width: 0;
+}
+
+.eyebrow {
+  display: inline-flex;
+  margin: 0 0 12px;
+  color: var(--primary-color);
+  font-size: 12px;
+  font-weight: 760;
+  letter-spacing: 0;
+}
+
+.page-head h1 {
+  max-width: 820px;
+  margin: 0 0 18px;
+  color: var(--text-color);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(42px, 7vw, 76px);
+  font-weight: 500;
+  line-height: 0.98;
+}
+
+.head-copy p {
+  max-width: 660px;
+  margin: 0;
+  color: var(--muted-text-color);
+  font-size: 17px;
+  line-height: 1.85;
+}
+
+.head-meta {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
+  box-shadow: var(--shadow-sm);
+}
+
+.meta-line {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  gap: 12px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--soft-border-color);
+}
+
+.meta-line:last-child {
+  border-bottom: 0;
+}
+
+.meta-label {
   color: var(--accent-color);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 760;
 }
 
-.page-header h1 {
-  margin: 4px 0 0;
+.meta-value {
+  min-width: 0;
+  overflow: hidden;
   color: var(--text-color);
-  font-size: 30px;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.filters {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.filters .el-select {
-  width: 180px;
-}
-
-.workspace {
+.creator-toolbar {
   display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 14px 0;
+  border-top: 1px solid var(--soft-border-color);
+  border-bottom: 1px solid var(--soft-border-color);
+}
+
+.toolbar-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+.toolbar-title strong {
+  color: var(--text-color);
+  font-size: 16px;
+}
+
+.toolbar-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.toolbar-controls .el-select {
+  width: 174px;
+}
+
+.toolbar-controls :deep(.el-select__wrapper) {
+  min-height: 40px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
+}
+
+.article-count {
+  color: var(--muted-text-color);
+  font-size: 13px;
+}
+
+.creator-workspace {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 24px;
   align-items: start;
 }
 
-.group-panel {
+.group-rail {
   position: sticky;
-  top: calc(var(--app-header-height) + 16px);
-  padding: 14px;
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-md);
-  background: var(--panel-bg);
+  top: calc(var(--app-header-height) + 20px);
+  min-width: 0;
+  padding-right: 18px;
+  border-right: 1px solid var(--border-color);
 }
 
-.group-panel-head {
+.rail-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   color: var(--text-color);
   font-weight: 800;
 }
 
 .group-list {
   display: grid;
-  gap: 4px;
+  gap: 6px;
   margin-top: 6px;
 }
 
@@ -631,13 +723,18 @@ async function remove(id) {
   min-height: 38px;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: var(--radius-sm);
+  padding: 8px 10px 8px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--muted-text-color);
   text-align: left;
   cursor: pointer;
+  transition:
+    transform 0.22s ease,
+    border-color 0.22s ease,
+    background-color 0.22s ease,
+    color 0.22s ease;
 }
 
 .group-item::before {
@@ -652,12 +749,14 @@ async function remove(id) {
   opacity: 0;
   pointer-events: none;
   transform: scaleY(0.55);
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transition: opacity 0.22s ease, transform 0.22s ease;
 }
 
 .group-item:hover,
 .group-item.is-active {
-  background: color-mix(in srgb, var(--primary-color) 10%, var(--panel-bg));
+  transform: translateX(2px);
+  border-color: color-mix(in srgb, var(--primary-color) 30%, transparent);
+  background: var(--surface-wash-color);
   color: var(--text-color);
 }
 
@@ -697,37 +796,89 @@ async function remove(id) {
   min-width: 0;
 }
 
-.article-count {
-  margin-left: 8px;
+.table-wrap {
+  min-width: 0;
+  border-top: 1px solid var(--border-color);
+}
+
+.article-row {
+  position: relative;
+  display: grid;
+  grid-template-columns:
+    minmax(230px, 1.45fr)
+    minmax(90px, 0.7fr)
+    92px
+    106px
+    minmax(130px, 0.9fr)
+    122px
+    112px;
+  gap: 14px;
+  align-items: center;
+  min-height: 82px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--soft-border-color);
   color: var(--muted-text-color);
-  font-size: 13px;
+  transition:
+    transform 0.22s ease,
+    border-color 0.22s ease,
+    background-color 0.22s ease,
+    box-shadow 0.22s ease;
 }
 
-.article-table {
-  margin-top: 12px;
+.article-row::before {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: -1px;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--primary-color), var(--accent-color));
+  content: '';
+  opacity: 0;
+  transform: scaleY(0.55);
+  transition: opacity 0.22s ease, transform 0.22s ease;
 }
 
-.status-token {
-  font-weight: 750;
+.article-row:not(.table-head):hover {
+  transform: translateX(3px);
+  border-bottom-color: color-mix(in srgb, var(--primary-color) 62%, var(--border-color));
+  background: color-mix(in srgb, var(--panel-bg) 84%, transparent);
+  box-shadow: 0 18px 42px -34px var(--theme-glow-color);
 }
 
-.article-table :deep(.el-table__body td.el-table__cell) {
-  transition: background-color 0.18s ease;
+.article-row:not(.table-head):hover::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+.table-head {
+  min-height: 42px;
+  color: var(--accent-color);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.table-head::before {
+  display: none;
+}
+
+.row-title {
+  min-width: 0;
 }
 
 .article-title-button {
   max-width: 100%;
   padding: 0;
+  overflow: hidden;
   border: 0;
   background: transparent;
   color: var(--text-color);
   font: inherit;
-  font-weight: 750;
+  font-weight: 780;
   text-align: left;
-  cursor: pointer;
-  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
 }
 
 .article-title-button:hover,
@@ -737,35 +888,77 @@ async function remove(id) {
   text-underline-offset: 3px;
 }
 
-.article-title-button:focus-visible {
+.article-title-button:focus-visible,
+.article-more-button:focus-visible,
+.group-item:focus-visible {
   outline: 2px solid var(--primary-color);
   outline-offset: 2px;
 }
 
-.article-table :deep(th.el-table__cell) {
-  text-align: center;
+.row-title p {
+  display: -webkit-box;
+  margin: 5px 0 0;
+  overflow: hidden;
+  color: var(--muted-text-color);
+  font-size: 12px;
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
 }
 
-.article-table :deep(.article-action-header.el-table-fixed-column--right) {
-  background-color: color-mix(in srgb, var(--primary-color) 6%, var(--panel-bg)) !important;
-  box-shadow: -12px 0 22px -20px rgba(15, 23, 42, 0.5);
-  z-index: 2;
+.group-cell,
+.visibility-cell,
+.review-cell,
+.time-cell {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted-text-color);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.article-table :deep(.article-action-column.el-table-fixed-column--right) {
-  background-color: var(--el-table-tr-bg-color) !important;
-  box-shadow: -12px 0 22px -20px rgba(15, 23, 42, 0.5);
-  z-index: 2;
+.group-cell {
+  color: var(--text-color);
 }
 
-.article-table :deep(.el-table__body tr.hover-row > .article-action-column.el-table-fixed-column--right),
-.article-table :deep(.el-table__body tr:hover > .article-action-column.el-table-fixed-column--right) {
-  background-color: color-mix(in srgb, var(--primary-color) 10%, var(--panel-bg)) !important;
+.group-cell.is-empty {
+  color: var(--muted-text-color);
 }
 
-.article-table :deep(.article-action-header),
-.article-table :deep(.article-action-column) {
-  border-left: 1px solid var(--soft-border-color);
+.status-pill {
+  display: inline-flex;
+  width: max-content;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted-text-color) 12%, transparent);
+  color: var(--muted-text-color);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.status-pill[data-status="draft"] {
+  background: color-mix(in srgb, var(--muted-text-color) 12%, transparent);
+  color: var(--muted-text-color);
+}
+
+.status-pill[data-status="pending"] {
+  background: color-mix(in srgb, var(--warning-color) 18%, transparent);
+  color: var(--warning-color);
+}
+
+.status-pill[data-status="published"] {
+  background: color-mix(in srgb, var(--primary-color) 14%, transparent);
+  color: var(--primary-color);
+}
+
+.status-pill[data-status="rejected"] {
+  background: color-mix(in srgb, var(--danger-color) 14%, transparent);
+  color: var(--danger-color);
 }
 
 .article-actions {
@@ -776,7 +969,7 @@ async function remove(id) {
   justify-content: center;
   gap: 6px;
   width: 92px;
-  margin: 0 auto;
+  margin-left: auto;
   padding: 3px;
   border: 1px solid color-mix(in srgb, var(--primary-color) 12%, var(--soft-border-color));
   border-radius: 999px;
@@ -852,7 +1045,7 @@ async function remove(id) {
   background: color-mix(in srgb, var(--muted-text-color) 10%, transparent);
   color: var(--muted-text-color);
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
 
 .article-more-button:hover,
@@ -900,16 +1093,8 @@ async function remove(id) {
   color: #f56c6c;
 }
 
-.group-cell {
-  color: var(--text-color);
-}
-
-.group-cell.is-empty {
-  color: var(--muted-text-color);
-}
-
 .article-pagination {
-  margin-top: 16px;
+  margin-top: 18px;
 }
 
 .group-assign-intro {
@@ -923,40 +1108,83 @@ async function remove(id) {
   width: 100%;
 }
 
-@media (max-width: 760px) {
-  .main {
-    padding: 24px 14px 48px;
-  }
-
-  .page-header {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .workspace {
+@media (max-width: 1060px) {
+  .creator-toolbar,
+  .creator-workspace,
+  .page-head {
     grid-template-columns: 1fr;
   }
 
-  .group-panel {
+  .group-rail {
     position: static;
+    padding-right: 0;
+    padding-bottom: 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border-color);
   }
 
-  .filters {
-    align-items: stretch;
-    flex-direction: column;
+  .toolbar-controls {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 900px) {
+  .article-row {
+    grid-template-columns: 1fr 1fr;
   }
 
-  .filters .el-select {
+  .table-head {
+    display: none;
+  }
+
+  .article-actions {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .main {
+    width: min(100% - 28px, var(--content-width));
+    padding: 16px 0 48px;
+  }
+
+  .page-head h1 {
+    font-size: 42px;
+  }
+
+  .toolbar-controls,
+  .toolbar-controls .el-select {
     width: 100%;
+  }
+
+  .toolbar-controls {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .article-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 16px 0;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .group-item,
   .group-item::before,
-  .article-table :deep(.el-table__body td.el-table__cell),
+  .article-row,
+  .article-row::before,
   .article-primary-action,
   .article-more-button {
     transition: none;
+  }
+
+  .group-item:hover,
+  .article-row:not(.table-head):hover,
+  .article-primary-action:not(.is-disabled):hover,
+  .article-more-button:hover,
+  .article-more-button:focus-visible {
+    transform: none;
   }
 }
 </style>

@@ -24,8 +24,8 @@
       </section>
 
       <article v-else-if="article" class="article-page">
-        <header class="article-hero" :class="{ 'has-cover': article.coverImage }">
-          <div class="article-hero-copy">
+        <header class="detail-head" :class="{ 'has-cover': article.coverImage }">
+          <div class="detail-copy">
             <span class="eyebrow">文章</span>
             <h1>{{ article.title }}</h1>
             <div class="hero-meta">
@@ -52,27 +52,29 @@
               </el-button>
             </div>
           </div>
-          <figure v-if="article.coverImage" class="article-cover">
-            <img :src="article.coverImage" :alt="article.title" />
-          </figure>
+
+          <aside class="detail-side">
+            <figure v-if="article.coverImage" class="article-cover">
+              <img :src="article.coverImage" :alt="article.title" />
+            </figure>
+            <section class="detail-meta" aria-label="文章阅读摘要">
+              <div class="meta-line">
+                <span class="meta-label">字数</span>
+                <strong class="meta-value">{{ readingStats.wordCount }}</strong>
+              </div>
+              <div class="meta-line">
+                <span class="meta-label">预计阅读</span>
+                <strong class="meta-value">{{ readingStats.readingTimeText }}</strong>
+              </div>
+              <div class="meta-line">
+                <span class="meta-label">作者</span>
+                <strong class="meta-value">{{ authorName }}</strong>
+              </div>
+            </section>
+          </aside>
         </header>
 
-        <section class="reading-summary">
-          <div>
-            <span>字数</span>
-            <strong>{{ readingStats.wordCount }}</strong>
-          </div>
-          <div>
-            <span>预计阅读</span>
-            <strong>{{ readingStats.readingTimeText }}</strong>
-          </div>
-          <div>
-            <span>作者</span>
-            <strong>{{ authorName }}</strong>
-          </div>
-        </section>
-
-        <div class="reading-layout">
+        <div class="reading-canvas">
           <main class="article-body">
             <nav v-if="toc.length" class="mobile-toc" aria-label="文章目录">
               <span class="eyebrow">目录</span>
@@ -105,6 +107,18 @@
                 {{ item.text }}
               </button>
             </nav>
+            <section v-if="toc.length" class="section-meter" aria-label="章节位置">
+              <button
+                v-for="item in toc"
+                :key="`meter-${item.id}`"
+                type="button"
+                class="meter-dot"
+                :class="{ active: activeHeadingId === item.id }"
+                :title="item.text"
+                :aria-label="`跳转到${item.text}`"
+                @click="scrollToHeading(item.id)"
+              />
+            </section>
             <section class="note-panel">
               <span class="eyebrow">阅读提示</span>
               <p>目录会跟随章节、小节和细分标题生成，适合快速回到关键段落。</p>
@@ -677,9 +691,9 @@ function scrollToTop(smooth = true) {
 }
 
 .main {
-  width: min(100%, var(--content-width));
+  width: min(1180px, calc(100% - 36px));
   margin: 0 auto;
-  padding: 34px 24px 72px;
+  padding: 22px 0 72px;
   overflow: visible;
 }
 
@@ -690,25 +704,32 @@ function scrollToTop(smooth = true) {
   min-height: 36px;
   margin-bottom: 16px;
   padding: 0 12px;
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-sm);
-  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
   color: var(--muted-text-color);
   font: inherit;
   font-weight: 700;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
+  transition:
+    transform 0.22s ease,
+    border-color 0.22s ease,
+    background-color 0.22s ease,
+    color 0.22s ease;
 }
 
 .back-button:hover {
-  border-color: var(--primary-color);
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--primary-color) 72%, var(--border-color));
   color: var(--primary-color);
-  background: color-mix(in srgb, var(--primary-color) 8%, var(--panel-bg));
+  background: var(--surface-wash-color);
 }
 
 .back-button:focus-visible,
 .home-button:focus-visible,
 .toc-link:focus-visible,
+.meter-dot:focus-visible,
 .neighbor-card:focus-visible,
 .related-card:focus-visible,
 .floating-tool-button:focus-visible {
@@ -718,9 +739,9 @@ function scrollToTop(smooth = true) {
 
 .empty-state {
   padding: 44px 28px;
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-lg);
-  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
   text-align: center;
   box-shadow: var(--shadow-sm);
 }
@@ -750,45 +771,40 @@ function scrollToTop(smooth = true) {
 
 .article-page {
   display: grid;
-  gap: 20px;
+  gap: 28px;
 }
 
-.article-hero {
+.detail-head {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 26px;
-  align-items: stretch;
-  padding: clamp(24px, 4vw, 44px);
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-lg);
-  background: var(--panel-bg);
-  box-shadow: var(--shadow-sm);
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: 30px;
+  align-items: end;
+  padding-top: 12px;
 }
 
-.article-hero.has-cover {
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
-}
-
-.article-hero-copy {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+.detail-copy,
+.detail-side {
   min-width: 0;
 }
 
 .eyebrow {
-  color: var(--accent-color);
+  display: inline-flex;
+  margin: 0 0 12px;
+  color: var(--primary-color);
   font-size: 12px;
-  font-weight: 850;
+  font-weight: 760;
+  letter-spacing: 0;
 }
 
-.article-hero h1 {
+.detail-head h1 {
   max-width: 900px;
-  margin: 12px 0 18px;
+  margin: 0 0 18px;
   color: var(--text-color);
-  font-size: clamp(36px, 6vw, 68px);
-  line-height: 1;
-  font-weight: 900;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(42px, 7vw, 82px);
+  font-weight: 500;
+  line-height: 0.98;
+  overflow-wrap: anywhere;
 }
 
 .hero-meta {
@@ -819,63 +835,79 @@ function scrollToTop(smooth = true) {
   flex: 0 0 auto;
 }
 
-.article-cover {
-  margin: 0;
-  min-width: 0;
-}
-
-.article-cover img {
-  width: 100%;
-  height: 100%;
-  min-height: 280px;
-  object-fit: cover;
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-md);
-}
-
-.reading-summary {
+.detail-side {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
-.reading-summary div {
-  padding: 14px 16px;
-  border: 1px solid var(--soft-border-color);
+.article-cover {
+  position: relative;
+  min-width: 0;
+  min-height: 210px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  background: var(--panel-bg);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 20%, transparent), transparent),
+    var(--panel-bg);
+  box-shadow: var(--shadow-sm);
 }
 
-.reading-summary span,
-.reading-summary strong {
+.article-cover img {
   display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 210px;
+  object-fit: cover;
 }
 
-.reading-summary span {
-  color: var(--muted-text-color);
-  font-size: 12px;
+.detail-meta {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
+  box-shadow: var(--shadow-sm);
 }
 
-.reading-summary strong {
-  margin-top: 6px;
-  color: var(--text-color);
-  font-size: 16px;
-}
-
-.reading-layout {
+.meta-line {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
-  gap: 30px;
+  grid-template-columns: 78px minmax(0, 1fr);
+  gap: 12px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--soft-border-color);
+}
+
+.meta-line:last-child {
+  border-bottom: 0;
+}
+
+.meta-label {
+  color: var(--accent-color);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.meta-value {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-color);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reading-canvas {
+  display: grid;
+  grid-template-columns: minmax(0, var(--reading-width)) 280px;
+  gap: 34px;
   align-items: start;
 }
 
 .article-body {
   min-width: 0;
-  padding: clamp(22px, 4vw, 38px);
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-lg);
-  background: var(--panel-bg);
-  box-shadow: var(--shadow-sm);
+  padding: clamp(20px, 3vw, 34px) 0;
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--soft-border-color);
 }
 
 .reading-sidebar {
@@ -887,11 +919,18 @@ function scrollToTop(smooth = true) {
 
 .toc-panel,
 .note-panel,
+.mobile-toc,
+.section-meter {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
+  box-shadow: var(--shadow-sm);
+}
+
+.toc-panel,
+.note-panel,
 .mobile-toc {
   padding: 16px;
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-md);
-  background: var(--panel-bg);
 }
 
 .toc-panel,
@@ -901,7 +940,7 @@ function scrollToTop(smooth = true) {
 }
 
 .toc-panel {
-  max-height: calc(100vh - var(--app-header-height) - 170px);
+  max-height: calc(100vh - var(--app-header-height) - 218px);
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
@@ -912,6 +951,36 @@ function scrollToTop(smooth = true) {
   color: var(--muted-text-color);
   font-size: 13px;
   line-height: 1.7;
+}
+
+.section-meter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 16px;
+}
+
+.meter-dot {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 38%, var(--border-color));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-bg) 92%, transparent);
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.meter-dot:hover,
+.meter-dot.active {
+  transform: scale(1.18);
+  border-color: var(--primary-color);
+  background: var(--primary-color);
+  box-shadow: 0 0 0 6px var(--surface-wash-color);
 }
 
 .toc-link {
@@ -986,27 +1055,54 @@ function scrollToTop(smooth = true) {
 
 .neighbor-card,
 .related-card {
+  position: relative;
   display: grid;
   gap: 8px;
   width: 100%;
   min-width: 0;
-  padding: 18px;
-  border: 1px solid var(--soft-border-color);
+  padding: 18px 20px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  background: var(--panel-bg);
+  background: color-mix(in srgb, var(--panel-bg) 96%, transparent);
   color: var(--text-color);
   font: inherit;
   text-align: left;
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    transform 0.22s ease,
+    border-color 0.22s ease,
+    background-color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.neighbor-card::before,
+.related-card::before {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: -1px;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--primary-color), var(--accent-color));
+  content: '';
+  opacity: 0;
+  transform: scaleY(0.55);
+  transition: opacity 0.22s ease, transform 0.22s ease;
 }
 
 .neighbor-card:hover,
 .related-card:hover {
-  border-color: var(--primary-color);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--primary-color) 72%, var(--border-color));
+  background: var(--panel-bg);
+  box-shadow: var(--shadow-sm);
+}
+
+.neighbor-card:hover::before,
+.related-card:hover::before {
+  opacity: 1;
+  transform: scaleY(1);
 }
 
 .neighbor-card span,
@@ -1027,17 +1123,15 @@ function scrollToTop(smooth = true) {
 .related-panel {
   display: grid;
   gap: 14px;
-  padding: clamp(20px, 3vw, 28px);
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-lg);
-  background: var(--panel-bg);
-  box-shadow: var(--shadow-sm);
 }
 
 .section-heading h2 {
   margin: 6px 0 0;
   color: var(--text-color);
-  font-size: 24px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1.08;
 }
 
 .related-grid {
@@ -1139,8 +1233,8 @@ function scrollToTop(smooth = true) {
 }
 
 @media (max-width: 980px) {
-  .article-hero,
-  .reading-layout {
+  .detail-head,
+  .reading-canvas {
     grid-template-columns: 1fr;
   }
 
@@ -1155,16 +1249,16 @@ function scrollToTop(smooth = true) {
 
 @media (max-width: 640px) {
   .main {
-    padding: 22px 14px 48px;
+    width: min(100% - 28px, var(--content-width));
+    padding: 16px 0 48px;
   }
 
-  .article-hero,
+  .detail-head h1 {
+    font-size: 42px;
+  }
+
   .article-body {
-    padding: 18px;
-  }
-
-  .reading-summary {
-    grid-template-columns: 1fr;
+    padding: 18px 0;
   }
 
   .neighbor-grid,
@@ -1183,6 +1277,7 @@ function scrollToTop(smooth = true) {
     height: 36px;
   }
 
+  .article-cover,
   .article-cover img {
     min-height: 210px;
   }
@@ -1190,10 +1285,25 @@ function scrollToTop(smooth = true) {
 
 @media (prefers-reduced-motion: reduce) {
   .article-progress-bar span,
+  .back-button,
   .toc-link,
   .toc-link::before,
+  .meter-dot,
+  .neighbor-card,
+  .neighbor-card::before,
+  .related-card,
+  .related-card::before,
   .floating-tool-button {
     transition: none;
+  }
+
+  .back-button:hover,
+  .meter-dot:hover,
+  .meter-dot.active,
+  .neighbor-card:hover,
+  .related-card:hover,
+  .floating-tool-button:hover {
+    transform: none;
   }
 }
 </style>
