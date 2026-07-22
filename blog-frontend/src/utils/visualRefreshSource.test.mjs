@@ -69,5 +69,7 @@ test('home page exposes weekly content signal instead of reading ranking', () =>
   assert.match(source, /本周内容信号/)
   assert.match(source, /content-signal/)
   assert.match(source, /signal-bars/)
+  assert.match(source, /buildContentSignal/)
+  assert.doesNotMatch(source, /filterSummary/)
   assert.doesNotMatch(source, /本周阅读信号/)
 })

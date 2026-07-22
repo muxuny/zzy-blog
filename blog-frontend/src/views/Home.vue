@@ -170,6 +170,7 @@ import { useRouter } from 'vue-router'
 import { getArticles } from '../api/article'
 import { getTags } from '../api/tag'
 import { formatDate, truncate } from '../utils'
+import { buildContentSignal } from '../utils/contentSignal'
 import AppHeader from '../components/AppHeader.vue'
 import ArticleCard from '../components/ArticleCard.vue'
 
@@ -191,58 +192,11 @@ const featuredInitial = computed(() => featuredArticle.value?.title?.trim()?.cha
 const featuredTags = computed(() => featuredArticle.value?.tags?.slice(0, 3) || [])
 const streamArticles = computed(() => articles.value)
 const recentArticles = computed(() => articles.value.slice(0, 3))
-const contentSignal = computed(() => {
-  const days = Array.from({ length: 7 }, (_, index) => {
-    const date = new Date()
-    date.setHours(0, 0, 0, 0)
-    date.setDate(date.getDate() - (6 - index))
-    return {
-      key: date.toISOString().slice(0, 10),
-      label: `${date.getMonth() + 1}/${date.getDate()}`,
-      count: 0
-    }
-  })
-  const dayMap = new Map(days.map(day => [day.key, day]))
-  const topicCounts = new Map()
-
-  articles.value.forEach(article => {
-    const time = article.updatedAt || article.createdAt
-    if (time) {
-      const date = new Date(time)
-      if (!Number.isNaN(date.getTime())) {
-        const key = date.toISOString().slice(0, 10)
-        const day = dayMap.get(key)
-        if (day) day.count += 1
-      }
-    }
-    ;(article.tags || []).forEach(tag => {
-      topicCounts.set(tag.name, (topicCounts.get(tag.name) || 0) + 1)
-    })
-  })
-
-  const maxCount = Math.max(1, ...days.map(day => day.count))
-  const activeTopic = [...topicCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || topTags.value[0]?.name || '暂无主题'
-  const updatedCount = days.reduce((sum, day) => sum + day.count, 0)
-  return {
-    activeTopic,
-    latestTitle: featuredArticle.value?.title || '',
-    updatedCount,
-    summary: updatedCount
-      ? `本周更新 ${updatedCount} 篇，集中在 ${activeTopic}`
-      : '本周暂无新更新，可从专题继续阅读',
-    bars: days.map(day => ({
-      ...day,
-      height: `${Math.max(16, Math.round((day.count / maxCount) * 100))}%`
-    }))
-  }
-})
 const topTags = computed(() => tags.value.slice(0, 12))
-const filterSummary = computed(() => {
-  const parts = []
-  if (activeTagName.value) parts.push(`话题：${activeTagName.value}`)
-  if (keyword.value) parts.push(`搜索：${keyword.value}`)
-  return parts.length ? parts.join(' / ') : '正在浏览全部公开文章'
-})
+const contentSignal = computed(() => buildContentSignal({
+  articles: articles.value,
+  topTags: topTags.value
+}))
 const articleSectionTitle = computed(() => (activeTagName.value || keyword.value ? '筛选结果' : '最近记录'))
 const articleSectionSubtitle = computed(() => {
   if (keyword.value) return `正在查找与“${keyword.value}”有关的文章`
