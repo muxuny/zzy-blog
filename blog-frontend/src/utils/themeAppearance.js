@@ -21,6 +21,10 @@ export const LEGACY_THEME_STORAGE_KEY = 'theme'
 const paletteValues = new Set(THEME_PALETTES.map(item => item.value))
 const modeValues = new Set(THEME_MODES.map(item => item.value))
 
+function createDefaultAppearance() {
+  return { ...DEFAULT_APPEARANCE }
+}
+
 export function normalizeAppearance(value) {
   const source = value && typeof value === 'object' ? value : {}
   return {
@@ -39,10 +43,10 @@ export function readStoredAppearance(storage) {
       return normalizeAppearance({ palette: DEFAULT_APPEARANCE.palette, mode: legacyTheme })
     }
   } catch {
-    return DEFAULT_APPEARANCE
+    return createDefaultAppearance()
   }
 
-  return DEFAULT_APPEARANCE
+  return createDefaultAppearance()
 }
 
 export function writeStoredAppearance(storage, appearance) {
@@ -56,7 +60,7 @@ export function writeStoredAppearance(storage, appearance) {
   }
 }
 
-export function resolveThemeName({ mode, systemPrefersDark }) {
+export function resolveThemeName({ mode, systemPrefersDark } = {}) {
   const normalized = normalizeAppearance({ mode }).mode
   if (normalized === 'system') return systemPrefersDark ? 'dark' : 'light'
   return normalized

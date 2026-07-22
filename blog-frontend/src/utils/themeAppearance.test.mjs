@@ -63,6 +63,18 @@ test('readStoredAppearance handles invalid JSON and unavailable storage', () => 
   assert.deepEqual(readStoredAppearance(broken), DEFAULT_APPEARANCE)
 })
 
+test('readStoredAppearance returns fresh fallback appearance objects', () => {
+  const fallback = readStoredAppearance(createStorage())
+
+  assert.notEqual(fallback, DEFAULT_APPEARANCE)
+
+  fallback.palette = 'copper'
+  fallback.mode = 'dark'
+
+  assert.deepEqual(readStoredAppearance(createStorage()), { palette: 'juniper', mode: 'light' })
+  assert.deepEqual(DEFAULT_APPEARANCE, { palette: 'juniper', mode: 'light' })
+})
+
 test('writeStoredAppearance persists normalized appearance and ignores storage errors', () => {
   const storage = createStorage()
   const broken = {
@@ -82,4 +94,9 @@ test('resolveThemeName respects explicit and system modes', () => {
   assert.equal(resolveThemeName({ mode: 'dark', systemPrefersDark: false }), 'dark')
   assert.equal(resolveThemeName({ mode: 'system', systemPrefersDark: true }), 'dark')
   assert.equal(resolveThemeName({ mode: 'system', systemPrefersDark: false }), 'light')
+})
+
+test('resolveThemeName defaults missing appearance to light', () => {
+  assert.equal(resolveThemeName(), 'light')
+  assert.equal(resolveThemeName({}), 'light')
 })
