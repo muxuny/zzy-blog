@@ -66,11 +66,12 @@ function logout() { authStore.logout(); router.push('/') }
 
 .app-header::before {
   position: absolute;
-  left: 50%;
+  left: 0;
   top: 0;
+  right: 0;
   bottom: -18px;
   z-index: -2;
-  width: 100vw;
+  width: auto;
   background:
     linear-gradient(
       180deg,
@@ -81,19 +82,22 @@ function logout() { authStore.logout(); router.push('/') }
   backdrop-filter: blur(16px) saturate(1.08);
   content: '';
   mask-image: linear-gradient(180deg, #000 0%, #000 64%, transparent 100%);
-  transform: translateX(-50%);
+  pointer-events: none;
+  transform: none;
 }
 
 .app-header::after {
   position: absolute;
-  left: 50%;
+  left: 0;
+  right: 0;
   bottom: 0;
   z-index: -1;
-  width: 100vw;
+  width: auto;
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--header-divider-color), transparent);
   content: '';
-  transform: translateX(-50%);
+  pointer-events: none;
+  transform: none;
 }
 
 .header-inner {

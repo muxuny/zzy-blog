@@ -52,9 +52,12 @@ test('app header uses a full-width translucent sticky backdrop without top gap',
   const source = read('../components/AppHeader.vue')
 
   assert.match(source, /\.app-header::before/)
-  assert.match(source, /width:\s*100vw/)
+  assert.match(source, /\.app-header::after/)
+  assert.match(source, /\.app-header::before\s*\{[\s\S]*left:\s*0;[\s\S]*right:\s*0;[\s\S]*width:\s*auto;[\s\S]*pointer-events:\s*none;/)
+  assert.match(source, /\.app-header::after\s*\{[\s\S]*left:\s*0;[\s\S]*right:\s*0;[\s\S]*width:\s*auto;[\s\S]*pointer-events:\s*none;/)
   assert.match(source, /backdrop-filter:\s*blur/)
   assert.match(source, /mask-image:\s*linear-gradient/)
   assert.match(source, /top:\s*0/)
+  assert.doesNotMatch(source, /width:\s*100vw/)
   assert.doesNotMatch(source, /border-radius:\s*0 0 24px 24px/)
 })
