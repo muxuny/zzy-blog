@@ -93,3 +93,18 @@ test('article detail offers a floating back action after scrolling and saves bef
   assert.match(source, /@click="handleFloatingBack"/)
   assert.match(source, /function handleFloatingBack\(\)[\s\S]*?flushReadingPosition\(\)[\s\S]*?goBack\(\)/)
 })
+
+test('article detail keeps floating reading tools quiet and icon only', () => {
+  const source = readFileSync(new URL('../views/ArticleDetail.vue', import.meta.url), 'utf8')
+  const floatingToolsSource = source.match(
+    /<div v-show="showFloatingBackButton" class="floating-reading-tools"[\s\S]*?<\/div>/
+  )?.[0] || ''
+
+  assert.match(floatingToolsSource, /class="floating-tool-button floating-back-button"/)
+  assert.match(floatingToolsSource, /class="floating-tool-button floating-top-button"/)
+  assert.match(floatingToolsSource, /<el-tooltip[\s\S]*content="返回"/)
+  assert.match(floatingToolsSource, /<el-tooltip[\s\S]*content="返回顶部"/)
+  assert.match(source, /\.floating-reading-tools\s*\{[\s\S]*?backdrop-filter:\s*blur\(14px\);/s)
+  assert.doesNotMatch(floatingToolsSource, /<span>返回<\/span>/)
+  assert.doesNotMatch(source, /linear-gradient\(145deg/)
+})

@@ -178,26 +178,27 @@
     </el-dialog>
 
     <div v-show="showFloatingBackButton" class="floating-reading-tools" aria-label="阅读操作">
-      <button
-        type="button"
-        class="floating-back-button"
-        aria-label="返回"
-        title="返回"
-        @click="handleFloatingBack"
-      >
-        <el-icon><ArrowLeft /></el-icon>
-        <span>返回</span>
-      </button>
-      <button
-        v-show="showBackToTop"
-        type="button"
-        class="floating-top-button"
-        aria-label="返回顶部"
-        title="返回顶部"
-        @click="scrollToTop()"
-      >
-        <el-icon><Top /></el-icon>
-      </button>
+      <el-tooltip content="返回" placement="left">
+        <button
+          type="button"
+          class="floating-tool-button floating-back-button"
+          aria-label="返回"
+          @click="handleFloatingBack"
+        >
+          <el-icon><ArrowLeft /></el-icon>
+        </button>
+      </el-tooltip>
+      <el-tooltip content="返回顶部" placement="left">
+        <button
+          v-show="showBackToTop"
+          type="button"
+          class="floating-tool-button floating-top-button"
+          aria-label="返回顶部"
+          @click="scrollToTop()"
+        >
+          <el-icon><Top /></el-icon>
+        </button>
+      </el-tooltip>
     </div>
   </div>
 </template>
@@ -660,8 +661,7 @@ function scrollToTop(smooth = true) {
 .toc-link:focus-visible,
 .neighbor-card:focus-visible,
 .related-card:focus-visible,
-.floating-back-button:focus-visible,
-.floating-top-button:focus-visible {
+.floating-tool-button:focus-visible {
   outline: 2px solid var(--primary-color);
   outline-offset: 2px;
 }
@@ -1020,61 +1020,47 @@ function scrollToTop(smooth = true) {
   right: max(24px, calc((100vw - var(--content-width)) / 2 - 58px));
   bottom: calc(30px + env(safe-area-inset-bottom));
   z-index: 20;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: flex-end;
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 5px;
+  border: 1px solid color-mix(in srgb, var(--soft-border-color) 76%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-bg) 88%, transparent);
+  box-shadow:
+    0 10px 28px rgba(15, 23, 42, 0.08),
+    0 2px 8px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(14px);
 }
 
-.floating-back-button,
-.floating-top-button {
+.floating-tool-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 44px;
-  border: 1px solid color-mix(in srgb, var(--primary-color) 34%, transparent);
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
   border-radius: 999px;
+  background: transparent;
+  color: var(--muted-text-color);
   font: inherit;
   font-weight: 800;
-  box-shadow:
-    0 14px 34px color-mix(in srgb, var(--primary-color) 28%, transparent),
-    0 6px 16px rgba(15, 23, 42, 0.16);
   cursor: pointer;
-  backdrop-filter: blur(10px);
-  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+  transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 
-.floating-back-button {
-  gap: 6px;
-  padding: 0 14px;
-  background: color-mix(in srgb, var(--panel-bg) 88%, var(--primary-color));
+.floating-tool-button:hover {
+  background: color-mix(in srgb, var(--primary-color) 10%, transparent);
   color: var(--primary-color);
+  transform: translateY(-1px);
 }
 
-.floating-top-button {
-  width: 44px;
-  padding: 0;
-  background:
-    linear-gradient(145deg, color-mix(in srgb, var(--primary-color) 92%, white), var(--primary-color));
-  color: #fff;
-}
-
-.floating-back-button:hover,
-.floating-top-button:hover {
-  transform: translateY(-2px);
-  filter: brightness(1.05);
-  box-shadow:
-    0 18px 42px color-mix(in srgb, var(--primary-color) 34%, transparent),
-    0 8px 20px rgba(15, 23, 42, 0.2);
-}
-
-.floating-back-button:active,
-.floating-top-button:active {
+.floating-tool-button:active {
   transform: translateY(0) scale(0.96);
 }
 
-.floating-back-button .el-icon,
-.floating-top-button .el-icon {
+.floating-tool-button .el-icon {
   font-size: 18px;
 }
 
@@ -1122,29 +1108,12 @@ function scrollToTop(smooth = true) {
   .floating-reading-tools {
     right: 14px;
     bottom: calc(18px + env(safe-area-inset-bottom));
-    gap: 8px;
+    padding: 4px;
   }
 
-  .floating-back-button,
-  .floating-top-button {
-    width: 42px;
-    height: 42px;
-  }
-
-  .floating-back-button {
-    padding: 0;
-  }
-
-  .floating-back-button span {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
+  .floating-tool-button {
+    width: 36px;
+    height: 36px;
   }
 
   .article-cover img {
@@ -1153,8 +1122,7 @@ function scrollToTop(smooth = true) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .floating-back-button,
-  .floating-top-button {
+  .floating-tool-button {
     transition: none;
   }
 }
