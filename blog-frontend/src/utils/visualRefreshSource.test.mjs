@@ -90,6 +90,8 @@ test('article cards include focused line and reduced motion styling', () => {
   assert.match(source, /transform:\s*scaleY/)
   assert.match(source, /theme-glow-color/)
   assert.match(source, /prefers-reduced-motion:\s*reduce/)
+  assert.doesNotMatch(source, /viewCount/)
+  assert.doesNotMatch(source, />\s*阅读\s*\{\{\s*article\.viewCount\s*\|\|\s*0\s*\}\}\s*</)
 })
 
 test('article detail styles toc active indicator and themed resume dialog', () => {

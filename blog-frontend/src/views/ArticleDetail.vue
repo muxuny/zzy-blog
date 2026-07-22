@@ -503,8 +503,17 @@ function handleFloatingBack() {
   goBack()
 }
 
+function prefersReducedMotion() {
+  return typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
 function scrollToHeading(id) {
-  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  document.getElementById(id)?.scrollIntoView({
+    behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+    block: 'start'
+  })
 }
 
 function getArticleBodyMetrics() {
@@ -573,7 +582,10 @@ function continueReadingFromSavedPosition() {
   const scrollY = Number(readingPosition.value?.resumeScrollY)
   if (!Number.isFinite(scrollY)) return
   resumePromptDismissed.value = true
-  window.scrollTo({ top: Math.max(0, scrollY), behavior: 'smooth' })
+  window.scrollTo({
+    top: Math.max(0, scrollY),
+    behavior: prefersReducedMotion() ? 'auto' : 'smooth'
+  })
 }
 
 function dismissResumePrompt() {
@@ -640,7 +652,7 @@ function openArticle(id) {
 }
 
 function scrollToTop(smooth = true) {
-  window.scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'auto' })
+  window.scrollTo({ top: 0, behavior: smooth && !prefersReducedMotion() ? 'smooth' : 'auto' })
 }
 </script>
 

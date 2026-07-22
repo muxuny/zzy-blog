@@ -18,7 +18,6 @@
         <div class="card-meta">
           <span>{{ formatDate(article.createdAt) }}</span>
           <span v-if="article.authorName">{{ article.authorName }}</span>
-          <span>阅读 {{ article.viewCount || 0 }}</span>
         </div>
         <div class="card-tags" v-if="article.tags?.length">
           <router-link

@@ -131,3 +131,16 @@ test('article detail exposes a visible progress bar driven by current reading pr
   assert.match(source, /currentReadingProgress/)
   assert.match(source, /--article-read-progress/)
 })
+
+test('article detail respects reduced motion for programmatic scroll behavior', () => {
+  const source = readFileSync(new URL('../views/ArticleDetail.vue', import.meta.url), 'utf8')
+  const reducedMotionScrollBehaviors = source.match(/prefersReducedMotion\(\)\s*\?\s*'auto'\s*:\s*'smooth'/g) || []
+
+  assert.match(source, /function prefersReducedMotion\(\)/)
+  assert.match(source, /matchMedia\('\(prefers-reduced-motion: reduce\)'\)/)
+  assert.equal(reducedMotionScrollBehaviors.length, 2)
+  assert.match(
+    source,
+    /function scrollToTop\(smooth = true\)\s*\{[\s\S]*behavior:\s*smooth\s*&&\s*!prefersReducedMotion\(\)\s*\?\s*'smooth'\s*:\s*'auto'/
+  )
+})
