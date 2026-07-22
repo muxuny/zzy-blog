@@ -74,6 +74,7 @@ test('writeStoredAppearance persists normalized appearance and ignores storage e
   assert.equal(writeStoredAppearance(storage, { palette: 'fog', mode: 'dark' }), true)
   assert.deepEqual(JSON.parse(storage.snapshot().themeAppearance), { palette: 'fog', mode: 'dark' })
   assert.equal(writeStoredAppearance(broken, { palette: 'copper', mode: 'system' }), false)
+  assert.equal(writeStoredAppearance(undefined, { palette: 'fog', mode: 'dark' }), false)
 })
 
 test('resolveThemeName respects explicit and system modes', () => {

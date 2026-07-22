@@ -47,7 +47,9 @@ export function readStoredAppearance(storage) {
 
 export function writeStoredAppearance(storage, appearance) {
   try {
-    storage?.setItem?.(APPEARANCE_STORAGE_KEY, JSON.stringify(normalizeAppearance(appearance)))
+    if (typeof storage?.setItem !== 'function') return false
+
+    storage.setItem(APPEARANCE_STORAGE_KEY, JSON.stringify(normalizeAppearance(appearance)))
     return true
   } catch {
     return false
