@@ -5,68 +5,86 @@
       <header class="page-head">
         <div class="head-copy">
           <span class="eyebrow">Creator console</span>
-          <h1>我的文章</h1>
-          <p>创作空间保持控制台效率，重点放在分组、状态和下一步动作，而不是展示型卡片。</p>
+          <h1>创作空间保留控制台感，但触感更轻。</h1>
+          <p>创作者最需要效率，所以动态只用于聚焦当前行、状态筛选和预览反馈。它应该让后台工作更顺手，而不是更花。</p>
         </div>
         <aside class="head-meta" aria-label="创作摘要">
           <div class="meta-line">
-            <span class="meta-label">当前范围</span>
-            <span class="meta-value">{{ activeGroupTitle }}</span>
-          </div>
-          <div class="meta-line">
-            <span class="meta-label">文章</span>
+            <span class="meta-label">全部文章</span>
             <span class="meta-value">{{ total }} 篇</span>
           </div>
           <div class="meta-line">
             <span class="meta-label">待处理</span>
-            <span class="meta-value">{{ attentionCount }} 篇</span>
+            <span class="meta-value">{{ attentionText }}</span>
+          </div>
+          <div class="meta-line">
+            <span class="meta-label">最近更新</span>
+            <span class="meta-value">{{ latestUpdateText }}</span>
           </div>
         </aside>
       </header>
 
       <section class="creator-toolbar" aria-label="创作筛选">
-        <div class="toolbar-title">
-          <strong>{{ activeGroupTitle }}</strong>
-          <span class="article-count">共 {{ total }} 篇</span>
+        <div class="searchbox">
+          <input
+            id="creatorSearch"
+            v-model="keyword"
+            type="search"
+            placeholder="搜索自己的文章"
+            aria-label="搜索自己的文章"
+            @keydown.esc="keyword = ''"
+          >
         </div>
-        <div class="toolbar-controls">
-          <el-select v-model="status" placeholder="全部状态" clearable @change="handleStatusChange">
-            <el-option label="草稿" value="draft" />
-            <el-option label="待审核" value="pending" />
-            <el-option label="已发布" value="published" />
-            <el-option label="已驳回" value="rejected" />
-          </el-select>
-          <el-select v-model="visibility" placeholder="全部可见性" clearable @change="handleVisibilityChange">
+        <div class="status-filters">
+          <button
+            v-for="option in statusOptions"
+            :key="option.value || 'all'"
+            type="button"
+            class="chip"
+            :class="{ 'is-active': status === option.value }"
+            @click="selectStatus(option.value)"
+          >
+            {{ option.label }}
+          </button>
+          <el-select
+            v-model="visibility"
+            class="visibility-filter"
+            placeholder="全部可见性"
+            clearable
+            @change="handleVisibilityChange"
+          >
             <el-option label="公开" value="public" />
             <el-option label="仅自己可见" value="private" />
           </el-select>
-          <el-button type="primary" @click="$router.push('/creator/articles/create')">写文章</el-button>
+          <el-button class="primary-button" type="primary" @click="$router.push('/creator/articles/create')">写文章</el-button>
         </div>
       </section>
 
       <section class="creator-workspace">
         <aside v-loading="groupsLoading" class="group-rail">
           <div class="rail-head">
-            <span>文章分组</span>
-            <el-button size="small" text @click="createGroup">新建</el-button>
+            <strong>文章分组</strong>
+            <el-button class="mini-button" size="small" text @click="createGroup">新建</el-button>
           </div>
-          <button
-            type="button"
-            class="group-item"
-            :class="{ 'is-active': selectedGroup === GROUP_FILTER_ALL }"
-            @click="selectGroup(GROUP_FILTER_ALL)"
-          >
-            <span>全部文章</span>
-          </button>
-          <button
-            type="button"
-            class="group-item"
-            :class="{ 'is-active': selectedGroup === GROUP_FILTER_UNGROUPED }"
-            @click="selectGroup(GROUP_FILTER_UNGROUPED)"
-          >
-            <span>未分组</span>
-          </button>
           <div class="group-list">
+            <button
+              type="button"
+              class="group-item"
+              :class="{ 'is-active': selectedGroup === GROUP_FILTER_ALL }"
+              @click="selectGroup(GROUP_FILTER_ALL)"
+            >
+              <span>全部文章</span>
+              <span>{{ total }}</span>
+            </button>
+            <button
+              type="button"
+              class="group-item"
+              :class="{ 'is-active': selectedGroup === GROUP_FILTER_UNGROUPED }"
+              @click="selectGroup(GROUP_FILTER_UNGROUPED)"
+            >
+              <span>未分组</span>
+              <span>--</span>
+            </button>
             <div
               v-for="group in articleGroups"
               :key="group.id"
@@ -94,85 +112,81 @@
         </aside>
 
         <section class="article-section">
-          <div v-loading="loading" class="table-wrap" aria-label="我的文章">
-            <div class="article-row table-head" aria-hidden="true">
-              <span>标题</span>
-              <span>分组</span>
-              <span>状态</span>
-              <span>可见性</span>
-              <span>审核反馈</span>
-              <span>更新时间</span>
-              <span>操作</span>
-            </div>
-
-            <article
-              v-for="row in articles"
-              :key="row.id"
-              class="article-row"
-              :class="`article-row--${row.status || 'unknown'}`"
-            >
-              <div class="row-title">
-                <button type="button" class="article-title-button" @click="openPreview(row)">
-                  {{ row.title }}
-                </button>
-                <p>
-                  {{ row.status === 'published' ? '已发布，可从预览或公开页检查展示' : '继续处理草稿、审核或可见性设置' }}
-                </p>
-              </div>
-              <span class="group-cell" :class="{ 'is-empty': !row.groups?.length }">
-                {{ formatArticleGroupNames(row.groups || []) }}
-              </span>
-              <span class="status-pill" :data-status="row.status">{{ statusText(row.status) }}</span>
-              <span class="visibility-cell">{{ articleVisibilityText(row.visibility) }}</span>
-              <span class="review-cell">{{ row.reviewReason || '-' }}</span>
-              <span class="time-cell">{{ formatDate(row.updatedAt || row.createdAt) }}</span>
-              <div class="article-actions">
-                <el-button
-                  size="small"
-                  class="article-primary-action"
-                  :class="`article-primary-action--${primaryAction(row).tone}`"
-                  :loading="rowAction[row.id] === primaryAction(row).loading"
-                  :disabled="isRowBusy(row.id)"
-                  @click="handlePrimaryAction(row)"
-                >
-                  {{ primaryAction(row).text }}
-                </el-button>
-                <el-dropdown
-                  trigger="click"
-                  popper-class="article-action-menu"
-                  :disabled="isRowBusy(row.id)"
-                  @command="command => handleArticleCommand(row, command)"
-                >
-                  <button
-                    type="button"
-                    class="article-more-button"
+          <section v-loading="loading" class="article-flow-panel" aria-label="我的文章">
+            <div class="creator-list">
+              <article
+                v-for="(row, index) in displayedArticles"
+                :key="row.id"
+                class="creator-article-card"
+                :class="[`creator-article-card--${row.status || 'unknown'}`, { 'is-selected': index === 0 }]"
+              >
+                <div class="row-copy">
+                  <div class="row-meta">
+                    <span>{{ primaryGroupName(row) }}</span>
+                    <span>{{ formatCreatorDate(row.updatedAt || row.createdAt) }}</span>
+                    <span>{{ articleVisibilityText(row.visibility) }}</span>
+                  </div>
+                  <h3>
+                    <button type="button" class="article-title-button" @click="openPreview(row)">
+                      {{ row.title }}
+                    </button>
+                  </h3>
+                  <p>{{ rowSummary(row) }}</p>
+                </div>
+                <div class="row-actions">
+                  <span class="status-pill" :data-status="row.status">{{ statusText(row.status) }}</span>
+                  <el-button size="small" class="ghost-button preview-action" @click="openPreview(row)">预览</el-button>
+                  <el-dropdown
+                    trigger="click"
+                    popper-class="article-action-menu"
                     :disabled="isRowBusy(row.id)"
-                    aria-label="更多操作"
+                    @command="command => handleArticleCommand(row, command)"
                   >
-                    <el-icon><MoreFilled /></el-icon>
-                  </button>
-                  <template #dropdown>
-                    <el-dropdown-menu>
-                      <el-dropdown-item command="groups">分组</el-dropdown-item>
-                      <el-dropdown-item v-if="row.status === 'published'" command="edit">编辑</el-dropdown-item>
-                      <el-dropdown-item
-                        v-if="row.status === 'draft' || row.status === 'rejected'"
-                        command="submit"
-                      >
-                        提交审核
-                      </el-dropdown-item>
-                      <el-dropdown-item command="visibility">
-                        {{ nextVisibilityText(row.visibility) }}
-                      </el-dropdown-item>
-                      <el-dropdown-item command="delete" class="danger-command">删除</el-dropdown-item>
-                    </el-dropdown-menu>
-                  </template>
-                </el-dropdown>
-              </div>
-            </article>
-          </div>
+                    <button
+                      type="button"
+                      class="article-more-button"
+                      :disabled="isRowBusy(row.id)"
+                      aria-label="更多操作"
+                    >
+                      <el-icon><MoreFilled /></el-icon>
+                    </button>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item command="groups">分组</el-dropdown-item>
+                        <el-dropdown-item v-if="canOpenPublicArticle(row)" command="view">查看公开页</el-dropdown-item>
+                        <el-dropdown-item v-if="row.status !== 'pending'" command="edit">编辑</el-dropdown-item>
+                        <el-dropdown-item
+                          v-if="row.status === 'draft' || row.status === 'rejected'"
+                          command="submit"
+                        >
+                          提交审核
+                        </el-dropdown-item>
+                        <el-dropdown-item v-if="row.status === 'pending'" command="withdraw">撤回</el-dropdown-item>
+                        <el-dropdown-item command="visibility">
+                          {{ nextVisibilityText(row.visibility) }}
+                        </el-dropdown-item>
+                        <el-dropdown-item command="delete" class="danger-command">删除</el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
+                </div>
+              </article>
 
-          <el-empty v-if="!articles.length && !loading" description="暂无文章" />
+              <article v-if="!displayedArticles.length && !loading" class="creator-article-card is-empty-card">
+                <div>
+                  <div class="row-meta">
+                    <span>{{ keyword ? '当前搜索' : activeGroupTitle }}</span>
+                  </div>
+                  <h3>暂时没有匹配的文章</h3>
+                  <p>可以调整搜索、状态、可见性或分组筛选，也可以直接写一篇新的。</p>
+                </div>
+                <div class="row-actions">
+                  <el-button class="primary-button" type="primary" @click="$router.push('/creator/articles/create')">写文章</el-button>
+                </div>
+              </article>
+            </div>
+          </section>
+
           <el-pagination
             v-if="total > size"
             v-model:current-page="page"
@@ -244,6 +258,7 @@ const articles = ref([])
 const articleGroups = ref([])
 const loading = ref(false)
 const groupsLoading = ref(false)
+const keyword = ref('')
 const status = ref('')
 const visibility = ref('')
 const selectedGroup = ref(GROUP_FILTER_ALL)
@@ -265,6 +280,13 @@ const statusMap = {
   published: { text: '已发布', type: 'success' },
   rejected: { text: '已驳回', type: 'danger' }
 }
+const statusOptions = [
+  { label: '全部', value: '' },
+  { label: '草稿', value: 'draft' },
+  { label: '待审核', value: 'pending' },
+  { label: '已发布', value: 'published' },
+  { label: '已驳回', value: 'rejected' }
+]
 
 const activeGroupTitle = computed(() => {
   const parsed = parseGroupFilterKey(selectedGroup.value)
@@ -277,6 +299,22 @@ const activeGroupTitle = computed(() => {
 const attentionCount = computed(() =>
   articles.value.filter(article => article.status === 'pending' || article.status === 'rejected').length
 )
+const attentionText = computed(() => (attentionCount.value ? `${attentionCount.value} 篇待处理` : '暂无待处理'))
+const latestUpdateText = computed(() => {
+  const newest = articles.value
+    .map(article => article.updatedAt || article.createdAt)
+    .map(value => new Date(value))
+    .filter(date => !Number.isNaN(date.getTime()))
+    .sort((left, right) => right.getTime() - left.getTime())[0]
+
+  return newest ? formatCreatorDate(newest) : '暂无更新'
+})
+const displayedArticles = computed(() => {
+  const query = keyword.value.trim().toLowerCase()
+  if (!query) return articles.value
+
+  return articles.value.filter(article => articleSearchText(article).includes(query))
+})
 
 onMounted(() => {
   loadGroups()
@@ -317,6 +355,12 @@ function handleStatusChange() {
   load()
 }
 
+function selectStatus(value) {
+  if (status.value === value) return
+  status.value = value
+  handleStatusChange()
+}
+
 function handleVisibilityChange() {
   page.value = 1
   load()
@@ -332,16 +376,6 @@ function isRowBusy(id) {
   return !!rowAction.value[id]
 }
 
-function primaryAction(row) {
-  if (row.status === 'pending') {
-    return { text: '撤回', tone: 'withdraw', loading: 'withdraw', command: 'withdraw' }
-  }
-  if (canOpenPublicArticle(row)) {
-    return { text: '查看', tone: 'view', loading: '', command: 'view' }
-  }
-  return { text: '编辑', tone: 'edit', loading: '', command: 'edit' }
-}
-
 function canOpenPublicArticle(row) {
   return row.status === 'published' && normalizeArticleVisibility(row.visibility) === ARTICLE_VISIBILITY_PUBLIC
 }
@@ -351,8 +385,51 @@ function openPreview(row) {
   if (target) router.push(target)
 }
 
-async function handlePrimaryAction(row) {
-  await handleArticleCommand(row, primaryAction(row).command)
+function primaryGroupName(row) {
+  return formatArticleGroupNames(row.groups || []) || '未分组'
+}
+
+function rowSummary(row) {
+  if (row.status === 'published') {
+    return row.reviewReason || '已发布，可从预览或公开页检查展示'
+  }
+  if (row.status === 'pending') {
+    return row.reviewReason || '待审核，等待管理员确认'
+  }
+  if (row.status === 'rejected') {
+    return row.reviewReason || '已驳回，需要调整后重新提交'
+  }
+  return row.summary || '草稿，继续补齐内容后提交审核'
+}
+
+function articleSearchText(article) {
+  return [
+    article.title,
+    article.summary,
+    article.reviewReason,
+    primaryGroupName(article),
+    statusText(article.status),
+    articleVisibilityText(article.visibility),
+    rowSummary(article)
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+}
+
+function formatCreatorDate(value) {
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const timeText = date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })
+  const diffDays = Math.round((today.getTime() - target.getTime()) / 86400000)
+
+  if (diffDays === 0) return `今天 ${timeText}`
+  if (diffDays === 1) return `昨天 ${timeText}`
+  return formatDate(date)
 }
 
 async function handleArticleCommand(row, command) {
@@ -1189,6 +1266,445 @@ async function remove(id) {
   .article-primary-action:not(.is-disabled):hover,
   .article-more-button:hover,
   .article-more-button:focus-visible {
+    transform: none;
+  }
+}
+
+/* Prototype-aligned creator console */
+.page-head {
+  gap: 42px;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-top: 30px;
+}
+
+.page-head h1 {
+  max-width: 760px;
+  font-size: clamp(54px, 6.2vw, 88px);
+  line-height: 0.94;
+}
+
+.head-copy p {
+  max-width: 760px;
+}
+
+.head-meta {
+  align-self: end;
+  width: min(100%, 360px);
+  margin-bottom: 4px;
+  padding: 14px 18px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
+  box-shadow: var(--shadow-soft);
+}
+
+.meta-line {
+  grid-template-columns: minmax(72px, 1fr) auto;
+  gap: 20px;
+  padding: 8px 0;
+  border-bottom: 0;
+}
+
+.meta-label {
+  color: var(--muted-text-color);
+  font-size: 13px;
+  font-weight: 520;
+}
+
+.meta-value {
+  color: var(--text-color);
+  font-size: 16px;
+  font-weight: 760;
+  text-align: right;
+}
+
+.creator-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 22px;
+  padding: 0;
+  border: 0;
+}
+
+.searchbox {
+  position: relative;
+  flex: 1;
+  min-width: 240px;
+}
+
+.searchbox input {
+  width: 100%;
+  height: 42px;
+  padding: 0 18px 0 42px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
+  color: var(--text-color);
+  font-size: 15px;
+  outline: none;
+  transition:
+    border-color 0.22s ease,
+    background-color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.searchbox input:focus {
+  border-color: color-mix(in srgb, var(--primary-color) 62%, var(--border-color));
+  background: var(--panel-bg);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-color) 13%, transparent);
+}
+
+.searchbox::before {
+  position: absolute;
+  top: 50%;
+  left: 17px;
+  z-index: 1;
+  color: var(--muted-text-color);
+  content: '⌕';
+  transform: translateY(-50%);
+}
+
+.searchbox::after {
+  position: absolute;
+  right: 18px;
+  bottom: 7px;
+  left: 42px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
+  content: '';
+  opacity: 0;
+  transform: scaleX(0.35);
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease;
+}
+
+.searchbox:focus-within::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.status-filters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.chip {
+  min-height: 34px;
+  padding: 0 15px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-bg) 88%, transparent);
+  color: var(--muted-text-color);
+  font-size: 14px;
+  cursor: pointer;
+  transition:
+    border-color 0.22s ease,
+    background-color 0.22s ease,
+    color 0.22s ease,
+    transform 0.22s ease;
+}
+
+.chip:hover,
+.chip:focus-visible,
+.chip.is-active {
+  border-color: color-mix(in srgb, var(--primary-color) 58%, var(--border-color));
+  background: color-mix(in srgb, var(--primary-color) 10%, var(--panel-bg));
+  color: var(--primary-color);
+  outline: none;
+}
+
+.chip.is-active {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary-color) 12%, transparent);
+}
+
+.visibility-filter {
+  width: 148px;
+}
+
+.visibility-filter :deep(.el-select__wrapper) {
+  min-height: 34px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-bg) 90%, transparent);
+  box-shadow: 0 0 0 1px var(--border-color) inset;
+}
+
+.primary-button {
+  min-height: 34px;
+  border-radius: 999px;
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: var(--button-text-color);
+  font-weight: 760;
+}
+
+.creator-workspace {
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 20px;
+}
+
+.group-rail,
+.article-flow-panel {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
+  box-shadow: var(--shadow-soft);
+}
+
+.group-rail {
+  padding: 16px;
+  border-right: 1px solid var(--border-color);
+}
+
+.rail-head {
+  margin-bottom: 14px;
+}
+
+.mini-button {
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  color: var(--muted-text-color);
+}
+
+.group-list {
+  gap: 9px;
+  margin-top: 0;
+}
+
+.group-item {
+  min-height: 38px;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-color: var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-bg) 84%, transparent);
+}
+
+.group-item::before {
+  top: 8px;
+  bottom: 8px;
+  left: -1px;
+  background: linear-gradient(180deg, var(--primary-color), var(--accent-color));
+}
+
+.group-item:hover,
+.group-item.is-active {
+  transform: none;
+  border-color: color-mix(in srgb, var(--primary-color) 58%, var(--border-color));
+  background: color-mix(in srgb, var(--primary-color) 8%, var(--panel-bg));
+}
+
+.group-item-with-actions {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.group-meta {
+  background: color-mix(in srgb, var(--muted-text-color) 11%, transparent);
+}
+
+.article-flow-panel {
+  min-width: 0;
+  padding: 10px 12px;
+}
+
+.creator-list {
+  display: grid;
+  gap: 12px;
+}
+
+.creator-article-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  min-height: 106px;
+  padding: 17px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-bg) 96%, transparent);
+  transition:
+    transform 0.22s ease,
+    border-color 0.22s ease,
+    background-color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.creator-article-card::before {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: -1px;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--primary-color), var(--accent-color));
+  content: '';
+  opacity: 0;
+  transform: scaleY(0.55);
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease;
+}
+
+.creator-article-card:not(.is-empty-card):hover,
+.creator-article-card.is-selected {
+  border-color: color-mix(in srgb, var(--primary-color) 58%, var(--border-color));
+  background: var(--panel-bg);
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-2px);
+}
+
+.creator-article-card:not(.is-empty-card):hover::before,
+.creator-article-card.is-selected::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+.row-copy {
+  min-width: 0;
+}
+
+.row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  color: var(--muted-text-color);
+  font-size: 13px;
+}
+
+.creator-article-card h3 {
+  margin: 6px 0 4px;
+  color: var(--text-color);
+  font-size: 20px;
+  line-height: 1.35;
+}
+
+.creator-article-card p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--muted-text-color);
+  font-size: 14px;
+  line-height: 1.7;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.article-title-button {
+  white-space: normal;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.status-pill {
+  min-height: 28px;
+  border-radius: 999px;
+}
+
+.ghost-button,
+.preview-action {
+  min-height: 32px;
+  padding: 0 13px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-bg) 90%, transparent);
+  color: var(--muted-text-color);
+  font-weight: 650;
+}
+
+.ghost-button:hover,
+.ghost-button:focus {
+  border-color: color-mix(in srgb, var(--primary-color) 42%, var(--border-color));
+  background: color-mix(in srgb, var(--primary-color) 9%, var(--panel-bg));
+  color: var(--primary-color);
+}
+
+.article-more-button {
+  border: 1px solid color-mix(in srgb, var(--primary-color) 24%, var(--border-color));
+  background: color-mix(in srgb, var(--panel-bg) 92%, transparent);
+}
+
+.article-more-button:hover,
+.article-more-button:focus-visible {
+  background: color-mix(in srgb, var(--primary-color) 12%, var(--panel-bg));
+}
+
+.article-pagination {
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+@media (max-width: 1060px) {
+  .page-head,
+  .creator-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .head-meta {
+    width: 100%;
+    border-left: 1px solid var(--border-color);
+    border-top: 1px solid var(--border-color);
+    padding: 14px 18px;
+  }
+
+  .group-rail {
+    position: static;
+    padding: 16px;
+    border-right: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+  }
+}
+
+@media (max-width: 780px) {
+  .creator-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .status-filters {
+    justify-content: flex-start;
+  }
+
+  .visibility-filter {
+    width: 100%;
+  }
+
+  .creator-article-card {
+    grid-template-columns: 1fr;
+  }
+
+  .row-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .page-head h1 {
+    font-size: 42px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .searchbox input,
+  .searchbox::after,
+  .chip,
+  .creator-article-card,
+  .creator-article-card::before {
+    transition: none;
+  }
+
+  .creator-article-card:not(.is-empty-card):hover,
+  .creator-article-card.is-selected {
     transform: none;
   }
 }
