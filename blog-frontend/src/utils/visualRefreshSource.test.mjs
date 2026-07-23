@@ -153,11 +153,11 @@ test('article detail uses the reading-surface prototype skeleton', () => {
   assert.match(source, /class="reading-primary"/)
   assert.match(source, /class="reading-canvas"/)
   assert.match(source, /class="article-body"/)
-  assert.match(source, /class="section-meter"/)
-  assert.match(source, /class="meter-dot"/)
   assert.doesNotMatch(source, /class="article-hero"/)
   assert.doesNotMatch(source, /class="reading-summary"/)
   assert.doesNotMatch(source, /class="detail-side"/)
+  assert.doesNotMatch(source, /class="section-meter"/)
+  assert.doesNotMatch(source, /class="meter-dot"/)
 })
 
 test('article detail gives the article body a quiet primary reading surface', () => {
@@ -230,10 +230,9 @@ test('article detail toc uses the prototype rail instead of card panels', () => 
   assert.match(source, /\.toc-panel\s*\{[^}]*background:\s*transparent;/)
   assert.match(source, /\.toc-panel\s*\{[^}]*box-shadow:\s*none;/)
   assert.match(source, /\.toc-link\.active\s*\{[^}]*background:\s*transparent;/)
-  assert.match(source, /\.meter-dot\s*\{[^}]*width:\s*clamp\(34px,\s*4vw,\s*62px\);/)
-  assert.match(source, /\.meter-dot\s*\{[^}]*height:\s*6px;/)
-  assert.match(source, /\.section-meter\s*\{[^}]*background:\s*transparent;/)
   assert.doesNotMatch(source, /\.toc-panel\s*\{[^}]*border:\s*1px/)
+  assert.doesNotMatch(source, /\.section-meter\b/)
+  assert.doesNotMatch(source, /\.meter-dot\b/)
 })
 
 test('reading space uses continuation-focused visual classes', () => {

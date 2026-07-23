@@ -92,18 +92,6 @@
                 {{ item.text }}
               </button>
             </nav>
-            <section v-if="toc.length" class="section-meter" aria-label="章节位置">
-              <button
-                v-for="item in toc"
-                :key="`meter-${item.id}`"
-                type="button"
-                class="meter-dot"
-                :class="{ active: activeHeadingId === item.id }"
-                :title="item.text"
-                :aria-label="`跳转到${item.text}`"
-                @click="scrollToHeading(item.id)"
-              />
-            </section>
             <section class="note-panel">
               <span class="eyebrow">阅读提示</span>
               <p>目录会跟随章节、小节和细分标题生成，适合快速回到关键段落。</p>
@@ -714,7 +702,6 @@ function scrollToTop(smooth = true) {
 .back-button:focus-visible,
 .home-button:focus-visible,
 .toc-link:focus-visible,
-.meter-dot:focus-visible,
 .neighbor-card:focus-visible,
 .related-card:focus-visible,
 .floating-tool-button:focus-visible {
@@ -911,13 +898,6 @@ function scrollToTop(smooth = true) {
   box-shadow: none;
 }
 
-.section-meter {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
 .mobile-toc {
   border: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent);
   border-radius: var(--radius-md);
@@ -955,32 +935,6 @@ function scrollToTop(smooth = true) {
   color: var(--muted-text-color);
   font-size: 13px;
   line-height: 1.7;
-}
-
-.section-meter {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 0;
-}
-
-.meter-dot {
-  width: clamp(34px, 4vw, 62px);
-  height: 6px;
-  padding: 0;
-  border: 0;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--muted-text-color) 18%, transparent);
-  cursor: pointer;
-  transition:
-    background-color 0.18s ease,
-    opacity 0.18s ease;
-}
-
-.meter-dot:hover,
-.meter-dot.active {
-  background: color-mix(in srgb, var(--primary-color) 82%, var(--text-color));
-  opacity: 1;
 }
 
 .toc-link {
@@ -1303,7 +1257,6 @@ function scrollToTop(smooth = true) {
   .back-button,
   .toc-link,
   .toc-link::before,
-  .meter-dot,
   .neighbor-card,
   .neighbor-card::before,
   .related-card,
@@ -1313,8 +1266,6 @@ function scrollToTop(smooth = true) {
   }
 
   .back-button:hover,
-  .meter-dot:hover,
-  .meter-dot.active,
   .neighbor-card:hover,
   .related-card:hover,
   .floating-tool-button:hover {
