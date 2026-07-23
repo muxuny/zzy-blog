@@ -162,15 +162,11 @@ test('reading space separates continuation history favorites and discovery', () 
   assert.match(readingSpaceSource, /<el-skeleton\b/)
 })
 
-test('reading space treats cover images with repeated labels as decorative', () => {
-  assert.match(
-    normalizedReadingSpaceSource,
-    /<img v-if="overview\.lastRead\.coverImage"[^>]*class="continue-cover"[^>]*alt=""[^>]*\/?>/
-  )
-  assert.match(
-    normalizedReadingSpaceSource,
-    /<img v-if="item\.coverImage"[^>]*class="favorite-cover"[^>]*alt=""[^>]*\/?>/
-  )
+test('reading space keeps continuation and favorites text-first without cover-led cards', () => {
+  assert.match(readingSpaceSource, /class="progress-block"/)
+  assert.match(readingSpaceSource, /class="favorite-title-text"/)
+  assert.doesNotMatch(normalizedReadingSpaceSource, /<img[^>]*class="continue-cover"/)
+  assert.doesNotMatch(normalizedReadingSpaceSource, /<img[^>]*class="favorite-cover"/)
   assert.doesNotMatch(readingSpaceSource, /:alt="(?:overview\.lastRead\.title|item\.title)"/)
 })
 
@@ -181,11 +177,12 @@ test('reading space guards whole-item links and private snapshots', () => {
   assert.match(readingSpaceSource, /tabindex="0"/)
   assert.match(readingSpaceSource, /该文章暂未公开/)
 
-  const previewUnavailableBranches = [
-    ...readingSpaceSource.matchAll(
-      /<template\s+v-else>\s*<div class="preview-copy">[\s\S]*?<\/div>\s*<\/template>/g
-    )
-  ].map(match => match[0])
+  const historyArticleSource = readingSpaceSource.match(
+    /<article\s+v-for="(?:item|\(item, index\)) in overview\.recentHistory"[\s\S]*?class="timeline-item"[\s\S]*?<\/article>/
+  )?.[0] || ''
+  const favoriteArticleSource = readingSpaceSource.match(
+    /<article\s+v-for="item in overview\.recentFavorites"[\s\S]*?class="favorite-line"[\s\S]*?<\/article>/
+  )?.[0] || ''
   const unavailableBranches = [
     {
       name: 'last read',
@@ -195,13 +192,13 @@ test('reading space guards whole-item links and private snapshots', () => {
     },
     {
       name: 'history',
-      source: previewUnavailableBranches.find(source => source.includes('item.lastReadAt')) || '',
+      source: historyArticleSource.match(/<template\s+v-else>[\s\S]*?<\/template>/)?.[0] || '',
       fieldPattern: /item\.([A-Za-z][A-Za-z0-9]*)/g,
       allowedFields: ['lastReadAt', 'progressPercent', 'title']
     },
     {
       name: 'favorites',
-      source: previewUnavailableBranches.find(source => source.includes('item.favoritedAt')) || '',
+      source: favoriteArticleSource.match(/<template\s+v-else>[\s\S]*?<\/template>/)?.[0] || '',
       fieldPattern: /item\.([A-Za-z][A-Za-z0-9]*)/g,
       allowedFields: ['favoritedAt', 'title']
     }
@@ -211,7 +208,12 @@ test('reading space guards whole-item links and private snapshots', () => {
     assert.match(branch.source, /<el-tooltip\b/)
     assert.match(branch.source, /tabindex="0"/)
     assert.match(branch.source, /该文章暂未公开/)
-    assert.doesNotMatch(branch.source, /<RouterLink\b/)
+    if (branch.name === 'last read') {
+      assert.doesNotMatch(branch.source, /class="card-open-link"/)
+      assert.doesNotMatch(branch.source, /\/article\/\$\{overview\.lastRead\.articleId\}/)
+    } else {
+      assert.doesNotMatch(branch.source, /<RouterLink\b/)
+    }
     const referencedFields = [
       ...new Set([...branch.source.matchAll(branch.fieldPattern)].map(match => match[1]))
     ].sort()
@@ -224,7 +226,7 @@ test('reading space guards history and favorite preview links independently', ()
     {
       name: 'history',
       source: readingSpaceSource.match(
-        /<article\s+v-for="item in overview\.recentHistory"[\s\S]*?class="timeline-item"[\s\S]*?<\/article>/
+        /<article\s+v-for="(?:item|\(item, index\)) in overview\.recentHistory"[\s\S]*?class="timeline-item"[\s\S]*?<\/article>/
       )?.[0] || ''
     },
     {
@@ -276,9 +278,12 @@ test('reading space keeps previews responsive and focuses only actionable surfac
   assert.match(readingSpaceSource, /\.card-open-link\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0;/s)
   assert.match(readingSpaceSource, /\.card-open-link:focus-visible\s*\{/)
   assert.match(readingSpaceSource, /\.continue-panel \.card-open-link:focus-visible\s*\{[^}]*outline-offset:\s*-3px;/s)
-  assert.match(readingSpaceSource, /\.continue-panel::before,[\s\S]*?\.timeline-item::before,[\s\S]*?pointer-events:\s*none;/s)
-  assert.match(readingSpaceSource, /\.favorite-index\s*\{[^}]*display:\s*grid;[^}]*gap:\s*12px;/s)
+  assert.match(readingSpaceSource, /\.continue-panel::after\s*\{[\s\S]*?pointer-events:\s*none;/s)
+  assert.match(readingSpaceSource, /\.timeline-item::before\s*\{[\s\S]*?pointer-events:\s*none;/s)
+  assert.match(readingSpaceSource, /\.favorite-index\s*\{[^}]*display:\s*grid;[^}]*gap:\s*10px;/s)
   assert.match(readingSpaceSource, /overflow-wrap:\s*anywhere;/)
+  assert.match(readingSpaceSource, /@media\s*\(max-width:\s*980px\)[\s\S]*?\.page-head,\s*\.reading-layout\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\);/s)
+  assert.match(readingSpaceSource, /@media\s*\(max-width:\s*480px\)[\s\S]*?\.meta-line\s*\{[\s\S]*?grid-template-columns:\s*1fr;/s)
   assert.match(readingSpaceSource, /@media\s*\(max-width:[^)]+\)[\s\S]*?\.favorite-line[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\);/s)
   assert.match(readingSpaceSource, /@media\s*\(prefers-reduced-motion:\s*reduce\)/)
   assert.match(readingSpaceSource, /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?:deep\(\.el-skeleton\.is-animated \.el-skeleton__item\)[\s\S]*?animation:\s*none;/s)

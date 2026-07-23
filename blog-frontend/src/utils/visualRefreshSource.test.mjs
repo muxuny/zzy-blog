@@ -147,9 +147,10 @@ test('reading space uses continuation-focused visual classes', () => {
   const source = read('../views/ReadingSpace.vue')
 
   assert.match(source, /reading-main::before/)
-  assert.match(source, /\.continue-panel::before/)
-  assert.match(source, /reading-progress-track/)
+  assert.match(source, /\.continue-panel::after/)
+  assert.match(source, /progress-track/)
   assert.match(source, /theme-glow-color/)
+  assert.doesNotMatch(source, /reading-progress-track/)
 })
 
 test('reading space uses the private reading prototype skeleton', () => {
@@ -157,12 +158,34 @@ test('reading space uses the private reading prototype skeleton', () => {
 
   assert.match(source, /class="page-head"/)
   assert.match(source, /class="head-meta"/)
+  assert.match(source, /Reading desk/)
+  assert.match(source, /我的阅读更像一个安静的续接台/)
   assert.match(source, /class="reading-layout"/)
   assert.match(source, /class="continue-panel"/)
+  assert.match(source, /class="progress-block"/)
+  assert.match(source, /class="progress-label"/)
+  assert.match(source, /class="progress-track"/)
+  assert.match(source, /class="continue-actions"/)
+  assert.match(source, /to="\/reading\/history"/)
   assert.match(source, /class="reading-side"/)
+  assert.match(source, /class="timeline"/)
+  assert.match(source, /class="timeline-item/)
   assert.match(source, /class="favorite-index"/)
+  assert.match(source, /\.reading-side\s*\{[\s\S]*border:\s*1px solid var\(--border-color\)/)
+  assert.match(source, /\.timeline\s*\{[\s\S]*border-left:\s*1px solid var\(--border-color\)/)
+  assert.match(source, /\.timeline-item::before/)
+  assert.match(source, /\.favorite-index\s*\{[\s\S]*border-top:\s*1px solid var\(--border-color\)/)
+  assert.match(source, /\.favorite-line\s*\{[\s\S]*padding:\s*14px 0/)
+  assert.match(source, /@media\s*\(max-width:\s*980px\)[\s\S]*?\.page-head,\s*\.reading-layout\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\);/)
+  assert.match(source, /@media\s*\(max-width:\s*480px\)[\s\S]*?\.meta-line\s*\{[\s\S]*?grid-template-columns:\s*1fr;/)
   assert.doesNotMatch(source, /class="page-heading"/)
+  assert.doesNotMatch(source, /class="section-heading"/)
   assert.doesNotMatch(source, /last-read-section/)
+  assert.doesNotMatch(source, /class="continue-cover"/)
+  assert.doesNotMatch(source, /class="favorite-cover"/)
+  assert.doesNotMatch(source, /class="reading-section"/)
+  assert.doesNotMatch(source, /continue-panel::before/)
+  assert.doesNotMatch(source, /favorite-line::before/)
 })
 
 test('reading history and favorites share the private index skeleton', () => {
@@ -194,7 +217,7 @@ test('reading space isolates its fixed continuation backdrop', () => {
 test('reading space decorative continuation line ignores pointer events', () => {
   const source = read('../views/ReadingSpace.vue')
 
-  assert.match(source, /\.continue-panel::before,[\s\S]*?pointer-events:\s*none;/)
+  assert.match(source, /\.continue-panel::after\s*\{[\s\S]*?pointer-events:\s*none;/)
 })
 
 test('creator article workspace uses control-console visual treatment', () => {
