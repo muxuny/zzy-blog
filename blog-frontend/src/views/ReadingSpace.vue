@@ -433,8 +433,11 @@ function continueSummary(item) {
 }
 
 .head-meta {
-  border-left: 1px solid var(--border-color);
-  padding-left: 18px;
+  padding: 18px 20px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--panel-bg);
+  box-shadow: var(--shadow-soft);
 }
 
 .meta-line {
@@ -769,10 +772,7 @@ function continueSummary(item) {
   }
 
   .head-meta {
-    border-left: 0;
-    border-top: 1px solid var(--border-color);
-    padding-top: 12px;
-    padding-left: 0;
+    padding: 16px;
   }
 
   .section-title {
@@ -1193,10 +1193,7 @@ function continueSummary(item) {
   }
 
   .head-meta {
-    border-left: 0;
-    border-top: 1px solid var(--border-color);
-    padding-top: 12px;
-    padding-left: 0;
+    padding: 16px;
   }
 
   .section-title {

@@ -171,6 +171,9 @@ test('reading space uses the private reading prototype skeleton', () => {
   assert.match(source, /class="timeline"/)
   assert.match(source, /class="timeline-item/)
   assert.match(source, /class="favorite-index"/)
+  assert.match(source, /\.head-meta\s*\{[^}]*background:\s*var\(--panel-bg\)/)
+  assert.match(source, /\.head-meta\s*\{[^}]*border:\s*1px solid var\(--border-color\)/)
+  assert.match(source, /\.head-meta\s*\{[^}]*border-radius:\s*var\(--radius-md\)/)
   assert.match(source, /\.reading-side\s*\{[\s\S]*border:\s*1px solid var\(--border-color\)/)
   assert.match(source, /\.timeline\s*\{[\s\S]*border-left:\s*1px solid var\(--border-color\)/)
   assert.match(source, /\.timeline-item::before/)
@@ -299,10 +302,10 @@ test('creator writing and preview pages use the prototype surface system', () =>
 
 test('primary page summaries use index rails instead of card shells', () => {
   const indexedPages = [
-    read('../views/ReadingSpace.vue'),
     read('../views/ReadingHistory.vue'),
     read('../views/Favorites.vue')
   ]
+  const readingSpace = read('../views/ReadingSpace.vue')
   const articleDetail = read('../views/ArticleDetail.vue')
 
   for (const source of indexedPages) {
@@ -311,6 +314,10 @@ test('primary page summaries use index rails instead of card shells', () => {
     assert.doesNotMatch(source, /\.head-meta\s*\{[^}]*box-shadow/)
     assert.doesNotMatch(source, /\.head-meta\s*\{[^}]*background:\s*color-mix/)
   }
+
+  assert.match(readingSpace, /\.head-meta\s*\{[^}]*background:\s*var\(--panel-bg\)/)
+  assert.match(readingSpace, /\.head-meta\s*\{[^}]*border-radius:\s*var\(--radius-md\)/)
+  assert.match(readingSpace, /\.head-meta\s*\{[^}]*box-shadow:\s*var\(--shadow-soft\)/)
 
   assert.match(articleDetail, /\.detail-meta\s*\{[\s\S]*border-left:\s*1px solid var\(--border-color\)/)
   assert.doesNotMatch(articleDetail, /\.detail-meta\s*\{[^}]*border-radius/)
