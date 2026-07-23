@@ -62,6 +62,20 @@ test('app header uses a full-width translucent sticky backdrop without top gap',
   assert.doesNotMatch(source, /border-radius:\s*0 0 24px 24px/)
 })
 
+test('app header brand mark uses the visual refresh wordmark system', () => {
+  const source = read('../components/AppHeader.vue')
+
+  assert.match(source, /class="logo-copy"/)
+  assert.match(source, /class="logo-kicker"/)
+  assert.match(source, /\.logo::before/)
+  assert.match(source, /\.logo-mark::after/)
+  assert.match(source, /\.logo-text\s*\{[^}]*font-family:\s*Georgia/)
+  assert.match(source, /\.logo-mark\s*\{[^}]*background:\s*color-mix\(in srgb,\s*var\(--primary-color\)\s*10%,\s*var\(--panel-bg\)\)/)
+  assert.match(source, /\.logo-kicker\s*\{[^}]*color:\s*var\(--muted-text-color\)/)
+  assert.doesNotMatch(source, /<span class="logo-mark">B<\/span>/)
+  assert.doesNotMatch(source, /\.logo-mark\s*\{[^}]*background:\s*var\(--primary-color\)/)
+})
+
 test('global background keeps the prototype grid visible across light and dark themes', () => {
   const theme = read('../styles/theme.css')
 

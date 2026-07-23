@@ -2,8 +2,11 @@
   <el-header class="app-header">
     <div class="header-inner">
       <router-link to="/" class="logo" aria-label="返回首页">
-        <span class="logo-mark">B</span>
-        <span class="logo-text">ZZY Blog</span>
+        <span class="logo-mark" aria-hidden="true">Z</span>
+        <span class="logo-copy">
+          <span class="logo-text">ZZY Blog</span>
+          <span class="logo-kicker">Private index</span>
+        </span>
       </router-link>
       <div class="header-right">
         <ThemeToggle />
@@ -112,27 +115,99 @@ function logout() { authStore.logout(); router.push('/') }
 }
 
 .logo {
-  display: inline-flex;
+  position: relative;
+  display: inline-grid;
+  grid-template-columns: 38px max-content;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  min-height: 46px;
+  padding: 4px 14px 4px 4px;
+  border-radius: 999px;
   color: var(--text-color);
-  font-weight: 800;
+  font-weight: 700;
+  isolation: isolate;
+}
+
+.logo::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent);
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--panel-bg) 68%, transparent);
+  box-shadow: 0 14px 36px color-mix(in srgb, var(--theme-glow-color) 28%, transparent);
+  content: '';
+  opacity: 0.82;
+  transform: scaleX(0.96);
+  transform-origin: left center;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.logo:hover::before {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.logo:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 3px;
 }
 
 .logo-mark {
-  width: 32px;
-  height: 32px;
+  position: relative;
+  width: 38px;
+  height: 38px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-sm);
-  background: var(--primary-color);
-  color: #fff;
-  box-shadow: 0 10px 24px var(--theme-glow-color);
+  border: 1px solid color-mix(in srgb, var(--primary-color) 32%, var(--border-color));
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--primary-color) 10%, var(--panel-bg));
+  color: var(--primary-color);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow:
+    inset 0 0 0 4px color-mix(in srgb, var(--panel-bg) 68%, transparent),
+    0 10px 24px color-mix(in srgb, var(--theme-glow-color) 40%, transparent);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.logo-mark::after {
+  position: absolute;
+  inset: 6px;
+  border: 1px solid color-mix(in srgb, var(--accent-color) 30%, transparent);
+  border-radius: 50%;
+  content: '';
+  pointer-events: none;
+}
+
+.logo:hover .logo-mark {
+  border-color: color-mix(in srgb, var(--primary-color) 54%, var(--border-color));
+  transform: translateY(-1px);
+}
+
+.logo-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  line-height: 1;
 }
 
 .logo-text {
-  font-size: 18px;
+  color: var(--text-color);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 0.95;
+}
+
+.logo-kicker {
+  color: var(--muted-text-color);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.1;
 }
 
 .header-right {
@@ -178,7 +253,12 @@ function logout() { authStore.logout(); router.push('/') }
     padding: 0 14px;
   }
 
-  .logo-text {
+  .logo {
+    grid-template-columns: 38px;
+    padding: 4px;
+  }
+
+  .logo-copy {
     display: none;
   }
 }
