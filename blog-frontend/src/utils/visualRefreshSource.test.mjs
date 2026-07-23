@@ -206,6 +206,7 @@ test('reading history and favorites share the private index skeleton', () => {
   assert.match(history, /class="head-meta"/)
   assert.match(history, /class="history-timeline"/)
   assert.match(history, /class="timeline-group"/)
+  assert.match(history, /class="clear-button"/)
   assert.doesNotMatch(history, /class="page-heading"/)
 
   assert.match(favorites, /class="page-head"/)
@@ -216,6 +217,23 @@ test('reading history and favorites share the private index skeleton', () => {
   assert.doesNotMatch(favorites, /class="page-heading"/)
   assert.doesNotMatch(favorites, /class="filter-toolbar"/)
   assert.doesNotMatch(favorites, /class="favorite-list"/)
+})
+
+test('reading history summary uses a solid action card', () => {
+  const history = read('../views/ReadingHistory.vue')
+
+  assert.match(history, /\.head-meta\s*\{[^}]*display:\s*grid;/)
+  assert.match(history, /\.head-meta\s*\{[^}]*background:\s*var\(--panel-bg\)/)
+  assert.match(history, /\.head-meta\s*\{[^}]*border:\s*1px solid var\(--border-color\)/)
+  assert.match(history, /\.head-meta\s*\{[^}]*border-radius:\s*var\(--radius-md\)/)
+  assert.match(history, /\.head-meta\s*\{[^}]*box-shadow:\s*var\(--shadow-soft\)/)
+  assert.match(history, /\.meta-line\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto;/)
+  assert.match(history, /\.meta-label\s*\{[^}]*color:\s*var\(--muted-text-color\)/)
+  assert.match(history, /\.meta-value\s*\{[^}]*font-size:\s*18px;/)
+  assert.match(history, /\.meta-value\s*\{[^}]*font-weight:\s*800;/)
+  assert.match(history, /\.clear-button\s*\{[^}]*margin-top:\s*6px;/)
+  assert.doesNotMatch(history, /\.head-meta\s*\{[^}]*border-left:/)
+  assert.doesNotMatch(history, /\.meta-line\s*\{[^}]*border-bottom:/)
 })
 
 test('reading space isolates its fixed continuation backdrop', () => {
@@ -309,10 +327,10 @@ test('creator writing and preview pages use the prototype surface system', () =>
 
 test('primary page summaries use index rails instead of card shells', () => {
   const indexedPages = [
-    read('../views/ReadingHistory.vue'),
     read('../views/Favorites.vue')
   ]
   const readingSpace = read('../views/ReadingSpace.vue')
+  const readingHistory = read('../views/ReadingHistory.vue')
   const articleDetail = read('../views/ArticleDetail.vue')
 
   for (const source of indexedPages) {
@@ -325,6 +343,9 @@ test('primary page summaries use index rails instead of card shells', () => {
   assert.match(readingSpace, /\.head-meta\s*\{[^}]*background:\s*var\(--panel-bg\)/)
   assert.match(readingSpace, /\.head-meta\s*\{[^}]*border-radius:\s*var\(--radius-md\)/)
   assert.match(readingSpace, /\.head-meta\s*\{[^}]*box-shadow:\s*var\(--shadow-soft\)/)
+  assert.match(readingHistory, /\.head-meta\s*\{[^}]*background:\s*var\(--panel-bg\)/)
+  assert.match(readingHistory, /\.head-meta\s*\{[^}]*border-radius:\s*var\(--radius-md\)/)
+  assert.match(readingHistory, /\.head-meta\s*\{[^}]*box-shadow:\s*var\(--shadow-soft\)/)
 
   assert.match(articleDetail, /\.detail-meta\s*\{[\s\S]*border-left:\s*1px solid var\(--border-color\)/)
   assert.doesNotMatch(articleDetail, /\.detail-meta\s*\{[^}]*border-radius/)

@@ -338,33 +338,45 @@ async function clearAllHistory() {
 }
 
 .head-meta {
-  border-left: 1px solid var(--border-color);
-  padding-left: 18px;
+  display: grid;
+  gap: 13px;
+  padding: 18px 20px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--panel-bg);
+  box-shadow: var(--shadow-soft);
 }
 
 .meta-line {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--soft-border-color);
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: center;
+  padding: 0;
 }
 
 .meta-label {
-  color: var(--accent-color);
-  font-size: 12px;
-  font-weight: 760;
+  color: var(--muted-text-color);
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .meta-value {
+  min-width: 0;
+  overflow: hidden;
   color: var(--text-color);
-  font-size: 13px;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .clear-button {
   width: 100%;
   min-height: 38px;
-  margin-top: 14px;
+  margin-top: 6px;
   border-radius: 999px;
 }
 
@@ -474,10 +486,7 @@ async function clearAllHistory() {
   }
 
   .head-meta {
-    border-left: 0;
-    border-top: 1px solid var(--border-color);
-    padding-top: 12px;
-    padding-left: 0;
+    padding: 16px;
   }
 }
 
@@ -526,11 +535,11 @@ async function clearAllHistory() {
 @media (max-width: 440px) {
   .meta-line {
     grid-template-columns: 1fr;
+    gap: 4px;
   }
 
-  .clear-button {
-    width: calc(100% - 24px);
-    margin: 12px;
+  .meta-value {
+    text-align: left;
   }
 }
 
