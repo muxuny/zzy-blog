@@ -779,56 +779,17 @@ function scrollToTop(smooth = true) {
 .detail-head {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
-  gap: clamp(20px, 4vw, 36px);
-  align-items: stretch;
-  isolation: isolate;
-  padding: clamp(24px, 4vw, 42px);
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent);
-  border-radius: var(--radius-md);
-  background:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--panel-bg) 96%, transparent) 0%,
-      color-mix(in srgb, var(--panel-bg) 88%, transparent) 58%,
-      color-mix(in srgb, var(--primary-color) 7%, transparent) 100%
-    ),
-    color-mix(in srgb, var(--panel-bg) 94%, transparent);
-  box-shadow: 0 18px 48px color-mix(in srgb, var(--text-color) 6%, transparent);
-}
-
-.detail-head::before {
-  position: absolute;
-  top: 0;
-  left: clamp(24px, 4vw, 42px);
-  right: clamp(24px, 4vw, 42px);
-  height: 2px;
-  background: linear-gradient(
-    90deg,
-    var(--primary-color),
-    color-mix(in srgb, var(--accent-color) 72%, transparent),
-    transparent
-  );
-  content: '';
-  opacity: 0.52;
-  pointer-events: none;
-}
-
-.detail-head::after {
-  position: absolute;
-  inset: 12px;
-  z-index: 0;
-  border: 1px solid color-mix(in srgb, var(--border-color) 44%, transparent);
-  border-radius: calc(var(--radius-md) - 6px);
-  content: '';
-  pointer-events: none;
+  grid-template-columns: minmax(0, 1fr) minmax(230px, 320px);
+  gap: clamp(28px, 5vw, 56px);
+  align-items: start;
+  padding: clamp(8px, 2vw, 18px) 0 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .detail-copy,
 .detail-side {
-  position: relative;
-  z-index: 1;
   min-width: 0;
 }
 
@@ -847,11 +808,11 @@ function scrollToTop(smooth = true) {
 }
 
 .detail-head h1 {
-  max-width: 900px;
-  margin: 0 0 18px;
+  max-width: 820px;
+  margin: 0 0 22px;
   color: var(--text-color);
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(42px, 7vw, 82px);
+  font-size: clamp(52px, 7.4vw, 92px);
   font-weight: 500;
   line-height: 0.98;
   overflow-wrap: anywhere;
@@ -888,8 +849,8 @@ function scrollToTop(smooth = true) {
   gap: 10px 12px;
   align-items: center;
   margin-top: 22px;
-  padding-top: 18px;
-  border-top: 1px solid color-mix(in srgb, var(--border-color) 58%, transparent);
+  padding-bottom: 22px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 66%, transparent);
 }
 
 .article-tags {
@@ -924,7 +885,7 @@ function scrollToTop(smooth = true) {
 .detail-side {
   display: grid;
   gap: 12px;
-  align-content: center;
+  align-content: start;
 }
 
 .article-cover {
@@ -951,29 +912,24 @@ function scrollToTop(smooth = true) {
 
 .detail-meta {
   position: relative;
-  align-self: center;
+  align-self: start;
   display: grid;
-  gap: 10px;
-  padding: 18px 20px;
+  gap: 12px;
+  padding: 2px 0 0 18px;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--border-color) 86%, transparent);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--panel-bg) 76%, transparent);
+  border: 0;
+  border-left: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
+  background: transparent;
   box-shadow: none;
 }
 
 .meta-line {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 18px;
+  gap: 16px;
   align-items: center;
-  padding: 0 0 10px;
-  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 52%, transparent);
-}
-
-.meta-line:last-child {
-  border-bottom: 0;
-  padding-bottom: 0;
+  min-height: 26px;
+  padding: 0;
 }
 
 .meta-label {
@@ -986,8 +942,8 @@ function scrollToTop(smooth = true) {
   min-width: 0;
   overflow: hidden;
   color: var(--text-color);
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 14px;
+  font-weight: 720;
   line-height: 1.25;
   text-align: right;
   text-overflow: ellipsis;
@@ -1023,19 +979,32 @@ function scrollToTop(smooth = true) {
   position: sticky;
   top: calc(var(--app-header-height) + 22px);
   display: grid;
-  gap: 14px;
+  gap: 16px;
+  padding-left: 18px;
+  border-left: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
 }
 
-.toc-panel,
-.mobile-toc,
+.toc-panel {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .section-meter {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.mobile-toc {
   border: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent);
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--panel-bg) 84%, transparent);
   box-shadow: none;
 }
 
-.toc-panel,
 .mobile-toc {
   padding: 16px;
 }
@@ -1048,16 +1017,16 @@ function scrollToTop(smooth = true) {
 
 .toc-panel {
   max-height: calc(100vh - var(--app-header-height) - 218px);
+  padding: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
 }
 
 .note-panel {
-  padding: 16px;
-  border: 1px solid color-mix(in srgb, var(--border-color) 62%, transparent);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--panel-bg) 72%, transparent);
+  padding: 0;
+  border: 0;
+  background: transparent;
   box-shadow: none;
 }
 
@@ -1072,38 +1041,34 @@ function scrollToTop(smooth = true) {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 14px 16px;
+  padding: 0;
 }
 
 .meter-dot {
-  width: 10px;
-  height: 10px;
+  width: clamp(34px, 4vw, 62px);
+  height: 6px;
   padding: 0;
-  border: 1px solid color-mix(in srgb, var(--primary-color) 38%, var(--border-color));
+  border: 0;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--panel-bg) 92%, transparent);
+  background: color-mix(in srgb, var(--muted-text-color) 18%, transparent);
   cursor: pointer;
   transition:
-    transform 0.18s ease,
-    border-color 0.18s ease,
     background-color 0.18s ease,
-    box-shadow 0.18s ease;
+    opacity 0.18s ease;
 }
 
 .meter-dot:hover,
 .meter-dot.active {
-  transform: scale(1.18);
-  border-color: var(--primary-color);
-  background: var(--primary-color);
-  box-shadow: 0 0 0 6px var(--surface-wash-color);
+  background: color-mix(in srgb, var(--primary-color) 82%, var(--text-color));
+  opacity: 1;
 }
 
 .toc-link {
   position: relative;
   width: 100%;
-  padding: 7px 8px;
+  padding: 7px 0;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   background: transparent;
   color: var(--muted-text-color);
   font: inherit;
@@ -1116,7 +1081,7 @@ function scrollToTop(smooth = true) {
 .toc-link::before {
   position: absolute;
   top: 50%;
-  left: -7px;
+  left: -22px;
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -1133,12 +1098,12 @@ function scrollToTop(smooth = true) {
 }
 
 .toc-link:hover {
-  background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+  background: transparent;
   color: var(--primary-color);
 }
 
 .toc-link.active {
-  background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+  background: transparent;
   color: var(--primary-color);
   font-weight: 800;
 }
@@ -1354,11 +1319,12 @@ function scrollToTop(smooth = true) {
   }
 
   .detail-head {
-    padding: clamp(22px, 5vw, 32px);
+    gap: 24px;
+    padding: 6px 0 0;
   }
 
   .detail-meta {
-    padding: 16px 18px;
+    padding: 0 0 0 16px;
   }
 
   .reading-sidebar {
@@ -1382,12 +1348,7 @@ function scrollToTop(smooth = true) {
 
   .detail-head {
     gap: 22px;
-    padding: 20px 18px;
-  }
-
-  .detail-head::before {
-    left: 18px;
-    right: 18px;
+    padding: 4px 0 0;
   }
 
   .detail-actions,
