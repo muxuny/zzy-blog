@@ -99,7 +99,12 @@
           </aside>
         </div>
 
-        <section v-if="hasContinuation" class="continuation-section">
+        <section v-if="hasContinuation" class="article-epilogue">
+          <div class="epilogue-heading">
+            <span class="eyebrow">继续阅读</span>
+            <h2>读到这里之后</h2>
+          </div>
+
           <div v-if="neighbors.previous || neighbors.next" class="neighbor-grid">
             <button
               v-if="neighbors.previous"
@@ -107,7 +112,7 @@
               class="neighbor-link previous"
               @click="openArticle(neighbors.previous.id)"
             >
-              <span>上一篇</span>
+              <span class="neighbor-direction"><span aria-hidden="true">←</span> 上一篇</span>
               <strong>{{ neighbors.previous.title }}</strong>
               <small>{{ formatDate(neighbors.previous.createdAt) }} · 阅读 {{ neighbors.previous.viewCount || 0 }}</small>
             </button>
@@ -117,27 +122,27 @@
               class="neighbor-link next"
               @click="openArticle(neighbors.next.id)"
             >
-              <span>下一篇</span>
+              <span class="neighbor-direction">下一篇 <span aria-hidden="true">→</span></span>
               <strong>{{ neighbors.next.title }}</strong>
               <small>{{ formatDate(neighbors.next.createdAt) }} · 阅读 {{ neighbors.next.viewCount || 0 }}</small>
             </button>
           </div>
 
           <div v-if="relatedArticles.length" class="related-panel">
-            <div class="section-heading">
-              <span class="eyebrow">继续阅读</span>
-              <h2>相关文章</h2>
-            </div>
-            <div class="related-grid">
+            <span class="related-kicker">同主题线索</span>
+            <div class="related-list">
               <button
-                v-for="item in relatedArticles"
+                v-for="(item, index) in relatedArticles"
                 :key="item.id"
                 type="button"
                 class="related-link"
                 @click="openArticle(item.id)"
               >
-                <strong>{{ item.title }}</strong>
-                <small>{{ formatDate(item.createdAt) }} · 阅读 {{ item.viewCount || 0 }}</small>
+                <span class="related-index">{{ String(index + 1).padStart(2, '0') }}</span>
+                <span class="related-copy">
+                  <strong>{{ item.title }}</strong>
+                  <small>{{ formatDate(item.createdAt) }} · 阅读 {{ item.viewCount || 0 }}</small>
+                </span>
                 <span v-if="item.tags?.length" class="related-tags">
                   <el-tag v-for="tag in item.tags.slice(0, 2)" :key="tag.id" size="small">{{ tag.name }}</el-tag>
                 </span>
@@ -996,17 +1001,43 @@ function scrollToTop(smooth = true) {
   margin-bottom: 22px;
 }
 
-.continuation-section {
+.article-epilogue {
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   display: grid;
-  gap: 28px;
-  padding-top: 6px;
-  border-top: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
+  gap: 24px;
+  padding: clamp(22px, 4vw, 34px) clamp(14px, 3vw, 26px) 4px;
+  border-top: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--surface-wash-color) 74%, transparent) 0%,
+    color-mix(in srgb, var(--panel-bg) 28%, transparent) 46%,
+    transparent 100%
+  );
+}
+
+.epilogue-heading {
+  display: grid;
+  gap: 6px;
+}
+
+.epilogue-heading .eyebrow {
+  margin-bottom: 0;
+}
+
+.epilogue-heading h2 {
+  margin: 0;
+  color: var(--text-color);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 500;
+  line-height: 1.04;
+  overflow-wrap: anywhere;
 }
 
 .neighbor-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 30px;
+  gap: 0;
   border-top: 1px solid color-mix(in srgb, var(--border-color) 58%, transparent);
   border-bottom: 1px solid color-mix(in srgb, var(--border-color) 58%, transparent);
 }
@@ -1018,10 +1049,10 @@ function scrollToTop(smooth = true) {
   gap: 8px;
   width: 100%;
   min-width: 0;
-  padding: 18px 0;
+  padding: 18px 14px;
   overflow: hidden;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-color);
   font: inherit;
@@ -1029,27 +1060,55 @@ function scrollToTop(smooth = true) {
   cursor: pointer;
   box-shadow: none;
   transition:
+    background-color 0.2s ease,
     color 0.2s ease,
-    padding-left 0.2s ease;
+    transform 0.2s ease;
+}
+
+.neighbor-link::after,
+.related-link::after {
+  position: absolute;
+  right: 14px;
+  bottom: 10px;
+  left: 14px;
+  height: 1px;
+  background: color-mix(in srgb, var(--primary-color) 58%, transparent);
+  content: '';
+  opacity: 0;
+  transform: scaleX(0.2);
+  transform-origin: left center;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .neighbor-link.next {
-  padding-left: 30px;
   border-left: 1px solid color-mix(in srgb, var(--border-color) 58%, transparent);
   text-align: right;
+  justify-items: end;
+}
+
+.neighbor-link.next::after {
+  transform-origin: right center;
 }
 
 .neighbor-link:hover,
 .related-link:hover {
+  background: color-mix(in srgb, var(--surface-wash-color) 62%, transparent);
   color: var(--primary-color);
 }
 
-.neighbor-link.previous:hover,
-.related-link:hover {
-  padding-left: 8px;
+.neighbor-link:hover::after,
+.related-link:hover::after {
+  opacity: 1;
+  transform: scaleX(1);
 }
 
-.neighbor-link span,
+.neighbor-direction {
+  color: var(--muted-text-color);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .neighbor-link small,
 .related-link small {
   color: var(--muted-text-color);
@@ -1066,33 +1125,45 @@ function scrollToTop(smooth = true) {
 
 .related-panel {
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
-.section-heading h2 {
-  margin: 6px 0 0;
-  color: var(--text-color);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 30px;
-  font-weight: 500;
-  line-height: 1.08;
+.related-kicker {
+  color: var(--muted-text-color);
+  font-size: 13px;
+  font-weight: 760;
 }
 
-.related-grid {
+.related-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 32px;
   border-top: 1px solid color-mix(in srgb, var(--border-color) 58%, transparent);
 }
 
 .related-link {
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  column-gap: 16px;
+  align-items: center;
+  padding: 16px 10px;
   border-bottom: 1px solid color-mix(in srgb, var(--border-color) 48%, transparent);
+}
+
+.related-index {
+  color: color-mix(in srgb, var(--primary-color) 68%, var(--muted-text-color));
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.related-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
 }
 
 .related-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  justify-content: flex-end;
 }
 
 .resume-reading-dialog :deep(.el-dialog__header) {
@@ -1230,8 +1301,12 @@ function scrollToTop(smooth = true) {
     padding: 24px 18px;
   }
 
-  .neighbor-grid,
-  .related-grid {
+  .article-epilogue {
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  .neighbor-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1239,10 +1314,24 @@ function scrollToTop(smooth = true) {
     gap: 0;
   }
 
+  .neighbor-link + .neighbor-link {
+    border-top: 1px solid color-mix(in srgb, var(--border-color) 48%, transparent);
+  }
+
   .neighbor-link.next {
-    padding-left: 0;
     border-left: 0;
     text-align: left;
+    justify-items: start;
+  }
+
+  .related-link {
+    grid-template-columns: 34px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .related-tags {
+    grid-column: 2;
+    justify-content: flex-start;
   }
 
   .floating-reading-tools {
@@ -1263,7 +1352,9 @@ function scrollToTop(smooth = true) {
   .toc-link,
   .toc-link::before,
   .neighbor-link,
+  .neighbor-link::after,
   .related-link,
+  .related-link::after,
   .floating-tool-button {
     transition: none;
   }
