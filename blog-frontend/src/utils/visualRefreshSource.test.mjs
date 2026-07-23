@@ -268,6 +268,22 @@ test('reading space uses continuation-focused visual classes', () => {
   assert.doesNotMatch(source, /reading-progress-track/)
 })
 
+test('reading space fills the continuation panel with a non-redundant ambient pulse', () => {
+  const source = read('../views/ReadingSpace.vue')
+
+  assert.match(source, /class="reading-pulse"/)
+  assert.match(source, /class="pulse-track"/)
+  assert.match(source, /class="pulse-fill"/)
+  assert.match(source, /class="pulse-node/)
+  assert.match(source, /--pulse-progress/)
+  assert.match(source, /\.reading-pulse\s*\{[^}]*pointer-events:\s*none;/)
+  assert.match(source, /\.pulse-fill\s*\{[^}]*width:\s*var\(--pulse-progress\);/)
+  assert.match(source, /\.pulse-node\.is-current\s*\{[^}]*background:\s*var\(--primary-color\);/)
+  assert.match(source, /@keyframes pulseDrift/)
+  assert.doesNotMatch(source, /reading-pulse[\s\S]{0,700}overview\.historyTotal/)
+  assert.doesNotMatch(source, /reading-pulse[\s\S]{0,700}overview\.favoriteTotal/)
+})
+
 test('reading space uses the private reading prototype skeleton', () => {
   const source = read('../views/ReadingSpace.vue')
 

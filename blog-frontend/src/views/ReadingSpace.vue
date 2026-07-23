@@ -120,6 +120,23 @@
                 </div>
               </div>
             </template>
+
+            <div
+              class="reading-pulse"
+              aria-hidden="true"
+              :style="{ '--pulse-progress': `${safeProgressPercent(overview.lastRead.progressPercent)}%` }"
+            >
+              <span class="pulse-track">
+                <span class="pulse-fill" />
+              </span>
+              <span class="pulse-node is-soft" style="--pulse-left: 14%" />
+              <span class="pulse-node is-soft" style="--pulse-left: 48%" />
+              <span class="pulse-node is-soft" style="--pulse-left: 82%" />
+              <span
+                class="pulse-node is-current"
+                :style="{ '--pulse-left': `${safeProgressPercent(overview.lastRead.progressPercent)}%` }"
+              />
+            </div>
           </article>
 
           <div v-else class="continue-panel empty-status" role="status" aria-live="polite">
@@ -135,6 +152,15 @@
                   查看完整历史
                 </RouterLink>
               </div>
+            </div>
+            <div class="reading-pulse" aria-hidden="true" style="--pulse-progress: 0%">
+              <span class="pulse-track">
+                <span class="pulse-fill" />
+              </span>
+              <span class="pulse-node is-soft" style="--pulse-left: 14%" />
+              <span class="pulse-node is-soft" style="--pulse-left: 48%" />
+              <span class="pulse-node is-soft" style="--pulse-left: 82%" />
+              <span class="pulse-node is-current" style="--pulse-left: 0%" />
             </div>
           </div>
 
@@ -884,7 +910,7 @@ function continueSummary(item) {
 .continue-panel {
   display: block;
   min-height: 308px;
-  padding: 26px;
+  padding: 26px 26px 132px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   background:
@@ -985,6 +1011,100 @@ function continueSummary(item) {
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 24px;
+}
+
+.reading-pulse {
+  position: absolute;
+  right: 26px;
+  bottom: 26px;
+  left: 26px;
+  z-index: 1;
+  display: grid;
+  align-content: end;
+  height: 82px;
+  pointer-events: none;
+}
+
+.reading-pulse::before {
+  position: absolute;
+  right: 0;
+  bottom: 8px;
+  left: 0;
+  height: 56px;
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--primary-color) 9%, transparent),
+      transparent
+    ),
+    repeating-linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--border-color) 46%, transparent) 0 1px,
+      transparent 1px 34px
+    );
+  content: '';
+  opacity: 0.74;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+}
+
+.pulse-track {
+  position: relative;
+  display: block;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border-color) 62%, transparent);
+}
+
+.pulse-fill {
+  display: block;
+  width: var(--pulse-progress);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+  box-shadow: 0 0 18px var(--theme-glow-color);
+  animation: pulseDrift 4.8s ease-in-out infinite;
+}
+
+.pulse-node {
+  position: absolute;
+  bottom: -2px;
+  left: var(--pulse-left);
+  width: 8px;
+  height: 8px;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 48%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-bg) 86%, transparent);
+  transform: translateX(-50%);
+}
+
+.pulse-node.is-soft {
+  opacity: 0.56;
+}
+
+.pulse-node.is-current {
+  width: 11px;
+  height: 11px;
+  background: var(--primary-color);
+  box-shadow: 0 0 0 6px var(--surface-wash-color), 0 0 20px var(--theme-glow-color);
+  animation: pulseDrift 3.6s ease-in-out infinite;
+}
+
+.empty-status .reading-pulse {
+  opacity: 0.58;
+}
+
+@keyframes pulseDrift {
+  0%,
+  100% {
+    filter: saturate(0.95);
+  }
+
+  50% {
+    filter: saturate(1.25) brightness(1.04);
+  }
 }
 
 .primary-button,
@@ -1240,6 +1360,15 @@ function continueSummary(item) {
     padding: 20px;
   }
 
+  .reading-pulse {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    height: 54px;
+    margin-top: 24px;
+  }
+
   .section-title,
   .favorite-line {
     grid-template-columns: minmax(0, 1fr);
@@ -1259,11 +1388,14 @@ function continueSummary(item) {
 
 @media (prefers-reduced-motion: reduce) {
   .continue-panel::after,
+  .pulse-fill,
+  .pulse-node.is-current,
   .progress-track span,
   .timeline-item,
   .favorite-line,
   .primary-button,
   .ghost-button {
+    animation: none;
     transition: none;
   }
 
