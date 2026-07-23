@@ -34,22 +34,24 @@
               <span>阅读 {{ article.viewCount || 0 }}</span>
               <span>{{ readingStats.readingTimeText }}</span>
             </div>
-            <div v-if="articleTags.length" class="article-tags">
-              <el-tag v-for="tag in articleTags" :key="tag.id" size="small">{{ tag.name }}</el-tag>
-            </div>
-            <div class="favorite-action">
-              <el-button
-                class="favorite-button"
-                :loading="favoriteLoading"
-                :aria-pressed="favorited"
-                @click="handleFavorite"
-              >
-                <el-icon>
-                  <StarFilled v-if="favorited" />
-                  <Star v-else />
-                </el-icon>
-                <span>{{ favorited ? '已收藏' : '收藏' }}</span>
-              </el-button>
+            <div class="detail-actions">
+              <div v-if="articleTags.length" class="article-tags">
+                <el-tag v-for="tag in articleTags" :key="tag.id" size="small">{{ tag.name }}</el-tag>
+              </div>
+              <div class="favorite-action">
+                <el-button
+                  class="favorite-button"
+                  :loading="favoriteLoading"
+                  :aria-pressed="favorited"
+                  @click="handleFavorite"
+                >
+                  <el-icon>
+                    <StarFilled v-if="favorited" />
+                    <Star v-else />
+                  </el-icon>
+                  <span>{{ favorited ? '已收藏' : '收藏' }}</span>
+                </el-button>
+              </div>
             </div>
           </div>
 
@@ -775,16 +777,64 @@ function scrollToTop(smooth = true) {
 }
 
 .detail-head {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
-  gap: 30px;
-  align-items: end;
-  padding-top: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  gap: clamp(20px, 4vw, 36px);
+  align-items: stretch;
+  isolation: isolate;
+  padding: clamp(24px, 4vw, 42px);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--panel-bg) 96%, transparent) 0%,
+      color-mix(in srgb, var(--panel-bg) 88%, transparent) 58%,
+      color-mix(in srgb, var(--primary-color) 7%, transparent) 100%
+    ),
+    color-mix(in srgb, var(--panel-bg) 94%, transparent);
+  box-shadow: 0 18px 48px color-mix(in srgb, var(--text-color) 6%, transparent);
+}
+
+.detail-head::before {
+  position: absolute;
+  top: 0;
+  left: clamp(24px, 4vw, 42px);
+  right: clamp(24px, 4vw, 42px);
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--primary-color),
+    color-mix(in srgb, var(--accent-color) 72%, transparent),
+    transparent
+  );
+  content: '';
+  opacity: 0.52;
+  pointer-events: none;
+}
+
+.detail-head::after {
+  position: absolute;
+  inset: 12px;
+  z-index: 0;
+  border: 1px solid color-mix(in srgb, var(--border-color) 44%, transparent);
+  border-radius: calc(var(--radius-md) - 6px);
+  content: '';
+  pointer-events: none;
 }
 
 .detail-copy,
 .detail-side {
+  position: relative;
+  z-index: 1;
   min-width: 0;
+}
+
+.detail-copy {
+  display: grid;
+  align-content: start;
 }
 
 .eyebrow {
@@ -810,34 +860,71 @@ function scrollToTop(smooth = true) {
 .hero-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 16px;
+  gap: 8px 14px;
   color: var(--muted-text-color);
   font-size: 14px;
+}
+
+.hero-meta span + span {
+  position: relative;
+  padding-left: 14px;
+}
+
+.hero-meta span + span::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--primary-color) 36%, transparent);
+  content: '';
+  transform: translateY(-50%);
+}
+
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  align-items: center;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid color-mix(in srgb, var(--border-color) 58%, transparent);
 }
 
 .article-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 18px;
+  margin: 0;
+}
+
+.article-tags :deep(.el-tag) {
+  border-color: color-mix(in srgb, var(--primary-color) 24%, var(--border-color));
+  background: color-mix(in srgb, var(--panel-bg) 72%, transparent);
+  color: var(--primary-color);
 }
 
 .favorite-action {
   display: flex;
   align-items: center;
   min-height: 40px;
-  margin-top: 18px;
 }
 
 .favorite-button {
-  width: 112px;
+  min-width: 112px;
   height: 40px;
   flex: 0 0 auto;
+  border-color: color-mix(in srgb, var(--border-color) 92%, transparent);
+  background: color-mix(in srgb, var(--panel-bg) 78%, transparent);
+  color: var(--text-color);
+  box-shadow: none;
 }
 
 .detail-side {
   display: grid;
   gap: 12px;
+  align-content: center;
 }
 
 .article-cover {
@@ -864,30 +951,15 @@ function scrollToTop(smooth = true) {
 
 .detail-meta {
   position: relative;
+  align-self: center;
   display: grid;
   gap: 10px;
   padding: 18px 20px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--border-color) 86%, transparent);
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--panel-bg) 88%, transparent);
-  box-shadow: 0 14px 34px color-mix(in srgb, var(--text-color) 6%, transparent);
-}
-
-.detail-meta::before {
-  position: absolute;
-  top: 0;
-  left: 20px;
-  right: 20px;
-  height: 2px;
-  background: linear-gradient(
-    90deg,
-    var(--primary-color),
-    color-mix(in srgb, var(--accent-color) 72%, transparent),
-    transparent
-  );
-  content: '';
-  opacity: 0.58;
+  background: color-mix(in srgb, var(--panel-bg) 76%, transparent);
+  box-shadow: none;
 }
 
 .meta-line {
@@ -1281,6 +1353,10 @@ function scrollToTop(smooth = true) {
     grid-template-columns: 1fr;
   }
 
+  .detail-head {
+    padding: clamp(22px, 5vw, 32px);
+  }
+
   .detail-meta {
     padding: 16px 18px;
   }
@@ -1302,6 +1378,26 @@ function scrollToTop(smooth = true) {
 
   .detail-head h1 {
     font-size: 42px;
+  }
+
+  .detail-head {
+    gap: 22px;
+    padding: 20px 18px;
+  }
+
+  .detail-head::before {
+    left: 18px;
+    right: 18px;
+  }
+
+  .detail-actions,
+  .favorite-action {
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .favorite-button {
+    width: 100%;
   }
 
   .article-body {

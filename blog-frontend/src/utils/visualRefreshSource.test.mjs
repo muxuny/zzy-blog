@@ -148,6 +148,7 @@ test('article detail uses the reading-surface prototype skeleton', () => {
   const source = read('../views/ArticleDetail.vue')
 
   assert.match(source, /class="detail-head"/)
+  assert.match(source, /class="detail-actions"/)
   assert.match(source, /class="detail-meta"/)
   assert.match(source, /class="reading-canvas"/)
   assert.match(source, /class="article-body"/)
@@ -172,6 +173,27 @@ test('article detail gives the article body a quiet primary reading surface', ()
   assert.doesNotMatch(source, /\.article-body\s*\{[^}]*border-bottom:/)
 })
 
+test('article detail hero is one unified briefing panel', () => {
+  const source = read('../views/ArticleDetail.vue')
+
+  assert.match(source, /\.detail-head\s*\{[^}]*position:\s*relative;/)
+  assert.match(source, /\.detail-head\s*\{[^}]*align-items:\s*stretch;/)
+  assert.match(source, /\.detail-head\s*\{[^}]*isolation:\s*isolate;/)
+  assert.match(source, /\.detail-head\s*\{[^}]*padding:\s*clamp\(24px,\s*4vw,\s*42px\);/)
+  assert.match(source, /\.detail-head\s*\{[^}]*border:\s*1px solid color-mix\(in srgb,\s*var\(--border-color\)\s*78%,\s*transparent\);/)
+  assert.match(source, /\.detail-head\s*\{[^}]*border-radius:\s*var\(--radius-md\);/)
+  assert.match(source, /\.detail-head\s*\{[^}]*background:/)
+  assert.match(source, /\.detail-head\s*\{[^}]*box-shadow:\s*0 18px 48px color-mix\(in srgb,\s*var\(--text-color\)\s*6%,\s*transparent\);/)
+  assert.match(source, /\.detail-head::before/)
+  assert.match(source, /\.detail-head::after/)
+  assert.match(source, /\.detail-copy,\s*\.detail-side\s*\{[^}]*z-index:\s*1;/)
+  assert.match(source, /\.detail-actions\s*\{[^}]*display:\s*flex;/)
+  assert.match(source, /\.detail-actions\s*\{[^}]*padding-top:\s*18px;/)
+  assert.match(source, /\.detail-actions\s*\{[^}]*border-top:\s*1px solid color-mix\(in srgb,\s*var\(--border-color\)\s*58%,\s*transparent\);/)
+  assert.match(source, /\.favorite-button\s*\{[^}]*background:\s*color-mix\(in srgb,\s*var\(--panel-bg\)\s*78%,\s*transparent\);/)
+  assert.doesNotMatch(source, /\.detail-head\s*\{[^}]*padding-top:\s*12px;/)
+})
+
 test('article detail summary uses a compact translucent info panel', () => {
   const source = read('../views/ArticleDetail.vue')
 
@@ -179,13 +201,13 @@ test('article detail summary uses a compact translucent info panel', () => {
   assert.match(source, /\.detail-meta\s*\{[^}]*padding:\s*18px 20px;/)
   assert.match(source, /\.detail-meta\s*\{[^}]*border:\s*1px solid color-mix\(in srgb,\s*var\(--border-color\)\s*86%,\s*transparent\);/)
   assert.match(source, /\.detail-meta\s*\{[^}]*border-radius:\s*var\(--radius-md\);/)
-  assert.match(source, /\.detail-meta\s*\{[^}]*background:\s*color-mix\(in srgb,\s*var\(--panel-bg\)\s*88%,\s*transparent\);/)
-  assert.match(source, /\.detail-meta\s*\{[^}]*box-shadow:\s*0 14px 34px color-mix\(in srgb,\s*var\(--text-color\)\s*6%,\s*transparent\);/)
-  assert.match(source, /\.detail-meta::before/)
+  assert.match(source, /\.detail-meta\s*\{[^}]*background:\s*color-mix\(in srgb,\s*var\(--panel-bg\)\s*76%,\s*transparent\);/)
+  assert.match(source, /\.detail-meta\s*\{[^}]*box-shadow:\s*none;/)
   assert.match(source, /\.meta-line\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto;/)
   assert.match(source, /\.meta-value\s*\{[^}]*font-size:\s*16px;/)
   assert.match(source, /\.meta-value\s*\{[^}]*font-weight:\s*800;/)
   assert.match(source, /\.meta-value\s*\{[^}]*text-align:\s*right;/)
+  assert.doesNotMatch(source, /\.detail-meta::before/)
   assert.doesNotMatch(source, /\.detail-meta\s*\{[^}]*border-left:/)
 })
 
