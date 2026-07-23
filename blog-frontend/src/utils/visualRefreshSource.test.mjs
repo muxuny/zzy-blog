@@ -172,6 +172,23 @@ test('article detail gives the article body a quiet primary reading surface', ()
   assert.doesNotMatch(source, /\.article-body\s*\{[^}]*border-bottom:/)
 })
 
+test('article detail summary uses a compact translucent info panel', () => {
+  const source = read('../views/ArticleDetail.vue')
+
+  assert.match(source, /\.detail-meta\s*\{[^}]*display:\s*grid;/)
+  assert.match(source, /\.detail-meta\s*\{[^}]*padding:\s*18px 20px;/)
+  assert.match(source, /\.detail-meta\s*\{[^}]*border:\s*1px solid color-mix\(in srgb,\s*var\(--border-color\)\s*86%,\s*transparent\);/)
+  assert.match(source, /\.detail-meta\s*\{[^}]*border-radius:\s*var\(--radius-md\);/)
+  assert.match(source, /\.detail-meta\s*\{[^}]*background:\s*color-mix\(in srgb,\s*var\(--panel-bg\)\s*88%,\s*transparent\);/)
+  assert.match(source, /\.detail-meta\s*\{[^}]*box-shadow:\s*0 14px 34px color-mix\(in srgb,\s*var\(--text-color\)\s*6%,\s*transparent\);/)
+  assert.match(source, /\.detail-meta::before/)
+  assert.match(source, /\.meta-line\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto;/)
+  assert.match(source, /\.meta-value\s*\{[^}]*font-size:\s*16px;/)
+  assert.match(source, /\.meta-value\s*\{[^}]*font-weight:\s*800;/)
+  assert.match(source, /\.meta-value\s*\{[^}]*text-align:\s*right;/)
+  assert.doesNotMatch(source, /\.detail-meta\s*\{[^}]*border-left:/)
+})
+
 test('reading space uses continuation-focused visual classes', () => {
   const source = read('../views/ReadingSpace.vue')
 
@@ -360,7 +377,6 @@ test('primary page summaries use index rails instead of card shells', () => {
   ]
   const readingSpace = read('../views/ReadingSpace.vue')
   const readingHistory = read('../views/ReadingHistory.vue')
-  const articleDetail = read('../views/ArticleDetail.vue')
 
   for (const source of indexedPages) {
     assert.match(source, /\.head-meta\s*\{[\s\S]*border-left:\s*1px solid var\(--border-color\)/)
@@ -375,9 +391,4 @@ test('primary page summaries use index rails instead of card shells', () => {
   assert.match(readingHistory, /\.head-meta\s*\{[^}]*background:\s*var\(--panel-bg\)/)
   assert.match(readingHistory, /\.head-meta\s*\{[^}]*border-radius:\s*var\(--radius-md\)/)
   assert.match(readingHistory, /\.head-meta\s*\{[^}]*box-shadow:\s*var\(--shadow-soft\)/)
-
-  assert.match(articleDetail, /\.detail-meta\s*\{[\s\S]*border-left:\s*1px solid var\(--border-color\)/)
-  assert.doesNotMatch(articleDetail, /\.detail-meta\s*\{[^}]*border-radius/)
-  assert.doesNotMatch(articleDetail, /\.detail-meta\s*\{[^}]*box-shadow/)
-  assert.doesNotMatch(articleDetail, /\.detail-meta\s*\{[^}]*background:\s*color-mix/)
 })
