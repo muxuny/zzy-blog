@@ -43,7 +43,10 @@
           <article
             v-if="overview.lastRead"
             class="continue-panel"
-            :class="{ 'is-unavailable': !overview.lastRead.available }"
+            :class="[{ 'is-unavailable': !overview.lastRead.available }, { 'is-field-rippling': fieldRippling }]"
+            @pointermove="updateReadingField"
+            @pointerleave="resetReadingField"
+            @pointerdown="triggerReadingRipple"
           >
             <RouterLink
               v-if="overview.lastRead.available"
@@ -121,25 +124,30 @@
               </div>
             </template>
 
-            <div
-              class="reading-pulse"
-              aria-hidden="true"
-              :style="{ '--pulse-progress': `${safeProgressPercent(overview.lastRead.progressPercent)}%` }"
-            >
-              <span class="pulse-track">
-                <span class="pulse-fill" />
-              </span>
-              <span class="pulse-node is-soft" style="--pulse-left: 14%" />
-              <span class="pulse-node is-soft" style="--pulse-left: 48%" />
-              <span class="pulse-node is-soft" style="--pulse-left: 82%" />
-              <span
-                class="pulse-node is-current"
-                :style="{ '--pulse-left': `${safeProgressPercent(overview.lastRead.progressPercent)}%` }"
-              />
+            <div class="magnetic-field" aria-hidden="true">
+              <span class="magnetic-ripple" />
+              <span class="magnetic-particle is-soft" style="--particle-x: 10%; --particle-y: 62%; --particle-size: 4px; --particle-delay: -0.4s" />
+              <span class="magnetic-particle is-mid" style="--particle-x: 22%; --particle-y: 38%; --particle-size: 7px; --particle-delay: -1.8s" />
+              <span class="magnetic-particle is-strong" style="--particle-x: 36%; --particle-y: 70%; --particle-size: 5px; --particle-delay: -2.5s" />
+              <span class="magnetic-particle is-soft" style="--particle-x: 52%; --particle-y: 46%; --particle-size: 6px; --particle-delay: -1.1s" />
+              <span class="magnetic-particle is-mid" style="--particle-x: 68%; --particle-y: 64%; --particle-size: 4px; --particle-delay: -3s" />
+              <span class="magnetic-particle is-strong" style="--particle-x: 84%; --particle-y: 34%; --particle-size: 8px; --particle-delay: -2s" />
+              <span class="magnetic-streak" style="--streak-x: 16%; --streak-y: 28%; --streak-delay: -0.6s" />
+              <span class="magnetic-streak" style="--streak-x: 58%; --streak-y: 76%; --streak-delay: -1.7s" />
+              <span class="magnetic-streak" style="--streak-x: 78%; --streak-y: 54%; --streak-delay: -2.4s" />
             </div>
           </article>
 
-          <div v-else class="continue-panel empty-status" role="status" aria-live="polite">
+          <div
+            v-else
+            class="continue-panel empty-status"
+            :class="{ 'is-field-rippling': fieldRippling }"
+            role="status"
+            aria-live="polite"
+            @pointermove="updateReadingField"
+            @pointerleave="resetReadingField"
+            @pointerdown="triggerReadingRipple"
+          >
             <div class="continue-copy">
               <span class="status-pill muted">暂无轨迹</span>
               <h2 class="continue-title">还没有可继续阅读的文章</h2>
@@ -153,14 +161,15 @@
                 </RouterLink>
               </div>
             </div>
-            <div class="reading-pulse" aria-hidden="true" style="--pulse-progress: 0%">
-              <span class="pulse-track">
-                <span class="pulse-fill" />
-              </span>
-              <span class="pulse-node is-soft" style="--pulse-left: 14%" />
-              <span class="pulse-node is-soft" style="--pulse-left: 48%" />
-              <span class="pulse-node is-soft" style="--pulse-left: 82%" />
-              <span class="pulse-node is-current" style="--pulse-left: 0%" />
+            <div class="magnetic-field" aria-hidden="true">
+              <span class="magnetic-ripple" />
+              <span class="magnetic-particle is-soft" style="--particle-x: 12%; --particle-y: 66%; --particle-size: 4px; --particle-delay: -0.4s" />
+              <span class="magnetic-particle is-mid" style="--particle-x: 28%; --particle-y: 40%; --particle-size: 6px; --particle-delay: -1.8s" />
+              <span class="magnetic-particle is-strong" style="--particle-x: 46%; --particle-y: 74%; --particle-size: 5px; --particle-delay: -2.5s" />
+              <span class="magnetic-particle is-soft" style="--particle-x: 62%; --particle-y: 48%; --particle-size: 6px; --particle-delay: -1.1s" />
+              <span class="magnetic-particle is-mid" style="--particle-x: 82%; --particle-y: 62%; --particle-size: 5px; --particle-delay: -3s" />
+              <span class="magnetic-streak" style="--streak-x: 18%; --streak-y: 30%; --streak-delay: -0.6s" />
+              <span class="magnetic-streak" style="--streak-x: 56%; --streak-y: 76%; --streak-delay: -1.7s" />
             </div>
           </div>
 
@@ -326,8 +335,10 @@ const overview = ref({
 })
 const loading = ref(false)
 const loadError = ref('')
+const fieldRippling = ref(false)
 let componentActive = true
 let requestVersion = 0
+let fieldRippleTimer = 0
 
 onMounted(() => {
   void load()
@@ -336,6 +347,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   componentActive = false
   requestVersion += 1
+  if (fieldRippleTimer) window.clearTimeout(fieldRippleTimer)
 })
 
 async function load() {
@@ -380,6 +392,56 @@ function safeProgressPercent(value) {
   const number = Number(value)
   if (!Number.isFinite(number)) return 0
   return Math.min(100, Math.max(0, Math.round(number)))
+}
+
+function updateReadingField(event) {
+  if (!(event.currentTarget instanceof HTMLElement)) return
+
+  const panel = event.currentTarget
+  const rect = panel.getBoundingClientRect()
+  const xRatio = rect.width ? (event.clientX - rect.left) / rect.width : 0.5
+  const yRatio = rect.height ? (event.clientY - rect.top) / rect.height : 0.68
+  const shiftX = Math.max(-1, Math.min(1, (xRatio - 0.5) * 2))
+  const shiftY = Math.max(-1, Math.min(1, (yRatio - 0.68) * 2))
+
+  panel.style.setProperty('--field-cursor-x', `${Math.round(xRatio * 100)}%`)
+  panel.style.setProperty('--field-cursor-y', `${Math.round(yRatio * 100)}%`)
+  panel.style.setProperty('--field-shift-x', `${(shiftX * 16).toFixed(1)}px`)
+  panel.style.setProperty('--field-shift-y', `${(shiftY * 12).toFixed(1)}px`)
+  panel.style.setProperty('--field-shift-x-soft', `${(shiftX * 8).toFixed(1)}px`)
+  panel.style.setProperty('--field-shift-y-soft', `${(shiftY * 6).toFixed(1)}px`)
+  panel.style.setProperty('--field-shift-x-strong', `${(shiftX * 24).toFixed(1)}px`)
+  panel.style.setProperty('--field-shift-y-strong', `${(shiftY * 18).toFixed(1)}px`)
+}
+
+function resetReadingField(event) {
+  if (!(event.currentTarget instanceof HTMLElement)) return
+  setReadingFieldDefaults(event.currentTarget)
+}
+
+function triggerReadingRipple(event) {
+  updateReadingField(event)
+  fieldRippling.value = false
+
+  window.requestAnimationFrame(() => {
+    fieldRippling.value = true
+    if (fieldRippleTimer) window.clearTimeout(fieldRippleTimer)
+    fieldRippleTimer = window.setTimeout(() => {
+      fieldRippling.value = false
+      fieldRippleTimer = 0
+    }, 520)
+  })
+}
+
+function setReadingFieldDefaults(panel) {
+  panel.style.setProperty('--field-cursor-x', '50%')
+  panel.style.setProperty('--field-cursor-y', '68%')
+  panel.style.setProperty('--field-shift-x', '0px')
+  panel.style.setProperty('--field-shift-y', '0px')
+  panel.style.setProperty('--field-shift-x-soft', '0px')
+  panel.style.setProperty('--field-shift-y-soft', '0px')
+  panel.style.setProperty('--field-shift-x-strong', '0px')
+  panel.style.setProperty('--field-shift-y-strong', '0px')
 }
 
 function continueStatusText(item) {
@@ -908,9 +970,17 @@ function continueSummary(item) {
 }
 
 .continue-panel {
+  --field-cursor-x: 50%;
+  --field-cursor-y: 68%;
+  --field-shift-x: 0px;
+  --field-shift-y: 0px;
+  --field-shift-x-soft: 0px;
+  --field-shift-y-soft: 0px;
+  --field-shift-x-strong: 0px;
+  --field-shift-y-strong: 0px;
   display: block;
   min-height: 308px;
-  padding: 26px 26px 132px;
+  padding: 26px 26px 138px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   background:
@@ -1013,97 +1083,147 @@ function continueSummary(item) {
   margin-top: 24px;
 }
 
-.reading-pulse {
+.magnetic-field {
   position: absolute;
   right: 26px;
-  bottom: 26px;
+  bottom: 22px;
   left: 26px;
   z-index: 1;
-  display: grid;
-  align-content: end;
-  height: 82px;
+  height: 104px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
   pointer-events: none;
 }
 
-.reading-pulse::before {
+.magnetic-field::before {
   position: absolute;
-  right: 0;
-  bottom: 8px;
-  left: 0;
-  height: 56px;
+  inset: 0;
   background:
-    linear-gradient(
-      90deg,
-      transparent,
-      color-mix(in srgb, var(--primary-color) 9%, transparent),
-      transparent
+    radial-gradient(
+      circle at var(--field-cursor-x) var(--field-cursor-y),
+      color-mix(in srgb, var(--primary-color) 18%, transparent),
+      transparent 28%
     ),
     repeating-linear-gradient(
       90deg,
-      color-mix(in srgb, var(--border-color) 46%, transparent) 0 1px,
+      color-mix(in srgb, var(--border-color) 38%, transparent) 0 1px,
+      transparent 1px 44px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      color-mix(in srgb, var(--border-color) 24%, transparent) 0 1px,
       transparent 1px 34px
+    ),
+    linear-gradient(
+      180deg,
+      transparent,
+      color-mix(in srgb, var(--surface-wash-color) 48%, transparent),
+      transparent
     );
   content: '';
-  opacity: 0.74;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+  opacity: 0.72;
+  transition: background-position 0.2s ease, opacity 0.2s ease;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
 }
 
-.pulse-track {
-  position: relative;
-  display: block;
-  height: 2px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--border-color) 62%, transparent);
-}
-
-.pulse-fill {
-  display: block;
-  width: var(--pulse-progress);
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
-  box-shadow: 0 0 18px var(--theme-glow-color);
-  animation: pulseDrift 4.8s ease-in-out infinite;
-}
-
-.pulse-node {
+.magnetic-particle {
   position: absolute;
-  bottom: -2px;
-  left: var(--pulse-left);
-  width: 8px;
-  height: 8px;
+  top: var(--particle-y);
+  left: var(--particle-x);
+  width: var(--particle-size);
+  height: var(--particle-size);
   border: 1px solid color-mix(in srgb, var(--primary-color) 48%, transparent);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--panel-bg) 86%, transparent);
-  transform: translateX(-50%);
+  background: color-mix(in srgb, var(--primary-color) 42%, var(--panel-bg));
+  box-shadow: 0 0 14px color-mix(in srgb, var(--primary-color) 34%, transparent);
+  opacity: 0.68;
+  transform: translate(var(--field-shift-x), var(--field-shift-y));
+  animation: magneticDrift 5.8s ease-in-out infinite;
+  animation-delay: var(--particle-delay);
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease,
+    background-color 0.22s ease,
+    box-shadow 0.22s ease;
 }
 
-.pulse-node.is-soft {
-  opacity: 0.56;
+.magnetic-particle.is-soft {
+  opacity: 0.44;
+  transform: translate(var(--field-shift-x-soft), var(--field-shift-y-soft));
 }
 
-.pulse-node.is-current {
-  width: 11px;
-  height: 11px;
-  background: var(--primary-color);
-  box-shadow: 0 0 0 6px var(--surface-wash-color), 0 0 20px var(--theme-glow-color);
-  animation: pulseDrift 3.6s ease-in-out infinite;
+.magnetic-particle.is-strong {
+  opacity: 0.76;
+  transform: translate(var(--field-shift-x-strong), var(--field-shift-y-strong));
 }
 
-.empty-status .reading-pulse {
-  opacity: 0.58;
+.magnetic-streak {
+  position: absolute;
+  top: var(--streak-y);
+  left: var(--streak-x);
+  width: 54px;
+  height: 1px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
+  opacity: 0.34;
+  transform: translate(var(--field-shift-x-soft), var(--field-shift-y-soft)) rotate(-8deg);
+  animation: magneticDrift 7.2s ease-in-out infinite;
+  animation-delay: var(--streak-delay);
 }
 
-@keyframes pulseDrift {
+.magnetic-ripple {
+  position: absolute;
+  top: var(--field-cursor-y);
+  left: var(--field-cursor-x);
+  width: 18px;
+  height: 18px;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 38%, transparent);
+  border-radius: 999px;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.2);
+}
+
+.continue-panel:not(.is-unavailable):hover .magnetic-field::before,
+.empty-status:hover .magnetic-field::before {
+  opacity: 1;
+}
+
+.continue-panel:not(.is-unavailable):hover .magnetic-particle,
+.empty-status:hover .magnetic-particle {
+  opacity: 0.9;
+  background: color-mix(in srgb, var(--primary-color) 56%, var(--panel-bg));
+  box-shadow: 0 0 18px color-mix(in srgb, var(--primary-color) 46%, transparent);
+}
+
+.continue-panel.is-field-rippling .magnetic-ripple {
+  animation: rippleBurst 0.52s ease-out;
+}
+
+.empty-status .magnetic-field {
+  opacity: 0.68;
+}
+
+@keyframes magneticDrift {
   0%,
   100% {
-    filter: saturate(0.95);
+    filter: saturate(0.96);
   }
 
   50% {
-    filter: saturate(1.25) brightness(1.04);
+    filter: saturate(1.22) brightness(1.05);
+  }
+}
+
+@keyframes rippleBurst {
+  0% {
+    opacity: 0.45;
+    transform: translate(-50%, -50%) scale(0.2);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(7.8);
   }
 }
 
@@ -1360,12 +1480,12 @@ function continueSummary(item) {
     padding: 20px;
   }
 
-  .reading-pulse {
+  .magnetic-field {
     position: relative;
     right: auto;
     bottom: auto;
     left: auto;
-    height: 54px;
+    height: 76px;
     margin-top: 24px;
   }
 
@@ -1388,8 +1508,10 @@ function continueSummary(item) {
 
 @media (prefers-reduced-motion: reduce) {
   .continue-panel::after,
-  .pulse-fill,
-  .pulse-node.is-current,
+  .magnetic-field::before,
+  .magnetic-particle,
+  .magnetic-streak,
+  .magnetic-ripple,
   .progress-track span,
   .timeline-item,
   .favorite-line,
@@ -1397,6 +1519,14 @@ function continueSummary(item) {
   .ghost-button {
     animation: none;
     transition: none;
+  }
+
+  .magnetic-particle,
+  .magnetic-particle.is-soft,
+  .magnetic-particle.is-strong,
+  .magnetic-streak,
+  .magnetic-ripple {
+    transform: none;
   }
 
   .timeline-item:not(.is-unavailable):hover,
