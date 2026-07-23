@@ -11,6 +11,7 @@ import {
 } from '../api/reading.js'
 import {
   buildReadingHistoryParams,
+  formatReadingOverviewTime,
   formatReadingProgress,
   formatReadingTime,
   getReadingHistoryGroupKey,
@@ -534,6 +535,15 @@ test('format reading time returns empty text for invalid nullish and empty value
   for (const value of ['invalid', null, undefined, '']) {
     assert.equal(formatReadingTime(value), '')
   }
+})
+
+test('format reading overview time uses compact relative labels', () => {
+  const now = new Date(2026, 6, 23, 14, 30)
+
+  assert.equal(formatReadingOverviewTime(new Date(2026, 6, 23, 10, 42), now), '今天 10:42')
+  assert.equal(formatReadingOverviewTime(new Date(2026, 6, 22, 23, 5), now), '昨天 23:05')
+  assert.match(formatReadingOverviewTime(new Date(2026, 6, 20, 9, 35), now), /7月20日 09:35/)
+  assert.equal(formatReadingOverviewTime('invalid', now), '')
 })
 
 test('format reading progress returns compact Chinese progress text', () => {

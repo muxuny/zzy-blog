@@ -34,6 +34,31 @@ export function formatReadingTime(value) {
   }).format(date)
 }
 
+export function formatReadingOverviewTime(value, now = new Date()) {
+  if (value == null || value === '') return ''
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+
+  const timeText = new Intl.DateTimeFormat('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).format(date)
+  const dayDifference = localDaySerial(now) - localDaySerial(date)
+
+  if (dayDifference <= 0) return `今天 ${timeText}`
+  if (dayDifference === 1) return `昨天 ${timeText}`
+
+  return new Intl.DateTimeFormat('zh-CN', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).format(date)
+}
+
 export function formatReadingProgress(value) {
   if (value === null || value === undefined || value === '') return ''
   const number = Number(value)

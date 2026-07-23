@@ -14,16 +14,16 @@
           <div class="meta-line">
             <span class="meta-label">最近阅读</span>
             <span class="meta-value">
-              {{ overview.lastRead ? formatReadingTime(overview.lastRead.lastReadAt) : '暂无记录' }}
+              {{ overview.lastRead ? formatReadingOverviewTime(overview.lastRead.lastReadAt) : '暂无记录' }}
             </span>
           </div>
           <div class="meta-line">
             <span class="meta-label">历史文章</span>
-            <span class="meta-value">{{ overview.historyTotal }} 条阅读轨迹</span>
+            <span class="meta-value">{{ overview.historyTotal }} 篇</span>
           </div>
           <div class="meta-line">
             <span class="meta-label">收藏</span>
-            <span class="meta-value">{{ overview.favoriteTotal }} 篇收藏</span>
+            <span class="meta-value">{{ overview.favoriteTotal }} 篇可继续</span>
           </div>
         </aside>
       </header>
@@ -289,7 +289,7 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
 import AppHeader from '../components/AppHeader.vue'
 import { getReadingOverview } from '../api/reading'
-import { formatReadingProgress, formatReadingTime } from '../utils/readingHistory'
+import { formatReadingOverviewTime, formatReadingProgress, formatReadingTime } from '../utils/readingHistory'
 
 const overview = ref({
   lastRead: null,
@@ -433,6 +433,8 @@ function continueSummary(item) {
 }
 
 .head-meta {
+  display: grid;
+  gap: 13px;
   padding: 18px 20px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -442,23 +444,26 @@ function continueSummary(item) {
 
 .meta-line {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--soft-border-color);
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: center;
+  padding: 0;
 }
 
 .meta-label {
-  color: var(--accent-color);
-  font-size: 12px;
-  font-weight: 760;
+  color: var(--muted-text-color);
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .meta-value {
   min-width: 0;
   overflow: hidden;
   color: var(--text-color);
-  font-size: 13px;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -867,10 +872,6 @@ function continueSummary(item) {
 
 .head-copy p {
   max-width: 760px;
-}
-
-.meta-line {
-  grid-template-columns: 86px minmax(0, 1fr);
 }
 
 .reading-layout {
