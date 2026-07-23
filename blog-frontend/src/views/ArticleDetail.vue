@@ -104,7 +104,7 @@
             <button
               v-if="neighbors.previous"
               type="button"
-              class="neighbor-card previous"
+              class="neighbor-link previous"
               @click="openArticle(neighbors.previous.id)"
             >
               <span>上一篇</span>
@@ -114,7 +114,7 @@
             <button
               v-if="neighbors.next"
               type="button"
-              class="neighbor-card next"
+              class="neighbor-link next"
               @click="openArticle(neighbors.next.id)"
             >
               <span>下一篇</span>
@@ -133,7 +133,7 @@
                 v-for="item in relatedArticles"
                 :key="item.id"
                 type="button"
-                class="related-card"
+                class="related-link"
                 @click="openArticle(item.id)"
               >
                 <strong>{{ item.title }}</strong>
@@ -702,8 +702,8 @@ function scrollToTop(smooth = true) {
 .back-button:focus-visible,
 .home-button:focus-visible,
 .toc-link:focus-visible,
-.neighbor-card:focus-visible,
-.related-card:focus-visible,
+.neighbor-link:focus-visible,
+.related-link:focus-visible,
 .floating-tool-button:focus-visible {
   outline: 2px solid var(--primary-color);
   outline-offset: 2px;
@@ -998,78 +998,68 @@ function scrollToTop(smooth = true) {
 
 .continuation-section {
   display: grid;
-  gap: 18px;
+  gap: 28px;
+  padding-top: 6px;
+  border-top: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
 }
 
 .neighbor-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 30px;
+  border-top: 1px solid color-mix(in srgb, var(--border-color) 58%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 58%, transparent);
 }
 
-.neighbor-card,
-.related-card {
+.neighbor-link,
+.related-link {
   position: relative;
   display: grid;
   gap: 8px;
   width: 100%;
   min-width: 0;
-  padding: 18px 20px;
+  padding: 18px 0;
   overflow: hidden;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--panel-bg) 82%, transparent);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--text-color);
   font: inherit;
   text-align: left;
   cursor: pointer;
+  box-shadow: none;
   transition:
-    transform 0.22s ease,
-    border-color 0.22s ease,
-    background-color 0.22s ease,
-    box-shadow 0.22s ease;
+    color 0.2s ease,
+    padding-left 0.2s ease;
 }
 
-.neighbor-card::before,
-.related-card::before {
-  position: absolute;
-  top: 14px;
-  bottom: 14px;
-  left: -1px;
-  width: 3px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, var(--primary-color), var(--accent-color));
-  content: '';
-  opacity: 0;
-  transform: scaleY(0.55);
-  transition: opacity 0.22s ease, transform 0.22s ease;
+.neighbor-link.next {
+  padding-left: 30px;
+  border-left: 1px solid color-mix(in srgb, var(--border-color) 58%, transparent);
+  text-align: right;
 }
 
-.neighbor-card:hover,
-.related-card:hover {
-  transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--primary-color) 72%, var(--border-color));
-  background: var(--panel-bg);
-  box-shadow: var(--shadow-sm);
+.neighbor-link:hover,
+.related-link:hover {
+  color: var(--primary-color);
 }
 
-.neighbor-card:hover::before,
-.related-card:hover::before {
-  opacity: 1;
-  transform: scaleY(1);
+.neighbor-link.previous:hover,
+.related-link:hover {
+  padding-left: 8px;
 }
 
-.neighbor-card span,
-.neighbor-card small,
-.related-card small {
+.neighbor-link span,
+.neighbor-link small,
+.related-link small {
   color: var(--muted-text-color);
   font-size: 13px;
 }
 
-.neighbor-card strong,
-.related-card strong {
+.neighbor-link strong,
+.related-link strong {
   min-width: 0;
-  color: var(--text-color);
+  color: currentColor;
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
@@ -1091,7 +1081,12 @@ function scrollToTop(smooth = true) {
 .related-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  column-gap: 32px;
+  border-top: 1px solid color-mix(in srgb, var(--border-color) 58%, transparent);
+}
+
+.related-link {
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 48%, transparent);
 }
 
 .related-tags {
@@ -1240,6 +1235,16 @@ function scrollToTop(smooth = true) {
     grid-template-columns: 1fr;
   }
 
+  .neighbor-grid {
+    gap: 0;
+  }
+
+  .neighbor-link.next {
+    padding-left: 0;
+    border-left: 0;
+    text-align: left;
+  }
+
   .floating-reading-tools {
     right: calc(14px + env(safe-area-inset-right));
     bottom: calc(18px + env(safe-area-inset-bottom));
@@ -1257,17 +1262,13 @@ function scrollToTop(smooth = true) {
   .back-button,
   .toc-link,
   .toc-link::before,
-  .neighbor-card,
-  .neighbor-card::before,
-  .related-card,
-  .related-card::before,
+  .neighbor-link,
+  .related-link,
   .floating-tool-button {
     transition: none;
   }
 
   .back-button:hover,
-  .neighbor-card:hover,
-  .related-card:hover,
   .floating-tool-button:hover {
     transform: none;
   }

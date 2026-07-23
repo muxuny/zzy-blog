@@ -170,7 +170,6 @@ test('article detail gives the article body a quiet primary reading surface', ()
   assert.match(source, /\.article-body\s*\{[^}]*box-shadow:\s*0 18px 46px color-mix\(in srgb,\s*var\(--text-color\)\s*7%,\s*transparent\);/)
   assert.match(source, /\.note-panel\s*\{[^}]*background:\s*transparent;/)
   assert.match(source, /\.note-panel\s*\{[^}]*box-shadow:\s*none;/)
-  assert.match(source, /\.neighbor-card,\s*\.related-card\s*\{[^}]*background:\s*color-mix\(in srgb,\s*var\(--panel-bg\)\s*82%,\s*transparent\);/)
   assert.doesNotMatch(source, /\.article-body\s*\{[^}]*border-top:/)
   assert.doesNotMatch(source, /\.article-body\s*\{[^}]*border-bottom:/)
 })
@@ -233,6 +232,25 @@ test('article detail toc uses the prototype rail instead of card panels', () => 
   assert.doesNotMatch(source, /\.toc-panel\s*\{[^}]*border:\s*1px/)
   assert.doesNotMatch(source, /\.section-meter\b/)
   assert.doesNotMatch(source, /\.meter-dot\b/)
+})
+
+test('article detail continuation reads as light link indexes instead of cards', () => {
+  const source = read('../views/ArticleDetail.vue')
+
+  assert.match(source, /class="neighbor-link previous"/)
+  assert.match(source, /class="neighbor-link next"/)
+  assert.match(source, /class="related-link"/)
+  assert.match(source, /\.continuation-section\s*\{[^}]*border-top:\s*1px solid color-mix\(in srgb,\s*var\(--border-color\)\s*72%,\s*transparent\);/)
+  assert.match(source, /\.neighbor-grid\s*\{[^}]*border-top:\s*1px solid color-mix\(in srgb,\s*var\(--border-color\)\s*58%,\s*transparent\);/)
+  assert.match(source, /\.neighbor-link,\s*\.related-link\s*\{[^}]*border:\s*0;/)
+  assert.match(source, /\.neighbor-link,\s*\.related-link\s*\{[^}]*border-radius:\s*0;/)
+  assert.match(source, /\.neighbor-link,\s*\.related-link\s*\{[^}]*background:\s*transparent;/)
+  assert.match(source, /\.neighbor-link,\s*\.related-link\s*\{[^}]*box-shadow:\s*none;/)
+  assert.match(source, /\.related-grid\s*\{[^}]*border-top:\s*1px solid color-mix\(in srgb,\s*var\(--border-color\)\s*58%,\s*transparent\);/)
+  assert.doesNotMatch(source, /class="neighbor-card/)
+  assert.doesNotMatch(source, /class="related-card/)
+  assert.doesNotMatch(source, /\.neighbor-card\b/)
+  assert.doesNotMatch(source, /\.related-card\b/)
 })
 
 test('reading space uses continuation-focused visual classes', () => {
