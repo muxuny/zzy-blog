@@ -209,6 +209,19 @@ test('article detail summary reads as inline metadata instead of a card', () => 
   assert.doesNotMatch(source, /\.detail-meta\s*\{[^}]*border-left:/)
 })
 
+test('article detail keeps the article summary as a quiet title-area deck', () => {
+  const source = read('../views/ArticleDetail.vue')
+
+  assert.match(source, /<h1>\{\{\s*article\.title\s*\}\}<\/h1>[\s\S]*?<p v-if="article\.summary" class="detail-summary">\{\{\s*article\.summary\s*\}\}<\/p>[\s\S]*?<div class="detail-meta">/)
+  assert.match(source, /\.detail-summary\s*\{[^}]*max-width:\s*680px;/)
+  assert.match(source, /\.detail-summary\s*\{[^}]*margin:\s*0 0 20px;/)
+  assert.match(source, /\.detail-summary\s*\{[^}]*font-size:\s*clamp\(16px,\s*1\.7vw,\s*18px\);/)
+  assert.match(source, /\.detail-summary\s*\{[^}]*line-height:\s*1\.75;/)
+  assert.doesNotMatch(source, /\.detail-summary\s*\{[^}]*background:/)
+  assert.doesNotMatch(source, /\.detail-summary\s*\{[^}]*border:/)
+  assert.doesNotMatch(source, /\.detail-summary\s*\{[^}]*border-radius:/)
+})
+
 test('article detail toc uses the prototype rail instead of card panels', () => {
   const source = read('../views/ArticleDetail.vue')
 

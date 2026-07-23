@@ -30,6 +30,7 @@
               <div class="detail-copy">
                 <span class="eyebrow">文章</span>
                 <h1>{{ article.title }}</h1>
+                <p v-if="article.summary" class="detail-summary">{{ article.summary }}</p>
                 <div class="detail-meta">
                   <span>{{ formatDate(article.createdAt) }}</span>
                   <span>{{ authorName }}</span>
@@ -794,6 +795,15 @@ function scrollToTop(smooth = true) {
   font-size: clamp(52px, 7.4vw, 92px);
   font-weight: 500;
   line-height: 0.98;
+  overflow-wrap: anywhere;
+}
+
+.detail-summary {
+  max-width: 680px;
+  margin: 0 0 20px;
+  color: color-mix(in srgb, var(--text-color) 62%, var(--muted-text-color));
+  font-size: clamp(16px, 1.7vw, 18px);
+  line-height: 1.75;
   overflow-wrap: anywhere;
 }
 
