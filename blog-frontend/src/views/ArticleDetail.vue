@@ -24,76 +24,58 @@
       </section>
 
       <article v-else-if="article" class="article-page">
-        <header class="detail-head" :class="{ 'has-cover': article.coverImage }">
-          <div class="detail-copy">
-            <span class="eyebrow">文章</span>
-            <h1>{{ article.title }}</h1>
-            <div class="hero-meta">
-              <span>{{ formatDate(article.createdAt) }}</span>
-              <span>{{ authorName }}</span>
-              <span>阅读 {{ article.viewCount || 0 }}</span>
-              <span>{{ readingStats.readingTimeText }}</span>
-            </div>
-            <div class="detail-actions">
-              <div v-if="articleTags.length" class="article-tags">
-                <el-tag v-for="tag in articleTags" :key="tag.id" size="small">{{ tag.name }}</el-tag>
-              </div>
-              <div class="favorite-action">
-                <el-button
-                  class="favorite-button"
-                  :loading="favoriteLoading"
-                  :aria-pressed="favorited"
-                  @click="handleFavorite"
-                >
-                  <el-icon>
-                    <StarFilled v-if="favorited" />
-                    <Star v-else />
-                  </el-icon>
-                  <span>{{ favorited ? '已收藏' : '收藏' }}</span>
-                </el-button>
-              </div>
-            </div>
-          </div>
-
-          <aside class="detail-side">
-            <figure v-if="article.coverImage" class="article-cover">
-              <img :src="article.coverImage" :alt="article.title" />
-            </figure>
-            <section class="detail-meta" aria-label="文章阅读摘要">
-              <div class="meta-line">
-                <span class="meta-label">字数</span>
-                <strong class="meta-value">{{ readingStats.wordCount }}</strong>
-              </div>
-              <div class="meta-line">
-                <span class="meta-label">预计阅读</span>
-                <strong class="meta-value">{{ readingStats.readingTimeText }}</strong>
-              </div>
-              <div class="meta-line">
-                <span class="meta-label">作者</span>
-                <strong class="meta-value">{{ authorName }}</strong>
-              </div>
-            </section>
-          </aside>
-        </header>
-
         <div class="reading-canvas">
-          <main class="article-body">
-            <nav v-if="toc.length" class="mobile-toc" aria-label="文章目录">
-              <span class="eyebrow">目录</span>
-              <button
-                v-for="item in toc"
-                :key="item.id"
-                type="button"
-                :class="['toc-link', `level-${item.level}`, { active: activeHeadingId === item.id }]"
-                @click="scrollToHeading(item.id)"
-              >
-                {{ item.text }}
-              </button>
-            </nav>
+          <div class="reading-primary">
+            <header class="detail-head">
+              <div class="detail-copy">
+                <span class="eyebrow">文章</span>
+                <h1>{{ article.title }}</h1>
+                <div class="detail-meta">
+                  <span>{{ formatDate(article.createdAt) }}</span>
+                  <span>{{ authorName }}</span>
+                  <span>阅读 {{ article.viewCount || 0 }}</span>
+                  <span>{{ readingStats.readingTimeText }}</span>
+                  <span>字数 {{ readingStats.wordCount }}</span>
+                </div>
+                <div class="detail-actions">
+                  <div v-if="articleTags.length" class="article-tags">
+                    <el-tag v-for="tag in articleTags" :key="tag.id" size="small">{{ tag.name }}</el-tag>
+                  </div>
+                  <div class="favorite-action">
+                    <el-button
+                      class="favorite-button"
+                      :loading="favoriteLoading"
+                      :aria-pressed="favorited"
+                      @click="handleFavorite"
+                    >
+                      <el-icon>
+                        <StarFilled v-if="favorited" />
+                        <Star v-else />
+                      </el-icon>
+                      <span>{{ favorited ? '已收藏' : '收藏' }}</span>
+                    </el-button>
+                  </div>
+                </div>
+              </div>
+            </header>
 
-            <MarkdownRenderer :content="article.content" />
+            <main class="article-body">
+              <nav v-if="toc.length" class="mobile-toc" aria-label="文章目录">
+                <span class="eyebrow">目录</span>
+                <button
+                  v-for="item in toc"
+                  :key="item.id"
+                  type="button"
+                  :class="['toc-link', `level-${item.level}`, { active: activeHeadingId === item.id }]"
+                  @click="scrollToHeading(item.id)"
+                >
+                  {{ item.text }}
+                </button>
+              </nav>
 
-          </main>
+              <MarkdownRenderer :content="article.content" />
+            </main>
+          </div>
 
           <aside class="reading-sidebar">
             <nav v-if="toc.length" ref="tocPanelRef" class="toc-panel" aria-label="文章目录">
@@ -778,18 +760,15 @@ function scrollToTop(smooth = true) {
 
 .detail-head {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(230px, 320px);
-  gap: clamp(28px, 5vw, 56px);
-  align-items: start;
-  padding: clamp(8px, 2vw, 18px) 0 0;
-  border: 0;
+  margin-bottom: 30px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
   background: transparent;
   box-shadow: none;
 }
 
-.detail-copy,
-.detail-side {
+.reading-primary,
+.detail-copy {
   min-width: 0;
 }
 
@@ -818,20 +797,20 @@ function scrollToTop(smooth = true) {
   overflow-wrap: anywhere;
 }
 
-.hero-meta {
+.detail-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 14px;
   color: var(--muted-text-color);
-  font-size: 14px;
+  font-size: 13px;
 }
 
-.hero-meta span + span {
+.detail-meta span + span {
   position: relative;
   padding-left: 14px;
 }
 
-.hero-meta span + span::before {
+.detail-meta span + span::before {
   position: absolute;
   top: 50%;
   left: 0;
@@ -848,9 +827,7 @@ function scrollToTop(smooth = true) {
   flex-wrap: wrap;
   gap: 10px 12px;
   align-items: center;
-  margin-top: 22px;
-  padding-bottom: 22px;
-  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 66%, transparent);
+  margin-top: 20px;
 }
 
 .article-tags {
@@ -882,79 +859,12 @@ function scrollToTop(smooth = true) {
   box-shadow: none;
 }
 
-.detail-side {
-  display: grid;
-  gap: 12px;
-  align-content: start;
-}
-
-.article-cover {
-  position: relative;
-  min-width: 0;
-  min-height: 210px;
-  margin: 0;
-  overflow: hidden;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 20%, transparent), transparent),
-    var(--panel-bg);
-  box-shadow: var(--shadow-sm);
-}
-
-.article-cover img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  min-height: 210px;
-  object-fit: cover;
-}
-
-.detail-meta {
-  position: relative;
-  align-self: start;
-  display: grid;
-  gap: 12px;
-  padding: 2px 0 0 18px;
-  overflow: hidden;
-  border: 0;
-  border-left: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
-  background: transparent;
-  box-shadow: none;
-}
-
-.meta-line {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 16px;
-  align-items: center;
-  min-height: 26px;
-  padding: 0;
-}
-
-.meta-label {
-  color: var(--muted-text-color);
-  font-size: 13px;
-  font-weight: 620;
-}
-
-.meta-value {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--text-color);
-  font-size: 14px;
-  font-weight: 720;
-  line-height: 1.25;
-  text-align: right;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .reading-canvas {
   display: grid;
-  grid-template-columns: minmax(0, var(--reading-width)) 280px;
-  gap: 34px;
+  grid-template-columns: minmax(0, 760px) 280px;
+  gap: 36px;
   align-items: start;
+  justify-content: center;
 }
 
 .article-body {
@@ -1313,18 +1223,13 @@ function scrollToTop(smooth = true) {
 }
 
 @media (max-width: 980px) {
-  .detail-head,
   .reading-canvas {
     grid-template-columns: 1fr;
   }
 
   .detail-head {
-    gap: 24px;
-    padding: 6px 0 0;
-  }
-
-  .detail-meta {
-    padding: 0 0 0 16px;
+    margin-bottom: 24px;
+    padding-bottom: 22px;
   }
 
   .reading-sidebar {
@@ -1347,8 +1252,8 @@ function scrollToTop(smooth = true) {
   }
 
   .detail-head {
-    gap: 22px;
-    padding: 4px 0 0;
+    margin-bottom: 22px;
+    padding-bottom: 20px;
   }
 
   .detail-actions,
@@ -1380,11 +1285,6 @@ function scrollToTop(smooth = true) {
   .floating-tool-button {
     width: 36px;
     height: 36px;
-  }
-
-  .article-cover,
-  .article-cover img {
-    min-height: 210px;
   }
 }
 
