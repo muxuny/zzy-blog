@@ -157,6 +157,21 @@ test('article detail uses the reading-surface prototype skeleton', () => {
   assert.doesNotMatch(source, /class="reading-summary"/)
 })
 
+test('article detail gives the article body a quiet primary reading surface', () => {
+  const source = read('../views/ArticleDetail.vue')
+
+  assert.match(source, /\.article-body\s*\{[^}]*min-height:\s*clamp\(360px,\s*42vh,\s*560px\);/)
+  assert.match(source, /\.article-body\s*\{[^}]*border:\s*1px solid var\(--border-color\);/)
+  assert.match(source, /\.article-body\s*\{[^}]*border-radius:\s*var\(--radius-md\);/)
+  assert.match(source, /\.article-body\s*\{[^}]*background:\s*color-mix\(in srgb,\s*var\(--panel-bg\)\s*92%,\s*transparent\);/)
+  assert.match(source, /\.article-body\s*\{[^}]*box-shadow:\s*0 18px 46px color-mix\(in srgb,\s*var\(--text-color\)\s*7%,\s*transparent\);/)
+  assert.match(source, /\.note-panel\s*\{[^}]*background:\s*color-mix\(in srgb,\s*var\(--panel-bg\)\s*72%,\s*transparent\);/)
+  assert.match(source, /\.note-panel\s*\{[^}]*box-shadow:\s*none;/)
+  assert.match(source, /\.neighbor-card,\s*\.related-card\s*\{[^}]*background:\s*color-mix\(in srgb,\s*var\(--panel-bg\)\s*82%,\s*transparent\);/)
+  assert.doesNotMatch(source, /\.article-body\s*\{[^}]*border-top:/)
+  assert.doesNotMatch(source, /\.article-body\s*\{[^}]*border-bottom:/)
+})
+
 test('reading space uses continuation-focused visual classes', () => {
   const source = read('../views/ReadingSpace.vue')
 

@@ -903,9 +903,20 @@ function scrollToTop(smooth = true) {
 
 .article-body {
   min-width: 0;
-  padding: clamp(20px, 3vw, 34px) 0;
-  border-top: 1px solid var(--border-color);
-  border-bottom: 1px solid var(--soft-border-color);
+  min-height: clamp(360px, 42vh, 560px);
+  padding: clamp(28px, 4vw, 52px) clamp(22px, 4vw, 46px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-bg) 92%, transparent);
+  box-shadow: 0 18px 46px color-mix(in srgb, var(--text-color) 7%, transparent);
+}
+
+.article-body :deep(.article-content > :first-child) {
+  margin-top: 0;
+}
+
+.article-body :deep(.article-content > :last-child) {
+  margin-bottom: 0;
 }
 
 .reading-sidebar {
@@ -916,17 +927,15 @@ function scrollToTop(smooth = true) {
 }
 
 .toc-panel,
-.note-panel,
 .mobile-toc,
 .section-meter {
-  border: 1px solid var(--border-color);
+  border: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent);
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
-  box-shadow: var(--shadow-sm);
+  background: color-mix(in srgb, var(--panel-bg) 84%, transparent);
+  box-shadow: none;
 }
 
 .toc-panel,
-.note-panel,
 .mobile-toc {
   padding: 16px;
 }
@@ -942,6 +951,14 @@ function scrollToTop(smooth = true) {
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
+}
+
+.note-panel {
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--border-color) 62%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-bg) 72%, transparent);
+  box-shadow: none;
 }
 
 .note-panel p {
@@ -1062,7 +1079,7 @@ function scrollToTop(smooth = true) {
   overflow: hidden;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--panel-bg) 96%, transparent);
+  background: color-mix(in srgb, var(--panel-bg) 82%, transparent);
   color: var(--text-color);
   font: inherit;
   text-align: left;
@@ -1263,7 +1280,8 @@ function scrollToTop(smooth = true) {
   }
 
   .article-body {
-    padding: 18px 0;
+    min-height: 320px;
+    padding: 24px 18px;
   }
 
   .neighbor-grid,
