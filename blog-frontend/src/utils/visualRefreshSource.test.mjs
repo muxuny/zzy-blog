@@ -268,7 +268,7 @@ test('reading space uses continuation-focused visual classes', () => {
   assert.doesNotMatch(source, /reading-progress-track/)
 })
 
-test('reading space fills the continuation panel with a playful magnetic field', () => {
+test('reading space blends a playful magnetic field through the continuation panel', () => {
   const source = read('../views/ReadingSpace.vue')
 
   assert.match(source, /class="magnetic-field"/)
@@ -279,12 +279,18 @@ test('reading space fills the continuation panel with a playful magnetic field',
   assert.match(source, /@pointerdown="triggerReadingRipple"/)
   assert.match(source, /--field-shift-x/)
   assert.match(source, /--field-shift-y/)
-  assert.match(source, /\.magnetic-field\s*\{[^}]*pointer-events:\s*none;/)
-  assert.match(source, /\.magnetic-particle\s*\{[^}]*transform:\s*translate\(/)
+  assert.match(source, /\.magnetic-field\s*\{[^}]*inset:\s*0;[^}]*border-radius:\s*inherit;[^}]*pointer-events:\s*none;/)
+  assert.match(source, /\.magnetic-field::before\s*\{[^}]*mask-image:\s*linear-gradient\(180deg/)
+  assert.match(source, /\.magnetic-field::after\s*\{[^}]*animation:\s*fieldSweep/)
+  assert.match(source, /\.magnetic-particle\s*\{[^}]*translate:\s*var\(--field-shift-x\)\s+var\(--field-shift-y\);[^}]*animation:\s*magneticFloat/)
   assert.match(source, /\.continue-panel\.is-field-rippling\s+\.magnetic-ripple\s*\{[^}]*animation:\s*rippleBurst/)
-  assert.match(source, /@keyframes magneticDrift/)
+  assert.match(source, /@keyframes fieldBreath/)
+  assert.match(source, /@keyframes fieldSweep/)
+  assert.match(source, /@keyframes magneticFloat/)
   assert.match(source, /@keyframes rippleBurst/)
-  assert.match(source, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.magnetic-particle,\s*\.magnetic-particle\.is-soft,\s*\.magnetic-particle\.is-strong,\s*\.magnetic-streak,\s*\.magnetic-ripple\s*\{[^}]*transform:\s*none;/)
+  assert.match(source, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.magnetic-particle,\s*\.magnetic-particle\.is-soft,\s*\.magnetic-particle\.is-strong,\s*\.magnetic-streak,\s*\.magnetic-ripple\s*\{[^}]*translate:\s*none;[^}]*transform:\s*none;/)
+  assert.doesNotMatch(source, /\.magnetic-field\s*\{[^}]*height:\s*104px;/)
+  assert.doesNotMatch(source, /\.magnetic-field\s*\{[^}]*bottom:\s*22px;/)
   assert.doesNotMatch(source, /reading-pulse/)
   assert.doesNotMatch(source, /pulse-track/)
   assert.doesNotMatch(source, /--pulse-progress/)

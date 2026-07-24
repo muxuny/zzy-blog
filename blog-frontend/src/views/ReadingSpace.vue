@@ -978,13 +978,19 @@ function continueSummary(item) {
   --field-shift-y-soft: 0px;
   --field-shift-x-strong: 0px;
   --field-shift-y-strong: 0px;
+  isolation: isolate;
   display: block;
-  min-height: 308px;
-  padding: 26px 26px 138px;
+  min-height: 322px;
+  padding: 26px 26px 124px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   background:
-    linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 13%, transparent), transparent 58%),
+    radial-gradient(
+      circle at var(--field-cursor-x) var(--field-cursor-y),
+      color-mix(in srgb, var(--primary-color) 9%, transparent),
+      transparent 34%
+    ),
+    linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 12%, transparent), transparent 58%),
     color-mix(in srgb, var(--panel-bg) 96%, transparent);
   box-shadow: var(--shadow-md);
 }
@@ -1085,49 +1091,85 @@ function continueSummary(item) {
 
 .magnetic-field {
   position: absolute;
-  right: 26px;
-  bottom: 22px;
-  left: 26px;
+  inset: 0;
   z-index: 1;
-  height: 104px;
   overflow: hidden;
-  border-radius: var(--radius-sm);
+  border-radius: inherit;
   pointer-events: none;
 }
 
-.magnetic-field::before {
+.magnetic-field::before,
+.magnetic-field::after {
   position: absolute;
+  content: '';
+}
+
+.magnetic-field::before {
   inset: 0;
   background:
     radial-gradient(
       circle at var(--field-cursor-x) var(--field-cursor-y),
-      color-mix(in srgb, var(--primary-color) 18%, transparent),
-      transparent 28%
+      color-mix(in srgb, var(--primary-color) 20%, transparent),
+      transparent 31%
+    ),
+    radial-gradient(
+      ellipse at 68% 100%,
+      color-mix(in srgb, var(--accent-color) 20%, transparent),
+      transparent 54%
     ),
     repeating-linear-gradient(
       90deg,
-      color-mix(in srgb, var(--border-color) 38%, transparent) 0 1px,
-      transparent 1px 44px
+      color-mix(in srgb, var(--border-color) 34%, transparent) 0 1px,
+      transparent 1px 38px
     ),
     repeating-linear-gradient(
       0deg,
-      color-mix(in srgb, var(--border-color) 24%, transparent) 0 1px,
-      transparent 1px 34px
+      color-mix(in srgb, var(--border-color) 20%, transparent) 0 1px,
+      transparent 1px 32px
     ),
     linear-gradient(
       180deg,
       transparent,
-      color-mix(in srgb, var(--surface-wash-color) 48%, transparent),
-      transparent
+      color-mix(in srgb, var(--surface-wash-color) 42%, transparent) 58%,
+      color-mix(in srgb, var(--panel-bg) 24%, transparent)
     );
-  content: '';
-  opacity: 0.72;
+  background-position: 0 0, 0 0, 0 0, 0 0, 0 0;
+  opacity: 0.78;
+  animation: fieldBreath 8.5s ease-in-out infinite;
   transition: background-position 0.2s ease, opacity 0.2s ease;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+  -webkit-mask-image: linear-gradient(180deg, rgb(0 0 0 / 10%), rgb(0 0 0 / 38%) 34%, #000 62%);
+  mask-image: linear-gradient(180deg, rgb(0 0 0 / 10%), rgb(0 0 0 / 38%) 34%, #000 62%);
+}
+
+.magnetic-field::after {
+  right: -20%;
+  bottom: -32%;
+  left: -20%;
+  height: 72%;
+  background:
+    linear-gradient(
+      104deg,
+      transparent 20%,
+      color-mix(in srgb, var(--primary-color) 18%, transparent) 46%,
+      color-mix(in srgb, var(--accent-color) 14%, transparent) 54%,
+      transparent 76%
+    ),
+    radial-gradient(
+      ellipse at 50% 100%,
+      color-mix(in srgb, var(--primary-color) 16%, transparent),
+      transparent 62%
+    );
+  opacity: 0.74;
+  transform: translateX(-12%);
+  animation: fieldSweep 7.6s ease-in-out infinite;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent);
 }
 
 .magnetic-particle {
+  --float-x: 10px;
+  --float-y: -8px;
+  --float-scale: 1;
   position: absolute;
   top: var(--particle-y);
   left: var(--particle-x);
@@ -1138,27 +1180,36 @@ function continueSummary(item) {
   background: color-mix(in srgb, var(--primary-color) 42%, var(--panel-bg));
   box-shadow: 0 0 14px color-mix(in srgb, var(--primary-color) 34%, transparent);
   opacity: 0.68;
-  transform: translate(var(--field-shift-x), var(--field-shift-y));
-  animation: magneticDrift 5.8s ease-in-out infinite;
+  translate: var(--field-shift-x) var(--field-shift-y);
+  transform: translate3d(0, 0, 0) scale(var(--float-scale));
+  animation: magneticFloat 6.2s ease-in-out infinite;
   animation-delay: var(--particle-delay);
   transition:
     opacity 0.22s ease,
-    transform 0.22s ease,
+    translate 0.22s ease,
     background-color 0.22s ease,
     box-shadow 0.22s ease;
 }
 
 .magnetic-particle.is-soft {
+  --float-x: 6px;
+  --float-y: -5px;
+  --float-scale: 0.9;
   opacity: 0.44;
-  transform: translate(var(--field-shift-x-soft), var(--field-shift-y-soft));
+  translate: var(--field-shift-x-soft) var(--field-shift-y-soft);
 }
 
 .magnetic-particle.is-strong {
+  --float-x: 14px;
+  --float-y: -10px;
+  --float-scale: 1.08;
   opacity: 0.76;
-  transform: translate(var(--field-shift-x-strong), var(--field-shift-y-strong));
+  translate: var(--field-shift-x-strong) var(--field-shift-y-strong);
 }
 
 .magnetic-streak {
+  --float-x: 18px;
+  --float-y: -4px;
   position: absolute;
   top: var(--streak-y);
   left: var(--streak-x);
@@ -1167,8 +1218,9 @@ function continueSummary(item) {
   border-radius: 999px;
   background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
   opacity: 0.34;
-  transform: translate(var(--field-shift-x-soft), var(--field-shift-y-soft)) rotate(-8deg);
-  animation: magneticDrift 7.2s ease-in-out infinite;
+  translate: var(--field-shift-x-soft) var(--field-shift-y-soft);
+  transform: translate3d(0, 0, 0) rotate(-8deg);
+  animation: streakGlide 7.2s ease-in-out infinite;
   animation-delay: var(--streak-delay);
 }
 
@@ -1181,7 +1233,8 @@ function continueSummary(item) {
   border: 1px solid color-mix(in srgb, var(--primary-color) 38%, transparent);
   border-radius: 999px;
   opacity: 0;
-  transform: translate(-50%, -50%) scale(0.2);
+  translate: -50% -50%;
+  transform: scale(0.2);
 }
 
 .continue-panel:not(.is-unavailable):hover .magnetic-field::before,
@@ -1204,26 +1257,67 @@ function continueSummary(item) {
   opacity: 0.68;
 }
 
-@keyframes magneticDrift {
+@keyframes fieldBreath {
   0%,
   100% {
+    background-position: 0 0, 0 0, 0 0, 0 0, 0 0;
     filter: saturate(0.96);
   }
 
   50% {
+    background-position: 0 0, 0 0, 14px 0, 0 10px, 0 0;
+    filter: saturate(1.16) brightness(1.03);
+  }
+}
+
+@keyframes fieldSweep {
+  0%,
+  100% {
+    opacity: 0.52;
+    transform: translateX(-14%);
+  }
+
+  50% {
+    opacity: 0.86;
+    transform: translateX(10%);
+  }
+}
+
+@keyframes magneticFloat {
+  0%,
+  100% {
+    filter: saturate(0.96);
+    transform: translate3d(0, 0, 0) scale(var(--float-scale));
+  }
+
+  50% {
     filter: saturate(1.22) brightness(1.05);
+    transform: translate3d(var(--float-x), var(--float-y), 0) scale(var(--float-scale));
+  }
+}
+
+@keyframes streakGlide {
+  0%,
+  100% {
+    opacity: 0.24;
+    transform: translate3d(-12px, 0, 0) rotate(-8deg);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: translate3d(14px, -2px, 0) rotate(-8deg);
   }
 }
 
 @keyframes rippleBurst {
   0% {
     opacity: 0.45;
-    transform: translate(-50%, -50%) scale(0.2);
+    transform: scale(0.2);
   }
 
   100% {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(7.8);
+    transform: scale(8.4);
   }
 }
 
@@ -1477,16 +1571,12 @@ function continueSummary(item) {
 
   .continue-panel {
     min-height: 0;
-    padding: 20px;
+    padding: 20px 20px 106px;
   }
 
   .magnetic-field {
-    position: relative;
-    right: auto;
-    bottom: auto;
-    left: auto;
-    height: 76px;
-    margin-top: 24px;
+    position: absolute;
+    inset: 0;
   }
 
   .section-title,
@@ -1509,6 +1599,7 @@ function continueSummary(item) {
 @media (prefers-reduced-motion: reduce) {
   .continue-panel::after,
   .magnetic-field::before,
+  .magnetic-field::after,
   .magnetic-particle,
   .magnetic-streak,
   .magnetic-ripple,
@@ -1526,6 +1617,7 @@ function continueSummary(item) {
   .magnetic-particle.is-strong,
   .magnetic-streak,
   .magnetic-ripple {
+    translate: none;
     transform: none;
   }
 
