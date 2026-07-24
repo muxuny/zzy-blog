@@ -163,6 +163,20 @@ test('reading space separates continuation history favorites and discovery', () 
   assert.match(readingSpaceSource, /<el-skeleton\b/)
 })
 
+test('reading space keeps full history access in the timeline header only', () => {
+  assert.match(readingSpaceSource, /<RouterLink class="section-link" to="\/reading\/history">/)
+
+  const continueActionBlocks = Array.from(
+    readingSpaceSource.matchAll(/<div class="continue-actions">[\s\S]*?<\/div>/g),
+    ([block]) => block
+  )
+  assert.ok(continueActionBlocks.length > 0, 'continue action blocks should exist')
+  for (const block of continueActionBlocks) {
+    assert.doesNotMatch(block, /to="\/reading\/history"/)
+    assert.doesNotMatch(block, /鏌ョ湅瀹屾暣鍘嗗彶|查看完整历史/)
+  }
+})
+
 test('reading space keeps continuation and favorites text-first without cover-led cards', () => {
   assert.match(readingSpaceSource, /class="progress-block"/)
   assert.match(readingSpaceSource, /class="favorite-title-text"/)

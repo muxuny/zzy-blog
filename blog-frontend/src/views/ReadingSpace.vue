@@ -76,9 +76,6 @@
                   <RouterLink class="primary-button" :to="`/article/${overview.lastRead.articleId}`">
                     继续阅读
                   </RouterLink>
-                  <RouterLink class="ghost-button" to="/reading/history">
-                    查看完整历史
-                  </RouterLink>
                 </div>
               </div>
             </template>
@@ -111,9 +108,6 @@
                 </div>
                 <span class="unavailable-note">该文章暂未公开</span>
                 <div class="continue-actions">
-                  <RouterLink class="ghost-button" to="/reading/history">
-                    查看完整历史
-                  </RouterLink>
                   <RouterLink class="ghost-button" to="/">
                     发现更多文章
                   </RouterLink>
@@ -148,9 +142,6 @@
               <div class="continue-actions">
                 <RouterLink class="primary-button" to="/">
                   发现更多文章
-                </RouterLink>
-                <RouterLink class="ghost-button" to="/reading/history">
-                  查看完整历史
                 </RouterLink>
               </div>
             </div>
