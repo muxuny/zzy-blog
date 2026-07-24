@@ -11,17 +11,30 @@
           </p>
         </div>
 
-        <aside class="signal-panel" aria-label="本周内容信号">
-          <span class="eyebrow">本周内容信号</span>
+        <aside class="signal-panel" aria-label="近 7 天更新">
+          <span class="eyebrow">近 7 天更新</span>
           <h2>{{ contentSignal.activeTopic }}</h2>
           <p>{{ contentSignal.summary }}</p>
-          <div class="signal-bars signal-grid" aria-hidden="true">
-            <span
+          <ol class="signal-bars signal-grid" :aria-label="contentSignal.chartLabel">
+            <li
               v-for="(day, index) in contentSignal.bars"
               :key="day.key"
-              class="signal-bar"
-              :style="{ '--signal-height': day.height, '--signal-delay': `${index * -260}ms` }"
-            />
+              class="signal-day"
+              :class="{ 'is-today': day.isToday, 'is-peak': day.isPeak }"
+              :title="day.tooltip"
+              :aria-label="day.accessibleLabel"
+              tabindex="0"
+            >
+              <span
+                class="signal-bar"
+                :style="{ '--signal-height': day.height, '--signal-delay': `${index * -260}ms` }"
+              />
+              <span class="signal-day-label" aria-hidden="true">{{ day.weekdayLabel }}</span>
+            </li>
+          </ol>
+          <div class="signal-chart-note" aria-hidden="true">
+            <span>近 7 天</span>
+            <span>柱高 = 更新篇数</span>
           </div>
           <button
             v-if="featuredArticle"
@@ -371,13 +384,25 @@ function articleInitial(article) {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 10px;
-  align-items: end;
   height: 150px;
-  margin-top: 20px;
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.signal-day {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+  min-width: 0;
+  height: 100%;
+  cursor: help;
 }
 
 .signal-bar {
   display: block;
+  width: 100%;
   height: var(--signal-height);
   min-height: 26px;
   border-radius: 999px 999px 4px 4px;
@@ -391,8 +416,47 @@ function articleInitial(article) {
   animation-delay: var(--signal-delay);
 }
 
-.signal-bar:nth-child(4) {
-  background: linear-gradient(180deg, var(--danger-color), var(--warning-color));
+.signal-day.is-peak .signal-bar {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--warning-color) 86%, var(--accent-color)),
+    color-mix(in srgb, var(--primary-color) 82%, var(--warning-color))
+  );
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--warning-color) 18%, transparent);
+}
+
+.signal-day-label {
+  display: block;
+  color: color-mix(in srgb, var(--muted-text-color) 84%, transparent);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+}
+
+.signal-day.is-today .signal-day-label {
+  color: var(--primary-color);
+}
+
+.signal-day:hover .signal-bar,
+.signal-day:focus-visible .signal-bar {
+  filter: saturate(1.16);
+}
+
+.signal-day:focus-visible {
+  border-radius: 999px 999px var(--radius-sm) var(--radius-sm);
+  outline: 2px solid var(--primary-color);
+  outline-offset: 3px;
+}
+
+.signal-chart-note {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  color: color-mix(in srgb, var(--muted-text-color) 74%, transparent);
+  font-size: 11px;
+  line-height: 1.2;
 }
 
 .signal-caption {

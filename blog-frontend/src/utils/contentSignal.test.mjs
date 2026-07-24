@@ -20,6 +20,42 @@ test('buildContentSignal assigns same-day articles to the Hong Kong today bucket
   assert.equal(signal.updatedCount, 1)
 })
 
+test('buildContentSignal annotates bars with readable day labels and update counts', () => {
+  const signal = buildContentSignal({
+    now: new Date('2026-07-22T12:00:00+08:00'),
+    articles: [
+      {
+        updatedAt: '2026-07-20T10:00:00+08:00',
+        tags: [{ name: 'CSS' }]
+      },
+      {
+        updatedAt: '2026-07-22T09:00:00+08:00',
+        tags: [{ name: 'Vue' }]
+      },
+      {
+        updatedAt: '2026-07-22T10:00:00+08:00',
+        tags: [{ name: 'Vue' }]
+      }
+    ]
+  })
+
+  const emptyDay = signal.bars[0]
+  const peakDay = signal.bars.at(-1)
+  assert.equal(signal.chartLabel, '近 7 天更新分布，共 3 篇更新')
+  assert.equal(emptyDay.weekdayLabel, '四')
+  assert.equal(emptyDay.updateText, '暂无更新')
+  assert.equal(emptyDay.tooltip, '7/16 周四 · 暂无更新')
+  assert.equal(emptyDay.accessibleLabel, '7/16 周四，暂无更新')
+  assert.equal(emptyDay.isToday, false)
+  assert.equal(emptyDay.isPeak, false)
+  assert.equal(peakDay.weekdayLabel, '三')
+  assert.equal(peakDay.updateText, '2 篇更新')
+  assert.equal(peakDay.tooltip, '7/22 周三 · 2 篇更新')
+  assert.equal(peakDay.accessibleLabel, '7/22 周三，2 篇更新')
+  assert.equal(peakDay.isToday, true)
+  assert.equal(peakDay.isPeak, true)
+})
+
 test('buildContentSignal treats offsetless API timestamps as Hong Kong local dates', () => {
   const signal = buildContentSignal({
     now: new Date('2026-07-22T12:00:00+08:00'),
@@ -44,7 +80,7 @@ test('buildContentSignal treats offsetless API timestamps as Hong Kong local dat
   assert.equal(signal.activeTopic, 'Boundary Today')
 })
 
-test('buildContentSignal prefers updatedAt over createdAt for weekly buckets', () => {
+test('buildContentSignal prefers updatedAt over createdAt for seven-day buckets', () => {
   const signal = buildContentSignal({
     now: new Date('2026-07-22T12:00:00+08:00'),
     articles: [
@@ -85,7 +121,7 @@ test('buildContentSignal falls back to top tag and then empty topic text', () =>
   })
 
   assert.equal(topTagSignal.activeTopic, 'Design')
-  assert.equal(topTagSignal.summary, '当前列表本周暂无新更新，可从专题继续阅读')
+  assert.equal(topTagSignal.summary, '当前筛选下近 7 天暂无更新，可以从专题继续阅读')
   assert.equal(emptySignal.activeTopic, '暂无主题')
 })
 
@@ -129,7 +165,7 @@ test('buildContentSignal skips null articles and trims tag names', () => {
   })
 
   assert.equal(signal.activeTopic, 'Vue')
-  assert.equal(signal.summary, '当前列表本周更新 1 篇，集中在 Vue')
+  assert.equal(signal.summary, '当前筛选下近 7 天更新 1 篇，集中在 Vue')
   assert.equal(signal.updatedCount, 1)
 })
 
@@ -147,10 +183,10 @@ test('buildContentSignal ignores truthy non-array tag collections', () => {
 
   assert.equal(signal.updatedCount, 1)
   assert.equal(signal.activeTopic, 'Fallback')
-  assert.equal(signal.summary, '当前列表本周更新 1 篇，集中在 Fallback')
+  assert.equal(signal.summary, '当前筛选下近 7 天更新 1 篇，集中在 Fallback')
 })
 
-test('buildContentSignal only counts current-week tags for the active topic', () => {
+test('buildContentSignal only counts current seven-day tags for the active topic', () => {
   const signal = buildContentSignal({
     now: new Date('2026-07-22T12:00:00+08:00'),
     articles: [
@@ -175,5 +211,5 @@ test('buildContentSignal only counts current-week tags for the active topic', ()
 
   assert.equal(signal.updatedCount, 1)
   assert.equal(signal.activeTopic, 'Weekly')
-  assert.equal(signal.summary, '当前列表本周更新 1 篇，集中在 Weekly')
+  assert.equal(signal.summary, '当前筛选下近 7 天更新 1 篇，集中在 Weekly')
 })

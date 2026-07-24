@@ -4,6 +4,7 @@ const hongKongDateFormatter = new Intl.DateTimeFormat('en-US', {
   month: '2-digit',
   day: '2-digit'
 })
+const weekdayLabels = ['日', '一', '二', '三', '四', '五', '六']
 
 function getHongKongDateParts(date) {
   const parts = Object.fromEntries(hongKongDateFormatter.formatToParts(date).map(part => [part.type, part.value]))
@@ -22,6 +23,10 @@ function getHongKongDateKey(date) {
 function getHongKongDateLabel(date) {
   const { month, day } = getHongKongDateParts(date)
   return `${month}/${day}`
+}
+
+function getHongKongWeekdayLabel(date) {
+  return weekdayLabels[date.getUTCDay()]
 }
 
 function isValidDateParts(year, month, day) {
@@ -57,6 +62,7 @@ export function buildContentSignal({ articles = [], topTags = [], now = new Date
     return {
       key: getHongKongDateKey(date),
       label: getHongKongDateLabel(date),
+      weekdayLabel: getHongKongWeekdayLabel(date),
       count: 0
     }
   })
@@ -82,6 +88,7 @@ export function buildContentSignal({ articles = [], topTags = [], now = new Date
   })
 
   const maxCount = Math.max(1, ...days.map(day => day.count))
+  const peakCount = Math.max(0, ...days.map(day => day.count))
   const fallbackTopic = safeTopTags.map(tag => String(tag?.name || '').trim()).find(Boolean)
   const activeTopic = [...topicCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || fallbackTopic || '暂无主题'
   const updatedCount = days.reduce((sum, day) => sum + day.count, 0)
@@ -89,12 +96,21 @@ export function buildContentSignal({ articles = [], topTags = [], now = new Date
     activeTopic,
     latestTitle: safeArticles[0]?.title || '',
     updatedCount,
+    chartLabel: `近 7 天更新分布，共 ${updatedCount} 篇更新`,
     summary: updatedCount
-      ? `当前列表本周更新 ${updatedCount} 篇，集中在 ${activeTopic}`
-      : '当前列表本周暂无新更新，可从专题继续阅读',
-    bars: days.map(day => ({
-      ...day,
-      height: `${Math.max(16, Math.round((day.count / maxCount) * 100))}%`
-    }))
+      ? `当前筛选下近 7 天更新 ${updatedCount} 篇，集中在 ${activeTopic}`
+      : '当前筛选下近 7 天暂无更新，可以从专题继续阅读',
+    bars: days.map(day => {
+      const updateText = day.count ? `${day.count} 篇更新` : '暂无更新'
+      return {
+        ...day,
+        updateText,
+        tooltip: `${day.label} 周${day.weekdayLabel} · ${updateText}`,
+        accessibleLabel: `${day.label} 周${day.weekdayLabel}，${updateText}`,
+        isToday: day.key === days.at(-1)?.key,
+        isPeak: day.count > 0 && day.count === peakCount,
+        height: `${Math.max(16, Math.round((day.count / maxCount) * 100))}%`
+      }
+    })
   }
 }
