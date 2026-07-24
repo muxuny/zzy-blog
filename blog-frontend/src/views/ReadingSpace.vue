@@ -335,10 +335,10 @@ let componentActive = true
 let requestVersion = 0
 let signalAnimationFrame = 0
 
-const WAVE_FREQUENCY = 0.02
-const WAVE_AMPLITUDE = 24
+const WAVE_FREQUENCY = 0.036
+const WAVE_AMPLITUDE = 34
 const CURSOR_RADIUS = 150
-const CURSOR_LIFT = 30
+const CURSOR_LIFT = 40
 const PARTICLE_MAX = 18
 const PARTICLE_LIFETIME = 2200
 const PARTICLE_MIN_PER_BURST = 1
@@ -437,7 +437,7 @@ function drawSignalCanvas(timestamp = 0) {
     if (ctx) {
       const size = syncSignalCanvasSize(canvas, ctx)
       if (size.width > 0 && size.height > 0) {
-        renderSignalCanvas(ctx, size.width, size.height, timestamp)
+        renderSignalCanvas(ctx, size.width, size.height, timestamp, canvas)
       }
     }
   }
@@ -462,12 +462,13 @@ function syncSignalCanvasSize(canvas, ctx) {
   return { width, height }
 }
 
-function renderSignalCanvas(ctx, width, height, timestamp) {
+function renderSignalCanvas(ctx, width, height, timestamp, canvas) {
   ctx.clearRect(0, 0, width, height)
 
   const gradient = ctx.createLinearGradient(0, 0, width, 0)
-  gradient.addColorStop(0, '#00d4ff')
-  gradient.addColorStop(1, '#7b2ffc')
+  const waveColors = getSignalWaveColors(canvas)
+  gradient.addColorStop(0, waveColors.start)
+  gradient.addColorStop(1, waveColors.end)
 
   const { points, peaks } = buildSignalWavePoints(width, height, timestamp)
   ctx.save()
@@ -478,7 +479,7 @@ function renderSignalCanvas(ctx, width, height, timestamp) {
   ctx.lineWidth = 1.25
   ctx.globalAlpha = cursor.active ? 0.82 : 0.68
   ctx.shadowBlur = cursor.active ? 8 : 4
-  ctx.shadowColor = cursor.active ? '#00d4ff' : '#7b2ffc'
+  ctx.shadowColor = cursor.active ? waveColors.start : waveColors.glow
   ctx.beginPath()
 
   points.forEach((point, index) => {
@@ -552,7 +553,7 @@ function spawnWaveParticles(peaks, gradient, timestamp, width) {
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed - 0.006,
       size: 1 + Math.random() * 1.2,
-      color: gradientColorAt(peak.x / width),
+      color: gradientColorAt(peak.x / width, getSignalWaveColors(signalCanvas.value)),
       bornAt: timestamp
     })
   }
@@ -585,14 +586,55 @@ function drawWaveParticles(ctx, timestamp) {
   ctx.globalAlpha = 1
 }
 
-function gradientColorAt(ratio) {
+function gradientColorAt(ratio, waveColors = { start: '#496b59', end: '#526f8d' }) {
   const safeRatio = Math.min(1, Math.max(0, Number(ratio) || 0))
-  const start = { r: 0x00, g: 0xd4, b: 0xff }
-  const end = { r: 0x7b, g: 0x2f, b: 0xfc }
+  const start = parseSignalColor(waveColors.start, { r: 0x49, g: 0x6b, b: 0x59 })
+  const end = parseSignalColor(waveColors.end, { r: 0x52, g: 0x6f, b: 0x8d })
   const r = Math.round(start.r + (end.r - start.r) * safeRatio)
   const g = Math.round(start.g + (end.g - start.g) * safeRatio)
   const b = Math.round(start.b + (end.b - start.b) * safeRatio)
   return `rgb(${r} ${g} ${b})`
+}
+
+function getSignalWaveColors(canvas) {
+  const styles = canvas instanceof HTMLElement ? window.getComputedStyle(canvas) : null
+  return {
+    start: readSignalColor(styles, '--signal-wave-start', '--primary-color', '#496b59'),
+    end: readSignalColor(styles, '--signal-wave-end', '--accent-color', '#526f8d'),
+    glow: readSignalColor(styles, '--signal-wave-glow', '--theme-glow-color', 'rgba(73, 107, 89, 0.28)')
+  }
+}
+
+function readSignalColor(styles, property, fallbackProperty, fallback) {
+  if (!styles) return fallback
+  const value = styles.getPropertyValue(property).trim()
+  if (value && !value.startsWith('var(')) return value
+  const fallbackValue = styles.getPropertyValue(fallbackProperty).trim()
+  return fallbackValue || fallback
+}
+
+function parseSignalColor(value, fallback) {
+  if (!value) return fallback
+  const hex = value.trim().match(/^#([0-9a-f]{6})$/i)
+  if (hex) {
+    const number = Number.parseInt(hex[1], 16)
+    return {
+      r: (number >> 16) & 255,
+      g: (number >> 8) & 255,
+      b: number & 255
+    }
+  }
+
+  const rgb = value.trim().match(/^rgba?\((\d+)[,\s]+(\d+)[,\s]+(\d+)/i)
+  if (rgb) {
+    return {
+      r: Number(rgb[1]),
+      g: Number(rgb[2]),
+      b: Number(rgb[3])
+    }
+  }
+
+  return fallback
 }
 
 function randomBetween(min, max) {
@@ -1129,10 +1171,13 @@ function continueSummary(item) {
 }
 
 .continue-panel {
+  --signal-wave-start: var(--primary-color);
+  --signal-wave-end: var(--accent-color);
+  --signal-wave-glow: var(--theme-glow-color);
   isolation: isolate;
   display: block;
   min-height: 340px;
-  padding: 26px 26px 126px;
+  padding: 26px 26px 142px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   background:
@@ -1241,7 +1286,7 @@ function continueSummary(item) {
   bottom: 18px;
   left: 26px;
   z-index: 3;
-  height: 88px;
+  height: 104px;
   background: transparent;
   color: var(--primary-color);
   cursor: pointer;
@@ -1268,8 +1313,8 @@ function continueSummary(item) {
   background: linear-gradient(
     90deg,
     transparent,
-    color-mix(in srgb, #00d4ff 22%, transparent),
-    color-mix(in srgb, #7b2ffc 20%, transparent),
+    color-mix(in srgb, var(--signal-wave-start) 22%, transparent),
+    color-mix(in srgb, var(--signal-wave-end) 20%, transparent),
     transparent
   );
   opacity: 0.2;
@@ -1280,7 +1325,7 @@ function continueSummary(item) {
   bottom: 2px;
   background: radial-gradient(
     ellipse at 50% 54%,
-    color-mix(in srgb, #00d4ff 8%, transparent),
+    color-mix(in srgb, var(--signal-wave-start) 8%, transparent),
     transparent 26%
   );
   opacity: 0;
@@ -1291,8 +1336,8 @@ function continueSummary(item) {
   display: block;
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 0 4px color-mix(in srgb, #00d4ff 28%, transparent))
-    drop-shadow(0 0 9px color-mix(in srgb, #7b2ffc 18%, transparent));
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--signal-wave-start) 28%, transparent))
+    drop-shadow(0 0 9px color-mix(in srgb, var(--signal-wave-end) 18%, transparent));
   opacity: 0.72;
   pointer-events: auto;
   transition:
@@ -1312,8 +1357,8 @@ function continueSummary(item) {
 
 .continue-panel:not(.is-unavailable):hover .signal-canvas,
 .empty-status:hover .signal-canvas {
-  filter: drop-shadow(0 0 5px color-mix(in srgb, #00d4ff 34%, transparent))
-    drop-shadow(0 0 14px color-mix(in srgb, #7b2ffc 24%, transparent));
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--signal-wave-start) 34%, transparent))
+    drop-shadow(0 0 14px color-mix(in srgb, var(--signal-wave-end) 24%, transparent));
   opacity: 0.9;
 }
 
@@ -1571,14 +1616,14 @@ function continueSummary(item) {
 
   .continue-panel {
     min-height: 0;
-    padding: 20px 20px 116px;
+    padding: 20px 20px 130px;
   }
 
   .signal-wave {
     right: 18px;
     bottom: 14px;
     left: 18px;
-    height: 82px;
+    height: 96px;
   }
 
   .section-title,
