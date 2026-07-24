@@ -40,14 +40,11 @@
 
       <template v-else>
         <section class="reading-layout">
-          <article
-            v-if="overview.lastRead"
-            class="continue-panel"
-            :class="[
-              { 'is-unavailable': !overview.lastRead.available },
-              { 'is-wave-pulsing': wavePulsing }
-            ]"
-          >
+            <article
+              v-if="overview.lastRead"
+              class="continue-panel"
+              :class="{ 'is-unavailable': !overview.lastRead.available }"
+            >
             <RouterLink
               v-if="overview.lastRead.available"
               class="card-open-link"
@@ -127,35 +124,20 @@
             <div
               class="signal-wave"
               aria-hidden="true"
-              @pointermove.stop="moveSurfaceWave"
-              @pointerleave.stop="resetSignalWave"
-              @pointerdown.stop.prevent="pulseSignalWave"
             >
-              <svg class="wave-svg" viewBox="0 0 640 120" preserveAspectRatio="none" focusable="false">
-                <path
-                  class="surface-line is-glow"
-                  pathLength="100"
-                  :d="surfaceWavePath"
-                />
-                <path
-                  class="surface-line is-core"
-                  pathLength="100"
-                  :d="surfaceWavePath"
-                />
-                <path
-                  class="surface-line is-echo"
-                  pathLength="100"
-                  :d="surfaceEchoPath"
-                />
-              </svg>
-              <span class="wave-spark" />
+              <canvas
+                ref="signalCanvas"
+                class="signal-canvas"
+                @pointerenter.stop="enterSignalCanvas"
+                @pointermove.stop="moveSignalCanvas"
+                @pointerleave.stop="leaveSignalCanvas"
+              />
             </div>
           </article>
 
           <div
             v-else
             class="continue-panel empty-status"
-            :class="{ 'is-wave-pulsing': wavePulsing }"
             role="status"
             aria-live="polite"
           >
@@ -175,28 +157,14 @@
             <div
               class="signal-wave"
               aria-hidden="true"
-              @pointermove.stop="moveSurfaceWave"
-              @pointerleave.stop="resetSignalWave"
-              @pointerdown.stop.prevent="pulseSignalWave"
             >
-              <svg class="wave-svg" viewBox="0 0 640 120" preserveAspectRatio="none" focusable="false">
-                <path
-                  class="surface-line is-glow"
-                  pathLength="100"
-                  :d="surfaceWavePath"
-                />
-                <path
-                  class="surface-line is-core"
-                  pathLength="100"
-                  :d="surfaceWavePath"
-                />
-                <path
-                  class="surface-line is-echo"
-                  pathLength="100"
-                  :d="surfaceEchoPath"
-                />
-              </svg>
-              <span class="wave-spark" />
+              <canvas
+                ref="signalCanvas"
+                class="signal-canvas"
+                @pointerenter.stop="enterSignalCanvas"
+                @pointermove.stop="moveSignalCanvas"
+                @pointerleave.stop="leaveSignalCanvas"
+              />
             </div>
           </div>
 
@@ -347,7 +315,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
 import AppHeader from '../components/AppHeader.vue'
 import { getReadingOverview } from '../api/reading'
@@ -362,39 +330,38 @@ const overview = ref({
 })
 const loading = ref(false)
 const loadError = ref('')
-const wavePulsing = ref(false)
-const surfaceLifts = ref(Array(13).fill(0))
+const signalCanvas = ref(null)
 let componentActive = true
 let requestVersion = 0
-let wavePulseTimer = 0
+let signalAnimationFrame = 0
 
-const SURFACE_POINTS = Object.freeze([
-  { x: 6, y: 63 },
-  { x: 58, y: 61 },
-  { x: 112, y: 64 },
-  { x: 166, y: 60 },
-  { x: 220, y: 62 },
-  { x: 274, y: 59 },
-  { x: 328, y: 61 },
-  { x: 382, y: 58 },
-  { x: 436, y: 62 },
-  { x: 490, y: 60 },
-  { x: 544, y: 63 },
-  { x: 596, y: 61 },
-  { x: 634, y: 62 }
-])
-
-const surfaceWavePath = computed(() => buildSurfaceWavePath(surfaceLifts.value))
-const surfaceEchoPath = computed(() => buildSurfaceWavePath(surfaceLifts.value, 0.42, 10))
+const WAVE_FREQUENCY = 0.02
+const WAVE_AMPLITUDE = 60
+const CURSOR_RADIUS = 150
+const CURSOR_LIFT = 80
+const PARTICLE_MAX = 40
+const PARTICLE_LIFETIME = 1500
+const PARTICLE_MIN_PER_FRAME = 5
+const PARTICLE_MAX_PER_FRAME = 8
+const WAVE_STEP = 8
+const NOISE_AMPLITUDE = 5.5
+const particles = []
+const cursor = {
+  active: false,
+  x: 0,
+  y: 0
+}
 
 onMounted(() => {
   void load()
+  signalAnimationFrame = window.requestAnimationFrame(drawSignalCanvas)
 })
 
 onBeforeUnmount(() => {
   componentActive = false
   requestVersion += 1
-  if (wavePulseTimer) window.clearTimeout(wavePulseTimer)
+  if (signalAnimationFrame) window.cancelAnimationFrame(signalAnimationFrame)
+  particles.splice(0)
 })
 
 async function load() {
@@ -441,71 +408,193 @@ function safeProgressPercent(value) {
   return Math.min(100, Math.max(0, Math.round(number)))
 }
 
-function moveSurfaceWave(event) {
-  if (!(event.currentTarget instanceof HTMLElement)) return
-
-  const wave = event.currentTarget
-  const rect = wave.getBoundingClientRect()
-  const xRatio = rect.width ? clampRatio((event.clientX - rect.left) / rect.width) : 0.5
-  const focus = xRatio * (SURFACE_POINTS.length - 1)
-
-  wave.style.setProperty('--surface-cursor-x', `${Math.round(xRatio * 100)}%`)
-  surfaceLifts.value = SURFACE_POINTS.map((_, index) => {
-    const distance = Math.abs(index - focus)
-    const raise = -18 * Math.exp(-distance * distance / 1.2)
-    const settle = Math.min(5.5, Math.max(0, distance - 1.4) * 1.7)
-    return Number((raise + settle).toFixed(1))
-  })
+function enterSignalCanvas(event) {
+  cursor.active = true
+  moveSignalCanvas(event)
 }
 
-function resetSignalWave(event) {
-  if (!(event.currentTarget instanceof HTMLElement)) return
-  setSignalWaveDefaults(event.currentTarget)
-  surfaceLifts.value = Array(SURFACE_POINTS.length).fill(0)
+function moveSignalCanvas(event) {
+  if (!(event.currentTarget instanceof HTMLCanvasElement)) return
+
+  const rect = event.currentTarget.getBoundingClientRect()
+  cursor.active = true
+  cursor.x = rect.width ? event.clientX - rect.left : 0
+  cursor.y = rect.height ? event.clientY - rect.top : 0
 }
 
-function pulseSignalWave(event) {
-  moveSurfaceWave(event)
-  wavePulsing.value = false
-
-  window.requestAnimationFrame(() => {
-    wavePulsing.value = true
-    if (wavePulseTimer) window.clearTimeout(wavePulseTimer)
-    wavePulseTimer = window.setTimeout(() => {
-      wavePulsing.value = false
-      wavePulseTimer = 0
-    }, 680)
-  })
+function leaveSignalCanvas() {
+  cursor.active = false
 }
 
-function setSignalWaveDefaults(wave) {
-  wave.style.setProperty('--surface-cursor-x', '50%')
-}
+function drawSignalCanvas(timestamp = 0) {
+  if (!componentActive) return
 
-function buildSurfaceWavePath(lifts, strength = 1, yOffset = 0) {
-  const points = SURFACE_POINTS.map((point, index) => ({
-    x: point.x,
-    y: point.y + yOffset + (Number(lifts[index]) || 0) * strength
-  }))
-
-  if (!points.length) return ''
-
-  let path = `M ${points[0].x} ${points[0].y.toFixed(1)}`
-  for (let index = 1; index < points.length; index += 1) {
-    const point = points[index]
-    const next = points[index + 1]
-    const end = next
-      ? { x: (point.x + next.x) / 2, y: (point.y + next.y) / 2 }
-      : point
-    path += ` Q ${point.x} ${point.y.toFixed(1)} ${end.x.toFixed(1)} ${end.y.toFixed(1)}`
+  const canvas = signalCanvas.value
+  if (canvas instanceof HTMLCanvasElement && !prefersReducedSignalMotion()) {
+    const ctx = canvas.getContext('2d')
+    if (ctx) {
+      const size = syncSignalCanvasSize(canvas, ctx)
+      if (size.width > 0 && size.height > 0) {
+        renderSignalCanvas(ctx, size.width, size.height, timestamp)
+      }
+    }
   }
 
-  return path
+  signalAnimationFrame = window.requestAnimationFrame(drawSignalCanvas)
 }
 
-function clampRatio(value) {
-  if (!Number.isFinite(value)) return 0.5
-  return Math.min(1, Math.max(0, value))
+function syncSignalCanvasSize(canvas, ctx) {
+  const rect = canvas.getBoundingClientRect()
+  const width = Math.max(0, Math.round(rect.width))
+  const height = Math.max(0, Math.round(rect.height))
+  const pixelRatio = Math.max(1, Math.min(2, window.devicePixelRatio || 1))
+  const nextWidth = Math.max(1, Math.round(width * pixelRatio))
+  const nextHeight = Math.max(1, Math.round(height * pixelRatio))
+
+  if (canvas.width !== nextWidth || canvas.height !== nextHeight) {
+    canvas.width = nextWidth
+    canvas.height = nextHeight
+  }
+
+  ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
+  return { width, height }
+}
+
+function renderSignalCanvas(ctx, width, height, timestamp) {
+  ctx.clearRect(0, 0, width, height)
+
+  const gradient = ctx.createLinearGradient(0, 0, width, 0)
+  gradient.addColorStop(0, '#00d4ff')
+  gradient.addColorStop(1, '#7b2ffc')
+
+  const { points, peaks } = buildSignalWavePoints(width, height, timestamp)
+  ctx.save()
+  ctx.globalCompositeOperation = 'lighter'
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.strokeStyle = gradient
+  ctx.lineWidth = 2
+  ctx.shadowBlur = cursor.active ? 18 : 10
+  ctx.shadowColor = cursor.active ? '#00d4ff' : '#7b2ffc'
+  ctx.beginPath()
+
+  points.forEach((point, index) => {
+    if (index === 0) {
+      ctx.moveTo(point.x, point.y)
+      return
+    }
+
+    const previous = points[index - 1]
+    const controlX = (previous.x + point.x) / 2
+    const controlY = (previous.y + point.y) / 2
+    ctx.quadraticCurveTo(previous.x, previous.y, controlX, controlY)
+  })
+
+  ctx.stroke()
+  spawnWaveParticles(peaks, gradient, timestamp, width)
+  drawWaveParticles(ctx, timestamp)
+  ctx.restore()
+}
+
+function buildSignalWavePoints(width, height, timestamp) {
+  const points = []
+  const peaks = []
+  const baseline = height * 0.68
+  const time = timestamp * 0.08
+  const sigma = CURSOR_RADIUS / 2
+
+  for (let x = 0; x <= width + WAVE_STEP; x += WAVE_STEP) {
+    let y = baseline + Math.sin((x + time) * WAVE_FREQUENCY) * WAVE_AMPLITUDE + randomNoise(x, time)
+    const distance = Math.abs(x - cursor.x)
+    if (cursor.active && distance <= CURSOR_RADIUS) {
+      const gaussian = Math.exp(-(distance * distance) / (2 * sigma * sigma))
+      y -= CURSOR_LIFT * gaussian
+    }
+    points.push({ x, y })
+  }
+
+  for (let index = 1; index < points.length - 1; index += 1) {
+    const previous = points[index - 1]
+    const current = points[index]
+    const next = points[index + 1]
+    if (current.y <= previous.y && current.y <= next.y) {
+      peaks.push(current)
+    }
+  }
+
+  return { points, peaks }
+}
+
+function randomNoise(x, time) {
+  const first = Math.sin(x * 0.16 + time * 0.31) * 0.5
+  const second = Math.sin(x * 0.047 + time * 0.23 + 1.8) * 0.35
+  const third = Math.sin(x * 0.29 + time * 0.13 + 0.7) * 0.15
+  return (first + second + third) * NOISE_AMPLITUDE
+}
+
+function spawnWaveParticles(peaks, gradient, timestamp, width) {
+  if (!peaks.length || !gradient || width <= 0) return
+
+  const count = randomBetween(PARTICLE_MIN_PER_FRAME, PARTICLE_MAX_PER_FRAME)
+  for (let index = 0; index < count; index += 1) {
+    const peak = peaks[Math.floor(Math.random() * peaks.length)]
+    const angle = Math.random() * Math.PI * 2
+    const speed = 0.035 + Math.random() * 0.08
+    particles.push({
+      x: peak.x,
+      y: peak.y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 0.025,
+      size: 2 + Math.random() * 2,
+      color: gradientColorAt(peak.x / width),
+      bornAt: timestamp
+    })
+  }
+
+  if (particles.length > PARTICLE_MAX) {
+    particles.splice(0, particles.length - PARTICLE_MAX)
+  }
+}
+
+function drawWaveParticles(ctx, timestamp) {
+  for (let index = particles.length - 1; index >= 0; index -= 1) {
+    const particle = particles[index]
+    const age = timestamp - particle.bornAt
+    if (age >= PARTICLE_LIFETIME) {
+      particles.splice(index, 1)
+      continue
+    }
+
+    const progress = age / PARTICLE_LIFETIME
+    const alpha = 1 - progress
+    const x = particle.x + particle.vx * age
+    const y = particle.y + particle.vy * age
+    ctx.globalAlpha = alpha * 0.86
+    ctx.fillStyle = particle.color
+    ctx.beginPath()
+    ctx.arc(x, y, particle.size * (1 - progress * 0.35), 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  ctx.globalAlpha = 1
+}
+
+function gradientColorAt(ratio) {
+  const safeRatio = Math.min(1, Math.max(0, Number(ratio) || 0))
+  const start = { r: 0x00, g: 0xd4, b: 0xff }
+  const end = { r: 0x7b, g: 0x2f, b: 0xfc }
+  const r = Math.round(start.r + (end.r - start.r) * safeRatio)
+  const g = Math.round(start.g + (end.g - start.g) * safeRatio)
+  const b = Math.round(start.b + (end.b - start.b) * safeRatio)
+  return `rgb(${r} ${g} ${b})`
+}
+
+function randomBetween(min, max) {
+  return Math.floor(min + Math.random() * (max - min + 1))
+}
+
+function prefersReducedSignalMotion() {
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true
 }
 
 function continueStatusText(item) {
@@ -1034,13 +1123,10 @@ function continueSummary(item) {
 }
 
 .continue-panel {
-  --surface-hot-color: #6dffea;
-  --surface-cool-color: #8fb6ff;
-  --surface-cursor-x: 50%;
   isolation: isolate;
   display: block;
   min-height: 340px;
-  padding: 26px 26px 126px;
+  padding: 26px 26px 166px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   background:
@@ -1149,7 +1235,7 @@ function continueSummary(item) {
   bottom: 18px;
   left: 26px;
   z-index: 3;
-  height: 76px;
+  height: 128px;
   background: transparent;
   color: var(--primary-color);
   cursor: pointer;
@@ -1176,8 +1262,8 @@ function continueSummary(item) {
   background: linear-gradient(
     90deg,
     transparent,
-    color-mix(in srgb, var(--surface-hot-color) 38%, transparent),
-    color-mix(in srgb, var(--surface-cool-color) 30%, transparent),
+    color-mix(in srgb, #00d4ff 40%, transparent),
+    color-mix(in srgb, #7b2ffc 34%, transparent),
     transparent
   );
   opacity: 0.34;
@@ -1187,83 +1273,25 @@ function continueSummary(item) {
   top: 8px;
   bottom: 2px;
   background: radial-gradient(
-    ellipse at var(--surface-cursor-x) 54%,
-    color-mix(in srgb, var(--surface-hot-color) 16%, transparent),
+    ellipse at 50% 54%,
+    color-mix(in srgb, #00d4ff 16%, transparent),
     transparent 28%
   );
   opacity: 0;
   transition: opacity 0.2s ease;
 }
 
-.wave-svg {
+.signal-canvas {
   display: block;
   width: 100%;
   height: 100%;
-  overflow: visible;
-  pointer-events: none;
-  transform-origin: 50% 55%;
-  transition: transform 0.18s ease;
-}
-
-.surface-line {
-  fill: none;
-  pointer-events: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  transform-box: fill-box;
-  transform-origin: center;
-  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 8px color-mix(in srgb, #00d4ff 46%, transparent))
+    drop-shadow(0 0 16px color-mix(in srgb, #7b2ffc 30%, transparent));
+  opacity: 0.9;
+  pointer-events: auto;
   transition:
-    opacity 0.18s ease,
-    stroke 0.18s ease,
-    transform 0.18s ease;
-}
-
-.surface-line.is-glow {
-  stroke: color-mix(in srgb, var(--surface-hot-color) 74%, var(--surface-cool-color));
-  stroke-width: 4px;
-  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--surface-hot-color) 62%, transparent))
-    drop-shadow(0 0 12px color-mix(in srgb, var(--surface-cool-color) 36%, transparent));
-  opacity: 0.28;
-  animation: surfaceBreathe 5.6s ease-in-out infinite;
-}
-
-.surface-line.is-core {
-  stroke: color-mix(in srgb, var(--surface-hot-color) 82%, #ffffff);
-  stroke-width: 1.8px;
-  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--surface-hot-color) 48%, transparent));
-  opacity: 0.96;
-  animation: surfaceBreathe 4.8s ease-in-out infinite;
-}
-
-.surface-line.is-echo {
-  stroke: color-mix(in srgb, var(--surface-cool-color) 64%, transparent);
-  stroke-width: 1px;
-  stroke-dasharray: 1 12;
-  opacity: 0.4;
-  animation: surfaceBreathe 6.4s ease-in-out infinite reverse;
-}
-
-.wave-spark {
-  position: absolute;
-  top: 48%;
-  left: var(--surface-cursor-x);
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  background: radial-gradient(
-    circle,
-    color-mix(in srgb, #fff 78%, var(--surface-hot-color)) 0 5%,
-    color-mix(in srgb, var(--surface-hot-color) 34%, transparent) 6% 30%,
-    transparent 66%
-  );
-  opacity: 0;
-  pointer-events: none;
-  translate: -50% -50%;
-  transform: scale(0.74);
-  transition:
-    opacity 0.18s ease,
-    transform 0.18s ease;
+    filter 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .continue-panel:not(.is-unavailable):hover .signal-wave,
@@ -1276,61 +1304,15 @@ function continueSummary(item) {
   opacity: 1;
 }
 
-.continue-panel:not(.is-unavailable):hover .surface-line.is-core {
-  stroke: color-mix(in srgb, var(--surface-hot-color) 88%, #ffffff);
+.continue-panel:not(.is-unavailable):hover .signal-canvas,
+.empty-status:hover .signal-canvas {
+  filter: drop-shadow(0 0 10px color-mix(in srgb, #00d4ff 58%, transparent))
+    drop-shadow(0 0 20px color-mix(in srgb, #7b2ffc 36%, transparent));
   opacity: 1;
-}
-
-.continue-panel:not(.is-unavailable):hover .wave-spark,
-.empty-status:hover .wave-spark {
-  opacity: 0.72;
-  transform: scale(1);
-}
-
-.continue-panel.is-wave-pulsing .wave-svg {
-  animation: wavePulse 0.68s cubic-bezier(0.2, 0.9, 0.22, 1);
-}
-
-.continue-panel.is-wave-pulsing .wave-spark {
-  animation: waveSpark 0.68s ease-out;
 }
 
 .empty-status .signal-wave {
   opacity: 0.78;
-}
-
-@keyframes surfaceBreathe {
-  0%,
-  100% {
-    transform: translateY(0) scaleY(1);
-  }
-
-  50% {
-    transform: translateY(-2px) scaleY(1.035);
-  }
-}
-
-@keyframes wavePulse {
-  0%,
-  100% {
-    transform: scaleY(1);
-  }
-
-  38% {
-    transform: translateY(-3px) scaleY(1.14);
-  }
-}
-
-@keyframes waveSpark {
-  0% {
-    opacity: 0.78;
-    transform: scale(0.5);
-  }
-
-  100% {
-    opacity: 0;
-    transform: scale(2.6);
-  }
 }
 
 .primary-button,
@@ -1583,14 +1565,14 @@ function continueSummary(item) {
 
   .continue-panel {
     min-height: 0;
-    padding: 20px 20px 116px;
+    padding: 20px 20px 148px;
   }
 
   .signal-wave {
     right: 18px;
     bottom: 14px;
     left: 18px;
-    height: 78px;
+    height: 112px;
   }
 
   .section-title,
@@ -1612,9 +1594,7 @@ function continueSummary(item) {
 
 @media (prefers-reduced-motion: reduce) {
   .continue-panel::after,
-  .surface-line,
-  .wave-spark,
-  .wave-svg,
+  .signal-canvas,
   .progress-track span,
   .timeline-item,
   .favorite-line,
@@ -1624,11 +1604,8 @@ function continueSummary(item) {
     transition: none;
   }
 
-  .surface-line,
-  .wave-spark,
-  .wave-svg {
-    translate: none;
-    transform: none;
+  .signal-canvas {
+    display: none;
   }
 
   .timeline-item:not(.is-unavailable):hover,
