@@ -45,14 +45,9 @@
             class="continue-panel"
             :class="[
               { 'is-unavailable': !overview.lastRead.available },
-              { 'is-pool-rippling': poolRippling },
-              { 'is-pool-stirring': poolStirring }
+              { 'is-toy-shuffling': toyShuffling },
+              { 'is-toy-grabbing': toyGrabbing }
             ]"
-            @pointermove="updateLiquidPool"
-            @pointerleave="resetLiquidPool"
-            @pointerdown="stirLiquidPool"
-            @pointerup="releaseLiquidPool"
-            @pointercancel="releaseLiquidPool"
           >
             <RouterLink
               v-if="overview.lastRead.available"
@@ -130,28 +125,32 @@
               </div>
             </template>
 
-            <div class="liquid-playground" aria-hidden="true">
-              <span class="liquid-surface" />
-              <span class="liquid-ripple" />
-              <span class="liquid-glow is-primary" style="--glow-x: 14%; --glow-y: 36%; --glow-size: 92px; --glow-delay: -0.7s" />
-              <span class="liquid-glow is-secondary" style="--glow-x: 48%; --glow-y: 58%; --glow-size: 118px; --glow-delay: -2.2s" />
-              <span class="liquid-glow is-tertiary" style="--glow-x: 76%; --glow-y: 30%; --glow-size: 86px; --glow-delay: -1.4s" />
-              <span class="liquid-current is-wide" />
-              <span class="liquid-current is-thin" />
+            <div
+              class="kinetic-toy"
+              aria-hidden="true"
+              @pointermove.stop="moveKineticToy"
+              @pointerleave.stop="resetKineticToy"
+              @pointerdown.stop.prevent="grabKineticToy"
+              @pointerup.stop="releaseKineticToy"
+              @pointercancel.stop="releaseKineticToy"
+              @click.stop.prevent="shuffleKineticToy"
+            >
+              <span class="toy-thread is-a" />
+              <span class="toy-thread is-b" />
+              <span class="toy-orbit is-a"><span /></span>
+              <span class="toy-orbit is-b"><span /></span>
+              <span class="toy-chip is-a" />
+              <span class="toy-chip is-b" />
+              <span class="toy-chip is-c" />
             </div>
           </article>
 
           <div
             v-else
             class="continue-panel empty-status"
-            :class="[{ 'is-pool-rippling': poolRippling }, { 'is-pool-stirring': poolStirring }]"
+            :class="[{ 'is-toy-shuffling': toyShuffling }, { 'is-toy-grabbing': toyGrabbing }]"
             role="status"
             aria-live="polite"
-            @pointermove="updateLiquidPool"
-            @pointerleave="resetLiquidPool"
-            @pointerdown="stirLiquidPool"
-            @pointerup="releaseLiquidPool"
-            @pointercancel="releaseLiquidPool"
           >
             <div class="continue-copy">
               <span class="status-pill muted">暂无轨迹</span>
@@ -166,14 +165,23 @@
                 </RouterLink>
               </div>
             </div>
-            <div class="liquid-playground" aria-hidden="true">
-              <span class="liquid-surface" />
-              <span class="liquid-ripple" />
-              <span class="liquid-glow is-primary" style="--glow-x: 12%; --glow-y: 42%; --glow-size: 96px; --glow-delay: -0.7s" />
-              <span class="liquid-glow is-secondary" style="--glow-x: 48%; --glow-y: 60%; --glow-size: 116px; --glow-delay: -2.2s" />
-              <span class="liquid-glow is-tertiary" style="--glow-x: 76%; --glow-y: 34%; --glow-size: 82px; --glow-delay: -1.4s" />
-              <span class="liquid-current is-wide" />
-              <span class="liquid-current is-thin" />
+            <div
+              class="kinetic-toy"
+              aria-hidden="true"
+              @pointermove.stop="moveKineticToy"
+              @pointerleave.stop="resetKineticToy"
+              @pointerdown.stop.prevent="grabKineticToy"
+              @pointerup.stop="releaseKineticToy"
+              @pointercancel.stop="releaseKineticToy"
+              @click.stop.prevent="shuffleKineticToy"
+            >
+              <span class="toy-thread is-a" />
+              <span class="toy-thread is-b" />
+              <span class="toy-orbit is-a"><span /></span>
+              <span class="toy-orbit is-b"><span /></span>
+              <span class="toy-chip is-a" />
+              <span class="toy-chip is-b" />
+              <span class="toy-chip is-c" />
             </div>
           </div>
 
@@ -339,12 +347,11 @@ const overview = ref({
 })
 const loading = ref(false)
 const loadError = ref('')
-const poolRippling = ref(false)
-const poolStirring = ref(false)
+const toyShuffling = ref(false)
+const toyGrabbing = ref(false)
 let componentActive = true
 let requestVersion = 0
-let poolRippleTimer = 0
-let lastPoolTrailAt = 0
+let toyShuffleTimer = 0
 
 onMounted(() => {
   void load()
@@ -353,7 +360,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   componentActive = false
   requestVersion += 1
-  if (poolRippleTimer) window.clearTimeout(poolRippleTimer)
+  if (toyShuffleTimer) window.clearTimeout(toyShuffleTimer)
 })
 
 async function load() {
@@ -400,75 +407,76 @@ function safeProgressPercent(value) {
   return Math.min(100, Math.max(0, Math.round(number)))
 }
 
-function updateLiquidPool(event) {
+function moveKineticToy(event) {
   if (!(event.currentTarget instanceof HTMLElement)) return
 
-  const panel = event.currentTarget
-  const rect = panel.getBoundingClientRect()
-  const xRatio = rect.width ? (event.clientX - rect.left) / rect.width : 0.5
-  const yRatio = rect.height ? (event.clientY - rect.top) / rect.height : 0.72
-  const shiftX = Math.max(-1, Math.min(1, (xRatio - 0.5) * 2))
-  const shiftY = Math.max(-1, Math.min(1, (yRatio - 0.72) * 2))
+  const toy = event.currentTarget
+  const rect = toy.getBoundingClientRect()
+  const xRatio = rect.width ? clampRatio((event.clientX - rect.left) / rect.width) : 0.5
+  const yRatio = rect.height ? clampRatio((event.clientY - rect.top) / rect.height) : 0.52
+  const shiftX = xRatio - 0.5
+  const shiftY = yRatio - 0.5
 
-  panel.style.setProperty('--pool-cursor-x', `${Math.round(xRatio * 100)}%`)
-  panel.style.setProperty('--pool-cursor-y', `${Math.round(yRatio * 100)}%`)
-  panel.style.setProperty('--pool-flow-x', `${(shiftX * 20).toFixed(1)}px`)
-  panel.style.setProperty('--pool-flow-y', `${(shiftY * 12).toFixed(1)}px`)
-  panel.style.setProperty('--pool-flow-x-reverse', `${(shiftX * -11).toFixed(1)}px`)
-  panel.style.setProperty('--pool-drift-x', `${(shiftX * 10).toFixed(1)}px`)
-  panel.style.setProperty('--pool-drift-y', `${(shiftY * 7).toFixed(1)}px`)
-  panel.style.setProperty('--pool-drift-x-reverse', `${(shiftX * -10).toFixed(1)}px`)
-
-  const now = Date.now()
-  if (poolStirring.value && now - lastPoolTrailAt > 150) {
-    lastPoolTrailAt = now
-    triggerLiquidRipple()
-  }
+  toy.style.setProperty('--toy-x', `${Math.round(xRatio * 100)}%`)
+  toy.style.setProperty('--toy-y', `${Math.round(yRatio * 100)}%`)
+  toy.style.setProperty('--toy-a-x', `${(shiftX * -18).toFixed(1)}px`)
+  toy.style.setProperty('--toy-a-y', `${(shiftY * -12).toFixed(1)}px`)
+  toy.style.setProperty('--toy-b-x', `${(shiftX * 24).toFixed(1)}px`)
+  toy.style.setProperty('--toy-b-y', `${(shiftY * 16).toFixed(1)}px`)
+  toy.style.setProperty('--toy-c-x', `${(shiftX * -11).toFixed(1)}px`)
+  toy.style.setProperty('--toy-c-y', `${(shiftY * 20).toFixed(1)}px`)
+  toy.style.setProperty('--toy-tilt', `${(shiftX * 10).toFixed(1)}deg`)
+  toy.style.setProperty('--toy-depth', `${(1 + Math.abs(shiftX) * 0.08 + Math.abs(shiftY) * 0.06).toFixed(2)}`)
 }
 
-function resetLiquidPool(event) {
+function resetKineticToy(event) {
   if (!(event.currentTarget instanceof HTMLElement)) return
-  setLiquidPoolDefaults(event.currentTarget)
-  releaseLiquidPool()
+  setKineticToyDefaults(event.currentTarget)
+  releaseKineticToy()
 }
 
-function stirLiquidPool(event) {
-  updateLiquidPool(event)
-  poolStirring.value = true
-  lastPoolTrailAt = Date.now()
-  triggerLiquidRipple()
+function grabKineticToy(event) {
+  moveKineticToy(event)
+  toyGrabbing.value = true
 
   if (event.currentTarget instanceof HTMLElement && typeof event.currentTarget.setPointerCapture === 'function') {
     event.currentTarget.setPointerCapture(event.pointerId)
   }
 }
 
-function releaseLiquidPool() {
-  poolStirring.value = false
+function releaseKineticToy() {
+  toyGrabbing.value = false
 }
 
-function triggerLiquidRipple() {
-  poolRippling.value = false
+function shuffleKineticToy() {
+  toyShuffling.value = false
 
   window.requestAnimationFrame(() => {
-    poolRippling.value = true
-    if (poolRippleTimer) window.clearTimeout(poolRippleTimer)
-    poolRippleTimer = window.setTimeout(() => {
-      poolRippling.value = false
-      poolRippleTimer = 0
-    }, 680)
+    toyShuffling.value = true
+    if (toyShuffleTimer) window.clearTimeout(toyShuffleTimer)
+    toyShuffleTimer = window.setTimeout(() => {
+      toyShuffling.value = false
+      toyShuffleTimer = 0
+    }, 760)
   })
 }
 
-function setLiquidPoolDefaults(panel) {
-  panel.style.setProperty('--pool-cursor-x', '50%')
-  panel.style.setProperty('--pool-cursor-y', '72%')
-  panel.style.setProperty('--pool-flow-x', '0px')
-  panel.style.setProperty('--pool-flow-y', '0px')
-  panel.style.setProperty('--pool-flow-x-reverse', '0px')
-  panel.style.setProperty('--pool-drift-x', '0px')
-  panel.style.setProperty('--pool-drift-y', '0px')
-  panel.style.setProperty('--pool-drift-x-reverse', '0px')
+function setKineticToyDefaults(toy) {
+  toy.style.setProperty('--toy-x', '54%')
+  toy.style.setProperty('--toy-y', '52%')
+  toy.style.setProperty('--toy-a-x', '0px')
+  toy.style.setProperty('--toy-a-y', '0px')
+  toy.style.setProperty('--toy-b-x', '0px')
+  toy.style.setProperty('--toy-b-y', '0px')
+  toy.style.setProperty('--toy-c-x', '0px')
+  toy.style.setProperty('--toy-c-y', '0px')
+  toy.style.setProperty('--toy-tilt', '0deg')
+  toy.style.setProperty('--toy-depth', '1')
+}
+
+function clampRatio(value) {
+  if (!Number.isFinite(value)) return 0.5
+  return Math.min(1, Math.max(0, value))
 }
 
 function continueStatusText(item) {
@@ -997,18 +1005,20 @@ function continueSummary(item) {
 }
 
 .continue-panel {
-  --pool-cursor-x: 50%;
-  --pool-cursor-y: 72%;
-  --pool-flow-x: 0px;
-  --pool-flow-y: 0px;
-  --pool-flow-x-reverse: 0px;
-  --pool-drift-x: 0px;
-  --pool-drift-y: 0px;
-  --pool-drift-x-reverse: 0px;
+  --toy-x: 54%;
+  --toy-y: 52%;
+  --toy-a-x: 0px;
+  --toy-a-y: 0px;
+  --toy-b-x: 0px;
+  --toy-b-y: 0px;
+  --toy-c-x: 0px;
+  --toy-c-y: 0px;
+  --toy-tilt: 0deg;
+  --toy-depth: 1;
   isolation: isolate;
   display: block;
   min-height: 340px;
-  padding: 26px 26px 158px;
+  padding: 26px 26px 150px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   background:
@@ -1111,236 +1121,280 @@ function continueSummary(item) {
   margin-top: 24px;
 }
 
-.liquid-playground {
+.kinetic-toy {
   position: absolute;
-  right: 24px;
-  bottom: 20px;
-  left: 24px;
-  z-index: 1;
-  height: 118px;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--primary-color) 20%, transparent);
-  border-radius: 38px 52px 34px 46px / 44px 32px 50px 36px;
-  background:
-    radial-gradient(
-      circle at var(--pool-cursor-x) var(--pool-cursor-y),
-      color-mix(in srgb, var(--accent-color) 28%, transparent),
-      transparent 34%
-    ),
-    linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 22%, transparent), transparent 56%),
-    color-mix(in srgb, var(--panel-bg) 82%, var(--surface-wash-color));
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, #fff 36%, transparent),
-    inset 0 -22px 46px color-mix(in srgb, var(--primary-color) 12%, transparent),
-    0 20px 44px -34px var(--theme-glow-color);
-  isolation: isolate;
-  pointer-events: none;
-  transform: translateZ(0);
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
+  right: 28px;
+  bottom: 22px;
+  left: 28px;
+  z-index: 3;
+  height: 112px;
+  background: transparent;
+  cursor: grab;
+  opacity: 0.94;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  transition: opacity 0.2s ease;
 }
 
-.liquid-playground::before,
-.liquid-playground::after {
+.kinetic-toy::before,
+.kinetic-toy::after {
   position: absolute;
+  pointer-events: none;
   content: '';
 }
 
-.liquid-playground::before {
-  inset: -70% -24%;
-  background:
-    conic-gradient(
-      from 0.08turn at var(--pool-cursor-x) var(--pool-cursor-y),
-      color-mix(in srgb, var(--primary-color) 8%, transparent),
-      color-mix(in srgb, var(--accent-color) 26%, transparent),
-      color-mix(in srgb, var(--primary-color) 18%, transparent),
-      color-mix(in srgb, var(--accent-color) 10%, transparent),
-      color-mix(in srgb, var(--primary-color) 8%, transparent)
-    );
-  filter: blur(10px) saturate(1.12);
-  opacity: 0.78;
-  transform: translate(var(--pool-flow-x), var(--pool-flow-y)) rotate(0deg);
-  animation: liquidFlow 8.5s linear infinite;
-}
-
-.liquid-playground::after {
-  right: -10%;
-  bottom: -36%;
-  left: -10%;
-  height: 86%;
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, #fff 34%, transparent),
-      transparent 22%,
-      color-mix(in srgb, var(--accent-color) 10%, transparent) 52%,
-      transparent
-    ),
-    radial-gradient(ellipse at 50% 0%, color-mix(in srgb, #fff 24%, transparent), transparent 64%);
-  opacity: 0.58;
-  transform: translateY(var(--pool-drift-y));
-  animation: liquidTide 6.2s ease-in-out infinite;
-}
-
-.liquid-surface {
+.kinetic-toy::before {
   position: absolute;
-  inset: 8px 12px;
-  z-index: 2;
-  overflow: hidden;
-  border-radius: inherit;
-  background:
-    repeating-linear-gradient(
-      112deg,
-      transparent 0 18px,
-      color-mix(in srgb, #fff 16%, transparent) 18px 19px,
-      transparent 19px 42px
-    );
-  opacity: 0.44;
-  mix-blend-mode: screen;
-  transform: translate(var(--pool-drift-x), var(--pool-drift-y));
-  animation: liquidTide 5.8s ease-in-out infinite;
-}
-
-.liquid-glow {
-  position: absolute;
-  top: var(--glow-y);
-  left: var(--glow-x);
-  z-index: 1;
-  width: var(--glow-size);
-  height: var(--glow-size);
+  right: 5%;
+  bottom: 18px;
+  left: 4%;
+  height: 1px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--primary-color) 22%, transparent);
-  filter: blur(4px);
-  opacity: 0.74;
-  translate: var(--pool-flow-x) var(--pool-flow-y);
-  transform: translate(-50%, -50%) scale(0.9);
-  animation: liquidWander 7.4s ease-in-out infinite;
-  animation-delay: var(--glow-delay);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--primary-color) 32%, transparent),
+    color-mix(in srgb, var(--accent-color) 26%, transparent),
+    transparent
+  );
+  opacity: 0.72;
+  transform: translateY(var(--toy-c-y)) rotate(-1deg);
+  transition: transform 0.18s ease, opacity 0.18s ease;
 }
 
-.liquid-glow.is-secondary {
-  background: color-mix(in srgb, var(--accent-color) 26%, transparent);
-  opacity: 0.68;
-  translate: var(--pool-drift-x) var(--pool-flow-y);
-}
-
-.liquid-glow.is-tertiary {
-  background: color-mix(in srgb, #fff 22%, transparent);
-  opacity: 0.42;
-  translate: var(--pool-flow-x) var(--pool-drift-y);
-}
-
-.liquid-current {
-  position: absolute;
-  right: 10%;
-  bottom: 24px;
-  left: 12%;
-  z-index: 3;
-  height: 20px;
-  border-radius: 999px;
-  background:
-    radial-gradient(ellipse at 16% 50%, color-mix(in srgb, #fff 28%, transparent), transparent 36%),
-    linear-gradient(90deg, transparent, color-mix(in srgb, #fff 26%, transparent), transparent);
-  opacity: 0.48;
-  transform: translateX(var(--pool-drift-x)) skewX(-12deg);
-  animation: liquidTide 4.8s ease-in-out infinite;
-}
-
-.liquid-current.is-thin {
-  right: 24%;
-  bottom: 56px;
-  left: 28%;
-  height: 7px;
-  opacity: 0.38;
-  animation-delay: -1.7s;
-}
-
-.liquid-ripple {
-  position: absolute;
-  top: var(--pool-cursor-y);
-  left: var(--pool-cursor-x);
-  z-index: 4;
-  width: 24px;
-  height: 24px;
+.kinetic-toy::after {
+  top: var(--toy-y);
+  left: var(--toy-x);
+  width: 30px;
+  height: 30px;
   border: 1px solid color-mix(in srgb, #fff 52%, transparent);
   border-radius: 999px;
   box-shadow: 0 0 28px color-mix(in srgb, var(--accent-color) 34%, transparent);
   opacity: 0;
   translate: -50% -50%;
-  transform: scale(0.2);
+  transform: scale(0.42);
 }
 
-.continue-panel:not(.is-unavailable):hover .liquid-playground,
-.empty-status:hover .liquid-playground {
-  border-color: color-mix(in srgb, var(--primary-color) 34%, transparent);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, #fff 44%, transparent),
-    inset 0 -24px 48px color-mix(in srgb, var(--primary-color) 16%, transparent),
-    0 24px 54px -34px var(--theme-glow-color);
-  transform: translateY(-2px);
+.toy-thread {
+  position: absolute;
+  height: 1px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--text-color) 20%, transparent), transparent);
+  opacity: 0.5;
+  pointer-events: none;
+  transform-origin: left center;
+  transition: transform 0.18s ease, opacity 0.18s ease;
 }
 
-.continue-panel.is-pool-rippling .liquid-ripple {
-  animation: liquidRipple 0.68s ease-out;
+.toy-thread.is-a {
+  top: 56%;
+  left: 15%;
+  width: 58%;
+  transform: translate(var(--toy-b-x), var(--toy-b-y)) rotate(-4deg);
 }
 
-.continue-panel.is-pool-stirring .liquid-playground::before {
-  opacity: 0.95;
-  animation-duration: 3.4s;
+.toy-thread.is-b {
+  top: 33%;
+  left: 42%;
+  width: 38%;
+  opacity: 0.36;
+  transform: translate(var(--toy-c-x), var(--toy-a-y)) rotate(8deg);
 }
 
-.continue-panel.is-pool-stirring .liquid-current {
-  animation-duration: 1.8s;
+.toy-orbit {
+  position: absolute;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 22%, transparent);
+  border-radius: 999px;
+  opacity: 0.52;
+  pointer-events: none;
+  transition: transform 0.18s ease, opacity 0.18s ease;
 }
 
-.empty-status .liquid-playground {
-  opacity: 0.88;
+.toy-orbit span {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-color) 72%, var(--panel-bg));
+  box-shadow: 0 0 16px color-mix(in srgb, var(--accent-color) 36%, transparent);
 }
 
-@keyframes liquidFlow {
+.toy-orbit.is-a {
+  bottom: 6px;
+  left: 7%;
+  width: 74px;
+  height: 42px;
+  transform: translate(var(--toy-a-x), var(--toy-a-y)) rotate(-10deg);
+}
+
+.toy-orbit.is-a span {
+  top: 7px;
+  right: 16px;
+}
+
+.toy-orbit.is-b {
+  top: 8px;
+  right: 8%;
+  width: 64px;
+  height: 64px;
+  border-color: color-mix(in srgb, var(--accent-color) 20%, transparent);
+  transform: translate(var(--toy-c-x), var(--toy-c-y)) rotate(18deg);
+}
+
+.toy-orbit.is-b span {
+  right: 12px;
+  bottom: 12px;
+}
+
+.toy-chip {
+  position: absolute;
+  display: block;
+  border: 1px solid color-mix(in srgb, #fff 36%, var(--border-color));
+  background: color-mix(in srgb, var(--panel-bg) 78%, var(--primary-color));
+  box-shadow: 0 14px 32px -24px var(--theme-glow-color);
+  pointer-events: none;
+  transition:
+    box-shadow 0.18s ease,
+    opacity 0.18s ease,
+    transform 0.18s ease;
+  animation: toyIdle 5.6s ease-in-out infinite;
+  will-change: transform, translate;
+}
+
+.toy-chip.is-a {
+  top: 46%;
+  left: 13%;
+  width: 54px;
+  height: 20px;
+  border-radius: 999px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--primary-color) 72%, var(--panel-bg)),
+    color-mix(in srgb, var(--accent-color) 42%, var(--panel-bg))
+  );
+  transform: translate(var(--toy-a-x), var(--toy-a-y)) rotate(calc(-7deg + var(--toy-tilt))) scale(var(--toy-depth));
+}
+
+.toy-chip.is-b {
+  top: 60%;
+  left: 48%;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent-color) 62%, var(--panel-bg)),
+    color-mix(in srgb, #fff 34%, var(--primary-color))
+  );
+  transform: translate(var(--toy-b-x), var(--toy-b-y)) rotate(calc(11deg - var(--toy-tilt))) scale(var(--toy-depth));
+  animation-delay: -1.7s;
+}
+
+.toy-chip.is-c {
+  top: 30%;
+  right: 14%;
+  width: 44px;
+  height: 16px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-color) 72%, var(--panel-bg));
+  transform: translate(var(--toy-c-x), var(--toy-c-y)) rotate(calc(5deg + var(--toy-tilt))) scale(var(--toy-depth));
+  animation-delay: -3.1s;
+}
+
+.continue-panel:not(.is-unavailable):hover .kinetic-toy,
+.empty-status:hover .kinetic-toy {
+  opacity: 1;
+}
+
+.continue-panel:not(.is-unavailable):hover .toy-chip,
+.empty-status:hover .toy-chip {
+  box-shadow: 0 18px 36px -24px var(--theme-glow-color);
+}
+
+.continue-panel.is-toy-grabbing .kinetic-toy {
+  cursor: grabbing;
+}
+
+.continue-panel.is-toy-grabbing .toy-chip,
+.continue-panel.is-toy-grabbing .toy-thread,
+.continue-panel.is-toy-grabbing .toy-orbit {
+  transition-duration: 0.08s;
+}
+
+.continue-panel.is-toy-shuffling .kinetic-toy::after {
+  animation: toyTap 0.58s ease-out;
+}
+
+.continue-panel.is-toy-shuffling .toy-chip.is-a {
+  animation: toyShuffleA 760ms cubic-bezier(0.22, 0.88, 0.25, 1);
+}
+
+.continue-panel.is-toy-shuffling .toy-chip.is-b {
+  animation: toyShuffleB 760ms cubic-bezier(0.22, 0.88, 0.25, 1);
+}
+
+.continue-panel.is-toy-shuffling .toy-chip.is-c {
+  animation: toyShuffleC 760ms cubic-bezier(0.22, 0.88, 0.25, 1);
+}
+
+.empty-status .kinetic-toy {
+  opacity: 0.86;
+}
+
+@keyframes toyIdle {
   0%,
   100% {
-    transform: translate(var(--pool-flow-x), var(--pool-flow-y)) rotate(0deg) scale(1);
+    translate: 0 0;
   }
 
   50% {
-    transform: translate(var(--pool-flow-x-reverse), calc(var(--pool-flow-y) + 8px)) rotate(180deg) scale(1.05);
+    translate: 0 -5px;
   }
 }
 
-@keyframes liquidTide {
-  0%,
-  100% {
-    transform: translateX(var(--pool-drift-x));
-  }
-
-  50% {
-    transform: translateX(var(--pool-drift-x-reverse)) translateY(-6px);
-  }
-}
-
-@keyframes liquidWander {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) scale(0.88);
-  }
-
-  50% {
-    transform: translate(calc(-50% + var(--pool-drift-x)), calc(-50% + var(--pool-drift-y))) scale(1.12);
-  }
-}
-
-@keyframes liquidRipple {
+@keyframes toyTap {
   0% {
-    opacity: 0.68;
-    transform: scale(0.2);
+    opacity: 0.62;
+    transform: scale(0.42);
   }
 
   100% {
     opacity: 0;
-    transform: scale(7.6);
+    transform: scale(3.4);
+  }
+}
+
+@keyframes toyShuffleA {
+  0%,
+  100% {
+    transform: translate(var(--toy-a-x), var(--toy-a-y)) rotate(calc(-7deg + var(--toy-tilt))) scale(var(--toy-depth));
+  }
+
+  42% {
+    transform: translate(calc(var(--toy-a-x) + 30px), calc(var(--toy-a-y) - 24px)) rotate(18deg) scale(1.06);
+  }
+}
+
+@keyframes toyShuffleB {
+  0%,
+  100% {
+    transform: translate(var(--toy-b-x), var(--toy-b-y)) rotate(calc(11deg - var(--toy-tilt))) scale(var(--toy-depth));
+  }
+
+  46% {
+    transform: translate(calc(var(--toy-b-x) - 24px), calc(var(--toy-b-y) - 20px)) rotate(-22deg) scale(1.08);
+  }
+}
+
+@keyframes toyShuffleC {
+  0%,
+  100% {
+    transform: translate(var(--toy-c-x), var(--toy-c-y)) rotate(calc(5deg + var(--toy-tilt))) scale(var(--toy-depth));
+  }
+
+  40% {
+    transform: translate(calc(var(--toy-c-x) - 28px), calc(var(--toy-c-y) + 22px)) rotate(20deg) scale(1.04);
   }
 }
 
@@ -1597,9 +1651,9 @@ function continueSummary(item) {
     padding: 20px 20px 132px;
   }
 
-  .liquid-playground {
+  .kinetic-toy {
     right: 18px;
-    bottom: 18px;
+    bottom: 16px;
     left: 18px;
     height: 92px;
   }
@@ -1623,12 +1677,11 @@ function continueSummary(item) {
 
 @media (prefers-reduced-motion: reduce) {
   .continue-panel::after,
-  .liquid-playground::before,
-  .liquid-playground::after,
-  .liquid-surface,
-  .liquid-glow,
-  .liquid-current,
-  .liquid-ripple,
+  .kinetic-toy::before,
+  .kinetic-toy::after,
+  .toy-chip,
+  .toy-thread,
+  .toy-orbit,
   .progress-track span,
   .timeline-item,
   .favorite-line,
@@ -1638,12 +1691,11 @@ function continueSummary(item) {
     transition: none;
   }
 
-  .liquid-playground::before,
-  .liquid-playground::after,
-  .liquid-surface,
-  .liquid-glow,
-  .liquid-current,
-  .liquid-ripple {
+  .kinetic-toy::before,
+  .kinetic-toy::after,
+  .toy-chip,
+  .toy-thread,
+  .toy-orbit {
     translate: none;
     transform: none;
   }
