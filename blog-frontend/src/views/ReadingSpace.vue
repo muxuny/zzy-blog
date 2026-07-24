@@ -336,16 +336,18 @@ let requestVersion = 0
 let signalAnimationFrame = 0
 
 const WAVE_FREQUENCY = 0.02
-const WAVE_AMPLITUDE = 60
+const WAVE_AMPLITUDE = 24
 const CURSOR_RADIUS = 150
-const CURSOR_LIFT = 80
-const PARTICLE_MAX = 40
-const PARTICLE_LIFETIME = 1500
-const PARTICLE_MIN_PER_FRAME = 5
-const PARTICLE_MAX_PER_FRAME = 8
+const CURSOR_LIFT = 30
+const PARTICLE_MAX = 18
+const PARTICLE_LIFETIME = 2200
+const PARTICLE_MIN_PER_BURST = 1
+const PARTICLE_MAX_PER_BURST = 2
+const PARTICLE_SPAWN_INTERVAL = 180
 const WAVE_STEP = 8
-const NOISE_AMPLITUDE = 5.5
+const NOISE_AMPLITUDE = 2.2
 const particles = []
+let lastParticleSpawn = 0
 const cursor = {
   active: false,
   x: 0,
@@ -473,8 +475,9 @@ function renderSignalCanvas(ctx, width, height, timestamp) {
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
   ctx.strokeStyle = gradient
-  ctx.lineWidth = 2
-  ctx.shadowBlur = cursor.active ? 18 : 10
+  ctx.lineWidth = 1.25
+  ctx.globalAlpha = cursor.active ? 0.82 : 0.68
+  ctx.shadowBlur = cursor.active ? 8 : 4
   ctx.shadowColor = cursor.active ? '#00d4ff' : '#7b2ffc'
   ctx.beginPath()
 
@@ -491,6 +494,7 @@ function renderSignalCanvas(ctx, width, height, timestamp) {
   })
 
   ctx.stroke()
+  ctx.globalAlpha = 1
   spawnWaveParticles(peaks, gradient, timestamp, width)
   drawWaveParticles(ctx, timestamp)
   ctx.restore()
@@ -499,7 +503,7 @@ function renderSignalCanvas(ctx, width, height, timestamp) {
 function buildSignalWavePoints(width, height, timestamp) {
   const points = []
   const peaks = []
-  const baseline = height * 0.68
+  const baseline = height * 0.62
   const time = timestamp * 0.08
   const sigma = CURSOR_RADIUS / 2
 
@@ -534,18 +538,20 @@ function randomNoise(x, time) {
 
 function spawnWaveParticles(peaks, gradient, timestamp, width) {
   if (!peaks.length || !gradient || width <= 0) return
+  if (timestamp - lastParticleSpawn < PARTICLE_SPAWN_INTERVAL) return
 
-  const count = randomBetween(PARTICLE_MIN_PER_FRAME, PARTICLE_MAX_PER_FRAME)
+  lastParticleSpawn = timestamp
+  const count = randomBetween(PARTICLE_MIN_PER_BURST, PARTICLE_MAX_PER_BURST)
   for (let index = 0; index < count; index += 1) {
     const peak = peaks[Math.floor(Math.random() * peaks.length)]
     const angle = Math.random() * Math.PI * 2
-    const speed = 0.035 + Math.random() * 0.08
+    const speed = 0.008 + Math.random() * 0.018
     particles.push({
       x: peak.x,
       y: peak.y,
       vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - 0.025,
-      size: 2 + Math.random() * 2,
+      vy: Math.sin(angle) * speed - 0.006,
+      size: 1 + Math.random() * 1.2,
       color: gradientColorAt(peak.x / width),
       bornAt: timestamp
     })
@@ -569,7 +575,7 @@ function drawWaveParticles(ctx, timestamp) {
     const alpha = 1 - progress
     const x = particle.x + particle.vx * age
     const y = particle.y + particle.vy * age
-    ctx.globalAlpha = alpha * 0.86
+    ctx.globalAlpha = alpha * 0.38
     ctx.fillStyle = particle.color
     ctx.beginPath()
     ctx.arc(x, y, particle.size * (1 - progress * 0.35), 0, Math.PI * 2)
@@ -1126,7 +1132,7 @@ function continueSummary(item) {
   isolation: isolate;
   display: block;
   min-height: 340px;
-  padding: 26px 26px 166px;
+  padding: 26px 26px 126px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   background:
@@ -1235,7 +1241,7 @@ function continueSummary(item) {
   bottom: 18px;
   left: 26px;
   z-index: 3;
-  height: 128px;
+  height: 88px;
   background: transparent;
   color: var(--primary-color);
   cursor: pointer;
@@ -1262,11 +1268,11 @@ function continueSummary(item) {
   background: linear-gradient(
     90deg,
     transparent,
-    color-mix(in srgb, #00d4ff 40%, transparent),
-    color-mix(in srgb, #7b2ffc 34%, transparent),
+    color-mix(in srgb, #00d4ff 22%, transparent),
+    color-mix(in srgb, #7b2ffc 20%, transparent),
     transparent
   );
-  opacity: 0.34;
+  opacity: 0.2;
 }
 
 .signal-wave::after {
@@ -1274,8 +1280,8 @@ function continueSummary(item) {
   bottom: 2px;
   background: radial-gradient(
     ellipse at 50% 54%,
-    color-mix(in srgb, #00d4ff 16%, transparent),
-    transparent 28%
+    color-mix(in srgb, #00d4ff 8%, transparent),
+    transparent 26%
   );
   opacity: 0;
   transition: opacity 0.2s ease;
@@ -1285,9 +1291,9 @@ function continueSummary(item) {
   display: block;
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 0 8px color-mix(in srgb, #00d4ff 46%, transparent))
-    drop-shadow(0 0 16px color-mix(in srgb, #7b2ffc 30%, transparent));
-  opacity: 0.9;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, #00d4ff 28%, transparent))
+    drop-shadow(0 0 9px color-mix(in srgb, #7b2ffc 18%, transparent));
+  opacity: 0.72;
   pointer-events: auto;
   transition:
     filter 0.2s ease,
@@ -1306,9 +1312,9 @@ function continueSummary(item) {
 
 .continue-panel:not(.is-unavailable):hover .signal-canvas,
 .empty-status:hover .signal-canvas {
-  filter: drop-shadow(0 0 10px color-mix(in srgb, #00d4ff 58%, transparent))
-    drop-shadow(0 0 20px color-mix(in srgb, #7b2ffc 36%, transparent));
-  opacity: 1;
+  filter: drop-shadow(0 0 5px color-mix(in srgb, #00d4ff 34%, transparent))
+    drop-shadow(0 0 14px color-mix(in srgb, #7b2ffc 24%, transparent));
+  opacity: 0.9;
 }
 
 .empty-status .signal-wave {
@@ -1565,14 +1571,14 @@ function continueSummary(item) {
 
   .continue-panel {
     min-height: 0;
-    padding: 20px 20px 148px;
+    padding: 20px 20px 116px;
   }
 
   .signal-wave {
     right: 18px;
     bottom: 14px;
     left: 18px;
-    height: 112px;
+    height: 82px;
   }
 
   .section-title,
