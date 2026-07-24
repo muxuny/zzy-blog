@@ -43,10 +43,16 @@
           <article
             v-if="overview.lastRead"
             class="continue-panel"
-            :class="[{ 'is-unavailable': !overview.lastRead.available }, { 'is-field-rippling': fieldRippling }]"
-            @pointermove="updateReadingField"
-            @pointerleave="resetReadingField"
-            @pointerdown="triggerReadingRipple"
+            :class="[
+              { 'is-unavailable': !overview.lastRead.available },
+              { 'is-pool-rippling': poolRippling },
+              { 'is-pool-stirring': poolStirring }
+            ]"
+            @pointermove="updateLiquidPool"
+            @pointerleave="resetLiquidPool"
+            @pointerdown="stirLiquidPool"
+            @pointerup="releaseLiquidPool"
+            @pointercancel="releaseLiquidPool"
           >
             <RouterLink
               v-if="overview.lastRead.available"
@@ -124,29 +130,28 @@
               </div>
             </template>
 
-            <div class="magnetic-field" aria-hidden="true">
-              <span class="magnetic-ripple" />
-              <span class="magnetic-particle is-soft" style="--particle-x: 10%; --particle-y: 62%; --particle-size: 4px; --particle-delay: -0.4s" />
-              <span class="magnetic-particle is-mid" style="--particle-x: 22%; --particle-y: 38%; --particle-size: 7px; --particle-delay: -1.8s" />
-              <span class="magnetic-particle is-strong" style="--particle-x: 36%; --particle-y: 70%; --particle-size: 5px; --particle-delay: -2.5s" />
-              <span class="magnetic-particle is-soft" style="--particle-x: 52%; --particle-y: 46%; --particle-size: 6px; --particle-delay: -1.1s" />
-              <span class="magnetic-particle is-mid" style="--particle-x: 68%; --particle-y: 64%; --particle-size: 4px; --particle-delay: -3s" />
-              <span class="magnetic-particle is-strong" style="--particle-x: 84%; --particle-y: 34%; --particle-size: 8px; --particle-delay: -2s" />
-              <span class="magnetic-streak" style="--streak-x: 16%; --streak-y: 28%; --streak-delay: -0.6s" />
-              <span class="magnetic-streak" style="--streak-x: 58%; --streak-y: 76%; --streak-delay: -1.7s" />
-              <span class="magnetic-streak" style="--streak-x: 78%; --streak-y: 54%; --streak-delay: -2.4s" />
+            <div class="liquid-playground" aria-hidden="true">
+              <span class="liquid-surface" />
+              <span class="liquid-ripple" />
+              <span class="liquid-glow is-primary" style="--glow-x: 14%; --glow-y: 36%; --glow-size: 92px; --glow-delay: -0.7s" />
+              <span class="liquid-glow is-secondary" style="--glow-x: 48%; --glow-y: 58%; --glow-size: 118px; --glow-delay: -2.2s" />
+              <span class="liquid-glow is-tertiary" style="--glow-x: 76%; --glow-y: 30%; --glow-size: 86px; --glow-delay: -1.4s" />
+              <span class="liquid-current is-wide" />
+              <span class="liquid-current is-thin" />
             </div>
           </article>
 
           <div
             v-else
             class="continue-panel empty-status"
-            :class="{ 'is-field-rippling': fieldRippling }"
+            :class="[{ 'is-pool-rippling': poolRippling }, { 'is-pool-stirring': poolStirring }]"
             role="status"
             aria-live="polite"
-            @pointermove="updateReadingField"
-            @pointerleave="resetReadingField"
-            @pointerdown="triggerReadingRipple"
+            @pointermove="updateLiquidPool"
+            @pointerleave="resetLiquidPool"
+            @pointerdown="stirLiquidPool"
+            @pointerup="releaseLiquidPool"
+            @pointercancel="releaseLiquidPool"
           >
             <div class="continue-copy">
               <span class="status-pill muted">暂无轨迹</span>
@@ -161,15 +166,14 @@
                 </RouterLink>
               </div>
             </div>
-            <div class="magnetic-field" aria-hidden="true">
-              <span class="magnetic-ripple" />
-              <span class="magnetic-particle is-soft" style="--particle-x: 12%; --particle-y: 66%; --particle-size: 4px; --particle-delay: -0.4s" />
-              <span class="magnetic-particle is-mid" style="--particle-x: 28%; --particle-y: 40%; --particle-size: 6px; --particle-delay: -1.8s" />
-              <span class="magnetic-particle is-strong" style="--particle-x: 46%; --particle-y: 74%; --particle-size: 5px; --particle-delay: -2.5s" />
-              <span class="magnetic-particle is-soft" style="--particle-x: 62%; --particle-y: 48%; --particle-size: 6px; --particle-delay: -1.1s" />
-              <span class="magnetic-particle is-mid" style="--particle-x: 82%; --particle-y: 62%; --particle-size: 5px; --particle-delay: -3s" />
-              <span class="magnetic-streak" style="--streak-x: 18%; --streak-y: 30%; --streak-delay: -0.6s" />
-              <span class="magnetic-streak" style="--streak-x: 56%; --streak-y: 76%; --streak-delay: -1.7s" />
+            <div class="liquid-playground" aria-hidden="true">
+              <span class="liquid-surface" />
+              <span class="liquid-ripple" />
+              <span class="liquid-glow is-primary" style="--glow-x: 12%; --glow-y: 42%; --glow-size: 96px; --glow-delay: -0.7s" />
+              <span class="liquid-glow is-secondary" style="--glow-x: 48%; --glow-y: 60%; --glow-size: 116px; --glow-delay: -2.2s" />
+              <span class="liquid-glow is-tertiary" style="--glow-x: 76%; --glow-y: 34%; --glow-size: 82px; --glow-delay: -1.4s" />
+              <span class="liquid-current is-wide" />
+              <span class="liquid-current is-thin" />
             </div>
           </div>
 
@@ -335,10 +339,12 @@ const overview = ref({
 })
 const loading = ref(false)
 const loadError = ref('')
-const fieldRippling = ref(false)
+const poolRippling = ref(false)
+const poolStirring = ref(false)
 let componentActive = true
 let requestVersion = 0
-let fieldRippleTimer = 0
+let poolRippleTimer = 0
+let lastPoolTrailAt = 0
 
 onMounted(() => {
   void load()
@@ -347,7 +353,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   componentActive = false
   requestVersion += 1
-  if (fieldRippleTimer) window.clearTimeout(fieldRippleTimer)
+  if (poolRippleTimer) window.clearTimeout(poolRippleTimer)
 })
 
 async function load() {
@@ -394,54 +400,75 @@ function safeProgressPercent(value) {
   return Math.min(100, Math.max(0, Math.round(number)))
 }
 
-function updateReadingField(event) {
+function updateLiquidPool(event) {
   if (!(event.currentTarget instanceof HTMLElement)) return
 
   const panel = event.currentTarget
   const rect = panel.getBoundingClientRect()
   const xRatio = rect.width ? (event.clientX - rect.left) / rect.width : 0.5
-  const yRatio = rect.height ? (event.clientY - rect.top) / rect.height : 0.68
+  const yRatio = rect.height ? (event.clientY - rect.top) / rect.height : 0.72
   const shiftX = Math.max(-1, Math.min(1, (xRatio - 0.5) * 2))
-  const shiftY = Math.max(-1, Math.min(1, (yRatio - 0.68) * 2))
+  const shiftY = Math.max(-1, Math.min(1, (yRatio - 0.72) * 2))
 
-  panel.style.setProperty('--field-cursor-x', `${Math.round(xRatio * 100)}%`)
-  panel.style.setProperty('--field-cursor-y', `${Math.round(yRatio * 100)}%`)
-  panel.style.setProperty('--field-shift-x', `${(shiftX * 16).toFixed(1)}px`)
-  panel.style.setProperty('--field-shift-y', `${(shiftY * 12).toFixed(1)}px`)
-  panel.style.setProperty('--field-shift-x-soft', `${(shiftX * 8).toFixed(1)}px`)
-  panel.style.setProperty('--field-shift-y-soft', `${(shiftY * 6).toFixed(1)}px`)
-  panel.style.setProperty('--field-shift-x-strong', `${(shiftX * 24).toFixed(1)}px`)
-  panel.style.setProperty('--field-shift-y-strong', `${(shiftY * 18).toFixed(1)}px`)
+  panel.style.setProperty('--pool-cursor-x', `${Math.round(xRatio * 100)}%`)
+  panel.style.setProperty('--pool-cursor-y', `${Math.round(yRatio * 100)}%`)
+  panel.style.setProperty('--pool-flow-x', `${(shiftX * 20).toFixed(1)}px`)
+  panel.style.setProperty('--pool-flow-y', `${(shiftY * 12).toFixed(1)}px`)
+  panel.style.setProperty('--pool-flow-x-reverse', `${(shiftX * -11).toFixed(1)}px`)
+  panel.style.setProperty('--pool-drift-x', `${(shiftX * 10).toFixed(1)}px`)
+  panel.style.setProperty('--pool-drift-y', `${(shiftY * 7).toFixed(1)}px`)
+  panel.style.setProperty('--pool-drift-x-reverse', `${(shiftX * -10).toFixed(1)}px`)
+
+  const now = Date.now()
+  if (poolStirring.value && now - lastPoolTrailAt > 150) {
+    lastPoolTrailAt = now
+    triggerLiquidRipple()
+  }
 }
 
-function resetReadingField(event) {
+function resetLiquidPool(event) {
   if (!(event.currentTarget instanceof HTMLElement)) return
-  setReadingFieldDefaults(event.currentTarget)
+  setLiquidPoolDefaults(event.currentTarget)
+  releaseLiquidPool()
 }
 
-function triggerReadingRipple(event) {
-  updateReadingField(event)
-  fieldRippling.value = false
+function stirLiquidPool(event) {
+  updateLiquidPool(event)
+  poolStirring.value = true
+  lastPoolTrailAt = Date.now()
+  triggerLiquidRipple()
+
+  if (event.currentTarget instanceof HTMLElement && typeof event.currentTarget.setPointerCapture === 'function') {
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+}
+
+function releaseLiquidPool() {
+  poolStirring.value = false
+}
+
+function triggerLiquidRipple() {
+  poolRippling.value = false
 
   window.requestAnimationFrame(() => {
-    fieldRippling.value = true
-    if (fieldRippleTimer) window.clearTimeout(fieldRippleTimer)
-    fieldRippleTimer = window.setTimeout(() => {
-      fieldRippling.value = false
-      fieldRippleTimer = 0
-    }, 520)
+    poolRippling.value = true
+    if (poolRippleTimer) window.clearTimeout(poolRippleTimer)
+    poolRippleTimer = window.setTimeout(() => {
+      poolRippling.value = false
+      poolRippleTimer = 0
+    }, 680)
   })
 }
 
-function setReadingFieldDefaults(panel) {
-  panel.style.setProperty('--field-cursor-x', '50%')
-  panel.style.setProperty('--field-cursor-y', '68%')
-  panel.style.setProperty('--field-shift-x', '0px')
-  panel.style.setProperty('--field-shift-y', '0px')
-  panel.style.setProperty('--field-shift-x-soft', '0px')
-  panel.style.setProperty('--field-shift-y-soft', '0px')
-  panel.style.setProperty('--field-shift-x-strong', '0px')
-  panel.style.setProperty('--field-shift-y-strong', '0px')
+function setLiquidPoolDefaults(panel) {
+  panel.style.setProperty('--pool-cursor-x', '50%')
+  panel.style.setProperty('--pool-cursor-y', '72%')
+  panel.style.setProperty('--pool-flow-x', '0px')
+  panel.style.setProperty('--pool-flow-y', '0px')
+  panel.style.setProperty('--pool-flow-x-reverse', '0px')
+  panel.style.setProperty('--pool-drift-x', '0px')
+  panel.style.setProperty('--pool-drift-y', '0px')
+  panel.style.setProperty('--pool-drift-x-reverse', '0px')
 }
 
 function continueStatusText(item) {
@@ -970,27 +997,22 @@ function continueSummary(item) {
 }
 
 .continue-panel {
-  --field-cursor-x: 50%;
-  --field-cursor-y: 68%;
-  --field-shift-x: 0px;
-  --field-shift-y: 0px;
-  --field-shift-x-soft: 0px;
-  --field-shift-y-soft: 0px;
-  --field-shift-x-strong: 0px;
-  --field-shift-y-strong: 0px;
+  --pool-cursor-x: 50%;
+  --pool-cursor-y: 72%;
+  --pool-flow-x: 0px;
+  --pool-flow-y: 0px;
+  --pool-flow-x-reverse: 0px;
+  --pool-drift-x: 0px;
+  --pool-drift-y: 0px;
+  --pool-drift-x-reverse: 0px;
   isolation: isolate;
   display: block;
-  min-height: 322px;
-  padding: 26px 26px 124px;
+  min-height: 340px;
+  padding: 26px 26px 158px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   background:
-    radial-gradient(
-      circle at var(--field-cursor-x) var(--field-cursor-y),
-      color-mix(in srgb, var(--primary-color) 9%, transparent),
-      transparent 34%
-    ),
-    linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 12%, transparent), transparent 58%),
+    linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 10%, transparent), transparent 58%),
     color-mix(in srgb, var(--panel-bg) 96%, transparent);
   box-shadow: var(--shadow-md);
 }
@@ -1089,235 +1111,236 @@ function continueSummary(item) {
   margin-top: 24px;
 }
 
-.magnetic-field {
+.liquid-playground {
   position: absolute;
-  inset: 0;
+  right: 24px;
+  bottom: 20px;
+  left: 24px;
   z-index: 1;
+  height: 118px;
   overflow: hidden;
-  border-radius: inherit;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 20%, transparent);
+  border-radius: 38px 52px 34px 46px / 44px 32px 50px 36px;
+  background:
+    radial-gradient(
+      circle at var(--pool-cursor-x) var(--pool-cursor-y),
+      color-mix(in srgb, var(--accent-color) 28%, transparent),
+      transparent 34%
+    ),
+    linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 22%, transparent), transparent 56%),
+    color-mix(in srgb, var(--panel-bg) 82%, var(--surface-wash-color));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 36%, transparent),
+    inset 0 -22px 46px color-mix(in srgb, var(--primary-color) 12%, transparent),
+    0 20px 44px -34px var(--theme-glow-color);
+  isolation: isolate;
   pointer-events: none;
+  transform: translateZ(0);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 
-.magnetic-field::before,
-.magnetic-field::after {
+.liquid-playground::before,
+.liquid-playground::after {
   position: absolute;
   content: '';
 }
 
-.magnetic-field::before {
-  inset: 0;
+.liquid-playground::before {
+  inset: -70% -24%;
   background:
-    radial-gradient(
-      circle at var(--field-cursor-x) var(--field-cursor-y),
-      color-mix(in srgb, var(--primary-color) 20%, transparent),
-      transparent 31%
-    ),
-    radial-gradient(
-      ellipse at 68% 100%,
-      color-mix(in srgb, var(--accent-color) 20%, transparent),
-      transparent 54%
-    ),
-    repeating-linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--border-color) 34%, transparent) 0 1px,
-      transparent 1px 38px
-    ),
-    repeating-linear-gradient(
-      0deg,
-      color-mix(in srgb, var(--border-color) 20%, transparent) 0 1px,
-      transparent 1px 32px
-    ),
+    conic-gradient(
+      from 0.08turn at var(--pool-cursor-x) var(--pool-cursor-y),
+      color-mix(in srgb, var(--primary-color) 8%, transparent),
+      color-mix(in srgb, var(--accent-color) 26%, transparent),
+      color-mix(in srgb, var(--primary-color) 18%, transparent),
+      color-mix(in srgb, var(--accent-color) 10%, transparent),
+      color-mix(in srgb, var(--primary-color) 8%, transparent)
+    );
+  filter: blur(10px) saturate(1.12);
+  opacity: 0.78;
+  transform: translate(var(--pool-flow-x), var(--pool-flow-y)) rotate(0deg);
+  animation: liquidFlow 8.5s linear infinite;
+}
+
+.liquid-playground::after {
+  right: -10%;
+  bottom: -36%;
+  left: -10%;
+  height: 86%;
+  background:
     linear-gradient(
       180deg,
-      transparent,
-      color-mix(in srgb, var(--surface-wash-color) 42%, transparent) 58%,
-      color-mix(in srgb, var(--panel-bg) 24%, transparent)
-    );
-  background-position: 0 0, 0 0, 0 0, 0 0, 0 0;
-  opacity: 0.78;
-  animation: fieldBreath 8.5s ease-in-out infinite;
-  transition: background-position 0.2s ease, opacity 0.2s ease;
-  -webkit-mask-image: linear-gradient(180deg, rgb(0 0 0 / 10%), rgb(0 0 0 / 38%) 34%, #000 62%);
-  mask-image: linear-gradient(180deg, rgb(0 0 0 / 10%), rgb(0 0 0 / 38%) 34%, #000 62%);
-}
-
-.magnetic-field::after {
-  right: -20%;
-  bottom: -32%;
-  left: -20%;
-  height: 72%;
-  background:
-    linear-gradient(
-      104deg,
-      transparent 20%,
-      color-mix(in srgb, var(--primary-color) 18%, transparent) 46%,
-      color-mix(in srgb, var(--accent-color) 14%, transparent) 54%,
-      transparent 76%
+      color-mix(in srgb, #fff 34%, transparent),
+      transparent 22%,
+      color-mix(in srgb, var(--accent-color) 10%, transparent) 52%,
+      transparent
     ),
-    radial-gradient(
-      ellipse at 50% 100%,
-      color-mix(in srgb, var(--primary-color) 16%, transparent),
-      transparent 62%
+    radial-gradient(ellipse at 50% 0%, color-mix(in srgb, #fff 24%, transparent), transparent 64%);
+  opacity: 0.58;
+  transform: translateY(var(--pool-drift-y));
+  animation: liquidTide 6.2s ease-in-out infinite;
+}
+
+.liquid-surface {
+  position: absolute;
+  inset: 8px 12px;
+  z-index: 2;
+  overflow: hidden;
+  border-radius: inherit;
+  background:
+    repeating-linear-gradient(
+      112deg,
+      transparent 0 18px,
+      color-mix(in srgb, #fff 16%, transparent) 18px 19px,
+      transparent 19px 42px
     );
-  opacity: 0.74;
-  transform: translateX(-12%);
-  animation: fieldSweep 7.6s ease-in-out infinite;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent);
-}
-
-.magnetic-particle {
-  --float-x: 10px;
-  --float-y: -8px;
-  --float-scale: 1;
-  position: absolute;
-  top: var(--particle-y);
-  left: var(--particle-x);
-  width: var(--particle-size);
-  height: var(--particle-size);
-  border: 1px solid color-mix(in srgb, var(--primary-color) 48%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--primary-color) 42%, var(--panel-bg));
-  box-shadow: 0 0 14px color-mix(in srgb, var(--primary-color) 34%, transparent);
-  opacity: 0.68;
-  translate: var(--field-shift-x) var(--field-shift-y);
-  transform: translate3d(0, 0, 0) scale(var(--float-scale));
-  animation: magneticFloat 6.2s ease-in-out infinite;
-  animation-delay: var(--particle-delay);
-  transition:
-    opacity 0.22s ease,
-    translate 0.22s ease,
-    background-color 0.22s ease,
-    box-shadow 0.22s ease;
-}
-
-.magnetic-particle.is-soft {
-  --float-x: 6px;
-  --float-y: -5px;
-  --float-scale: 0.9;
   opacity: 0.44;
-  translate: var(--field-shift-x-soft) var(--field-shift-y-soft);
+  mix-blend-mode: screen;
+  transform: translate(var(--pool-drift-x), var(--pool-drift-y));
+  animation: liquidTide 5.8s ease-in-out infinite;
 }
 
-.magnetic-particle.is-strong {
-  --float-x: 14px;
-  --float-y: -10px;
-  --float-scale: 1.08;
-  opacity: 0.76;
-  translate: var(--field-shift-x-strong) var(--field-shift-y-strong);
-}
-
-.magnetic-streak {
-  --float-x: 18px;
-  --float-y: -4px;
+.liquid-glow {
   position: absolute;
-  top: var(--streak-y);
-  left: var(--streak-x);
-  width: 54px;
-  height: 1px;
+  top: var(--glow-y);
+  left: var(--glow-x);
+  z-index: 1;
+  width: var(--glow-size);
+  height: var(--glow-size);
   border-radius: 999px;
-  background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
-  opacity: 0.34;
-  translate: var(--field-shift-x-soft) var(--field-shift-y-soft);
-  transform: translate3d(0, 0, 0) rotate(-8deg);
-  animation: streakGlide 7.2s ease-in-out infinite;
-  animation-delay: var(--streak-delay);
+  background: color-mix(in srgb, var(--primary-color) 22%, transparent);
+  filter: blur(4px);
+  opacity: 0.74;
+  translate: var(--pool-flow-x) var(--pool-flow-y);
+  transform: translate(-50%, -50%) scale(0.9);
+  animation: liquidWander 7.4s ease-in-out infinite;
+  animation-delay: var(--glow-delay);
 }
 
-.magnetic-ripple {
+.liquid-glow.is-secondary {
+  background: color-mix(in srgb, var(--accent-color) 26%, transparent);
+  opacity: 0.68;
+  translate: var(--pool-drift-x) var(--pool-flow-y);
+}
+
+.liquid-glow.is-tertiary {
+  background: color-mix(in srgb, #fff 22%, transparent);
+  opacity: 0.42;
+  translate: var(--pool-flow-x) var(--pool-drift-y);
+}
+
+.liquid-current {
   position: absolute;
-  top: var(--field-cursor-y);
-  left: var(--field-cursor-x);
-  width: 18px;
-  height: 18px;
-  border: 1px solid color-mix(in srgb, var(--primary-color) 38%, transparent);
+  right: 10%;
+  bottom: 24px;
+  left: 12%;
+  z-index: 3;
+  height: 20px;
   border-radius: 999px;
+  background:
+    radial-gradient(ellipse at 16% 50%, color-mix(in srgb, #fff 28%, transparent), transparent 36%),
+    linear-gradient(90deg, transparent, color-mix(in srgb, #fff 26%, transparent), transparent);
+  opacity: 0.48;
+  transform: translateX(var(--pool-drift-x)) skewX(-12deg);
+  animation: liquidTide 4.8s ease-in-out infinite;
+}
+
+.liquid-current.is-thin {
+  right: 24%;
+  bottom: 56px;
+  left: 28%;
+  height: 7px;
+  opacity: 0.38;
+  animation-delay: -1.7s;
+}
+
+.liquid-ripple {
+  position: absolute;
+  top: var(--pool-cursor-y);
+  left: var(--pool-cursor-x);
+  z-index: 4;
+  width: 24px;
+  height: 24px;
+  border: 1px solid color-mix(in srgb, #fff 52%, transparent);
+  border-radius: 999px;
+  box-shadow: 0 0 28px color-mix(in srgb, var(--accent-color) 34%, transparent);
   opacity: 0;
   translate: -50% -50%;
   transform: scale(0.2);
 }
 
-.continue-panel:not(.is-unavailable):hover .magnetic-field::before,
-.empty-status:hover .magnetic-field::before {
-  opacity: 1;
+.continue-panel:not(.is-unavailable):hover .liquid-playground,
+.empty-status:hover .liquid-playground {
+  border-color: color-mix(in srgb, var(--primary-color) 34%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 44%, transparent),
+    inset 0 -24px 48px color-mix(in srgb, var(--primary-color) 16%, transparent),
+    0 24px 54px -34px var(--theme-glow-color);
+  transform: translateY(-2px);
 }
 
-.continue-panel:not(.is-unavailable):hover .magnetic-particle,
-.empty-status:hover .magnetic-particle {
-  opacity: 0.9;
-  background: color-mix(in srgb, var(--primary-color) 56%, var(--panel-bg));
-  box-shadow: 0 0 18px color-mix(in srgb, var(--primary-color) 46%, transparent);
+.continue-panel.is-pool-rippling .liquid-ripple {
+  animation: liquidRipple 0.68s ease-out;
 }
 
-.continue-panel.is-field-rippling .magnetic-ripple {
-  animation: rippleBurst 0.52s ease-out;
+.continue-panel.is-pool-stirring .liquid-playground::before {
+  opacity: 0.95;
+  animation-duration: 3.4s;
 }
 
-.empty-status .magnetic-field {
-  opacity: 0.68;
+.continue-panel.is-pool-stirring .liquid-current {
+  animation-duration: 1.8s;
 }
 
-@keyframes fieldBreath {
+.empty-status .liquid-playground {
+  opacity: 0.88;
+}
+
+@keyframes liquidFlow {
   0%,
   100% {
-    background-position: 0 0, 0 0, 0 0, 0 0, 0 0;
-    filter: saturate(0.96);
+    transform: translate(var(--pool-flow-x), var(--pool-flow-y)) rotate(0deg) scale(1);
   }
 
   50% {
-    background-position: 0 0, 0 0, 14px 0, 0 10px, 0 0;
-    filter: saturate(1.16) brightness(1.03);
+    transform: translate(var(--pool-flow-x-reverse), calc(var(--pool-flow-y) + 8px)) rotate(180deg) scale(1.05);
   }
 }
 
-@keyframes fieldSweep {
+@keyframes liquidTide {
   0%,
   100% {
-    opacity: 0.52;
-    transform: translateX(-14%);
+    transform: translateX(var(--pool-drift-x));
   }
 
   50% {
-    opacity: 0.86;
-    transform: translateX(10%);
+    transform: translateX(var(--pool-drift-x-reverse)) translateY(-6px);
   }
 }
 
-@keyframes magneticFloat {
+@keyframes liquidWander {
   0%,
   100% {
-    filter: saturate(0.96);
-    transform: translate3d(0, 0, 0) scale(var(--float-scale));
+    transform: translate(-50%, -50%) scale(0.88);
   }
 
   50% {
-    filter: saturate(1.22) brightness(1.05);
-    transform: translate3d(var(--float-x), var(--float-y), 0) scale(var(--float-scale));
+    transform: translate(calc(-50% + var(--pool-drift-x)), calc(-50% + var(--pool-drift-y))) scale(1.12);
   }
 }
 
-@keyframes streakGlide {
-  0%,
-  100% {
-    opacity: 0.24;
-    transform: translate3d(-12px, 0, 0) rotate(-8deg);
-  }
-
-  50% {
-    opacity: 0.5;
-    transform: translate3d(14px, -2px, 0) rotate(-8deg);
-  }
-}
-
-@keyframes rippleBurst {
+@keyframes liquidRipple {
   0% {
-    opacity: 0.45;
+    opacity: 0.68;
     transform: scale(0.2);
   }
 
   100% {
     opacity: 0;
-    transform: scale(8.4);
+    transform: scale(7.6);
   }
 }
 
@@ -1571,12 +1594,14 @@ function continueSummary(item) {
 
   .continue-panel {
     min-height: 0;
-    padding: 20px 20px 106px;
+    padding: 20px 20px 132px;
   }
 
-  .magnetic-field {
-    position: absolute;
-    inset: 0;
+  .liquid-playground {
+    right: 18px;
+    bottom: 18px;
+    left: 18px;
+    height: 92px;
   }
 
   .section-title,
@@ -1598,11 +1623,12 @@ function continueSummary(item) {
 
 @media (prefers-reduced-motion: reduce) {
   .continue-panel::after,
-  .magnetic-field::before,
-  .magnetic-field::after,
-  .magnetic-particle,
-  .magnetic-streak,
-  .magnetic-ripple,
+  .liquid-playground::before,
+  .liquid-playground::after,
+  .liquid-surface,
+  .liquid-glow,
+  .liquid-current,
+  .liquid-ripple,
   .progress-track span,
   .timeline-item,
   .favorite-line,
@@ -1612,11 +1638,12 @@ function continueSummary(item) {
     transition: none;
   }
 
-  .magnetic-particle,
-  .magnetic-particle.is-soft,
-  .magnetic-particle.is-strong,
-  .magnetic-streak,
-  .magnetic-ripple {
+  .liquid-playground::before,
+  .liquid-playground::after,
+  .liquid-surface,
+  .liquid-glow,
+  .liquid-current,
+  .liquid-ripple {
     translate: none;
     transform: none;
   }
