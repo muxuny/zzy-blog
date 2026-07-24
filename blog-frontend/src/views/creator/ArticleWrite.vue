@@ -8,18 +8,26 @@
           <h1>{{ isEdit ? '编辑文章' : '写文章' }}</h1>
           <p>把标题、摘要、分组和正文放在同一个工作流里，状态动作保持在明确的底部区域。</p>
         </div>
-        <aside class="head-meta" aria-label="创作状态摘要">
-          <div class="meta-line">
-            <span class="meta-label">模式</span>
-            <span class="meta-value">{{ isEdit ? '编辑已有文章' : '新建草稿' }}</span>
+        <aside class="head-meta preflight-panel" aria-label="发布前检查">
+          <div class="preflight-head">
+            <span class="rail-kicker">发布前检查</span>
+            <strong>{{ preflightReadyCount }}/{{ preflightChecks.length }}</strong>
           </div>
-          <div class="meta-line">
-            <span class="meta-label">状态</span>
-            <span class="meta-value">{{ form.status === 'draft' ? '草稿' : form.status }}</span>
-          </div>
-          <div class="meta-line">
-            <span class="meta-label">分组</span>
-            <span class="meta-value">{{ articleGroups.length ? '可选择分组' : '未加载分组' }}</span>
+          <ul class="preflight-list">
+            <li
+              v-for="item in preflightChecks"
+              :key="item.key"
+              class="preflight-item"
+              :class="{ 'is-done': item.done }"
+            >
+              <span class="preflight-dot" aria-hidden="true" />
+              <span>{{ item.label }}</span>
+              <strong>{{ item.text }}</strong>
+            </li>
+          </ul>
+          <div class="draft-stats" aria-label="文章统计">
+            <span>{{ writingStats.wordCount }} 字</span>
+            <span>{{ writingStats.readingTimeText }}</span>
           </div>
         </aside>
       </header>
@@ -179,7 +187,7 @@ import { getTags } from '../../api/tag'
 import { createMyArticle, getMyArticle, updateMyArticle } from '../../api/myArticle'
 import { ARTICLE_VISIBILITY_PRIVATE, ARTICLE_VISIBILITY_PUBLIC, normalizeArticleVisibility } from '../../utils/articleVisibility'
 import { buildArticleGroupIdsForSave, getFirstArticleGroupId } from '../../utils/articleGroups'
-import { normalizeArticleMarkdown } from '../../utils/reading'
+import { getReadingStats, normalizeArticleMarkdown } from '../../utils/reading'
 
 const route = useRoute()
 const router = useRouter()
@@ -211,6 +219,34 @@ const visibilityOptions = [
   { label: '公开', value: ARTICLE_VISIBILITY_PUBLIC },
   { label: '仅自己可见', value: ARTICLE_VISIBILITY_PRIVATE }
 ]
+const writingStats = computed(() => getReadingStats(form.content || ''))
+const preflightChecks = computed(() => [
+  {
+    key: 'title',
+    label: '标题',
+    text: form.title.trim() ? '已填写' : '未填写',
+    done: !!form.title.trim()
+  },
+  {
+    key: 'content',
+    label: '正文',
+    text: writingStats.value.wordCount ? `${writingStats.value.wordCount} 字` : '未填写',
+    done: writingStats.value.wordCount > 0
+  },
+  {
+    key: 'summary',
+    label: '摘要',
+    text: form.summary.trim() ? '已填写' : '可补充',
+    done: !!form.summary.trim()
+  },
+  {
+    key: 'tags',
+    label: '标签',
+    text: form.tagIds.length ? `${form.tagIds.length} 个` : '建议选择',
+    done: form.tagIds.length > 0
+  }
+])
+const preflightReadyCount = computed(() => preflightChecks.value.filter(item => item.done).length)
 
 onMounted(() => {
   loadTags()
@@ -387,35 +423,92 @@ async function save(status) {
 }
 
 .head-meta {
+  align-self: end;
   border-left: 1px solid var(--border-color);
   padding-left: 18px;
 }
 
-.meta-line {
+.preflight-panel {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
   gap: 12px;
-  padding: 10px 0;
+}
+
+.preflight-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--soft-border-color);
 }
 
-.meta-line:last-child {
-  border-bottom: 0;
+.preflight-head strong {
+  color: var(--text-color);
+  font-size: 13px;
+  font-weight: 800;
 }
 
-.meta-label {
-  color: var(--accent-color);
+.preflight-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.preflight-item {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  min-height: 28px;
+  min-width: 0;
+  color: var(--muted-text-color);
+  font-size: 13px;
+}
+
+.preflight-item strong {
+  color: var(--muted-text-color);
   font-size: 12px;
   font-weight: 760;
 }
 
-.meta-value {
-  min-width: 0;
-  overflow: hidden;
+.preflight-item.is-done,
+.preflight-item.is-done strong {
   color: var(--text-color);
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.preflight-dot {
+  width: 7px;
+  height: 7px;
+  border: 1px solid color-mix(in srgb, var(--muted-text-color) 44%, transparent);
+  border-radius: 999px;
+  background: transparent;
+}
+
+.preflight-item.is-done .preflight-dot {
+  border-color: color-mix(in srgb, var(--primary-color) 76%, transparent);
+  background: var(--primary-color);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-color) 10%, transparent);
+}
+
+.draft-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--soft-border-color);
+}
+
+.draft-stats span {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--border-color) 80%, transparent);
+  border-radius: 999px;
+  color: var(--muted-text-color);
+  font-size: 12px;
 }
 
 .compose-grid {
