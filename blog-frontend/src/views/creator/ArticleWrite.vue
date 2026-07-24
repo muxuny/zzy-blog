@@ -8,28 +8,6 @@
           <h1>{{ isEdit ? '编辑文章' : '写文章' }}</h1>
           <p>把标题、摘要、分组和正文放在同一个工作流里，状态动作保持在明确的底部区域。</p>
         </div>
-        <aside class="head-meta preflight-panel" aria-label="发布前检查">
-          <div class="preflight-head">
-            <span class="rail-kicker">发布前检查</span>
-            <strong>{{ preflightReadyCount }}/{{ preflightChecks.length }}</strong>
-          </div>
-          <ul class="preflight-list">
-            <li
-              v-for="item in preflightChecks"
-              :key="item.key"
-              class="preflight-item"
-              :class="{ 'is-done': item.done }"
-            >
-              <span class="preflight-dot" aria-hidden="true" />
-              <span>{{ item.label }}</span>
-              <strong>{{ item.text }}</strong>
-            </li>
-          </ul>
-          <div class="draft-stats" aria-label="文章统计">
-            <span>{{ writingStats.wordCount }} 字</span>
-            <span>{{ writingStats.readingTimeText }}</span>
-          </div>
-        </aside>
       </header>
 
       <div class="compose-grid">
@@ -157,6 +135,29 @@
         </section>
 
         <aside class="compose-rail" aria-label="创作提示">
+          <section class="rail-panel preflight-panel" aria-label="发布前检查">
+            <div class="preflight-head">
+              <span class="rail-kicker">发布前检查</span>
+              <strong>{{ preflightReadyCount }}/{{ preflightChecks.length }}</strong>
+            </div>
+            <ul class="preflight-dots">
+              <li
+                v-for="item in preflightChecks"
+                :key="item.key"
+                class="preflight-token"
+                :class="{ 'is-done': item.done }"
+                :title="`${item.label}：${item.text}`"
+                :aria-label="`${item.label}：${item.text}`"
+              >
+                <span class="preflight-dot" aria-hidden="true" />
+                <span>{{ item.label }}</span>
+              </li>
+            </ul>
+            <div class="draft-stats" aria-label="文章统计">
+              <span>{{ writingStats.wordCount }} 字</span>
+              <span>{{ writingStats.readingTimeText }}</span>
+            </div>
+          </section>
           <section class="rail-panel">
             <span class="rail-kicker">状态边界</span>
             <p>草稿可以继续保存或提交审核；待审核文章需要撤回后再编辑。</p>
@@ -383,10 +384,6 @@ async function save(status) {
 }
 
 .page-head {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
-  gap: 30px;
-  align-items: end;
   margin-bottom: 26px;
   padding-top: 22px;
 }
@@ -422,15 +419,9 @@ async function save(status) {
   line-height: 1.85;
 }
 
-.head-meta {
-  align-self: end;
-  border-left: 1px solid var(--border-color);
-  padding-left: 18px;
-}
-
 .preflight-panel {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .preflight-head {
@@ -438,8 +429,6 @@ async function save(status) {
   gap: 12px;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--soft-border-color);
 }
 
 .preflight-head strong {
@@ -448,33 +437,31 @@ async function save(status) {
   font-weight: 800;
 }
 
-.preflight-list {
-  display: grid;
-  gap: 8px;
+.preflight-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.preflight-item {
-  display: grid;
-  grid-template-columns: 10px minmax(0, 1fr) auto;
-  gap: 9px;
+.preflight-token {
+  display: inline-flex;
+  gap: 6px;
   align-items: center;
-  min-height: 28px;
-  min-width: 0;
-  color: var(--muted-text-color);
-  font-size: 13px;
-}
-
-.preflight-item strong {
+  min-height: 26px;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--border-color) 86%, transparent);
+  border-radius: 999px;
   color: var(--muted-text-color);
   font-size: 12px;
-  font-weight: 760;
+  line-height: 1;
 }
 
-.preflight-item.is-done,
-.preflight-item.is-done strong {
+.preflight-token.is-done {
+  border-color: color-mix(in srgb, var(--primary-color) 38%, var(--border-color));
+  background: color-mix(in srgb, var(--primary-color) 8%, var(--panel-bg));
   color: var(--text-color);
 }
 
@@ -486,29 +473,23 @@ async function save(status) {
   background: transparent;
 }
 
-.preflight-item.is-done .preflight-dot {
+.preflight-token.is-done .preflight-dot {
   border-color: color-mix(in srgb, var(--primary-color) 76%, transparent);
   background: var(--primary-color);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-color) 10%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 10%, transparent);
 }
 
 .draft-stats {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  padding-top: 10px;
-  border-top: 1px solid var(--soft-border-color);
+  justify-content: space-between;
+  gap: 6px 10px;
+  color: var(--muted-text-color);
+  font-size: 12px;
 }
 
 .draft-stats span {
-  display: inline-flex;
-  min-height: 26px;
-  align-items: center;
-  padding: 0 9px;
-  border: 1px solid color-mix(in srgb, var(--border-color) 80%, transparent);
-  border-radius: 999px;
-  color: var(--muted-text-color);
-  font-size: 12px;
+  min-width: max-content;
 }
 
 .compose-grid {
@@ -641,6 +622,12 @@ async function save(status) {
   border-bottom: 0;
 }
 
+.rail-panel.preflight-panel {
+  padding: 14px;
+  border: 1px solid var(--soft-border-color);
+  background: color-mix(in srgb, var(--panel-bg) 94%, var(--primary-color));
+}
+
 .rail-kicker {
   color: var(--primary-color);
   font-size: 12px;
@@ -655,20 +642,13 @@ async function save(status) {
 }
 
 @media (max-width: 980px) {
-  .page-head,
   .compose-grid {
     grid-template-columns: 1fr;
   }
 
-  .head-meta,
   .compose-rail {
     border-left: 0;
     padding-left: 0;
-  }
-
-  .head-meta {
-    border-top: 1px solid var(--border-color);
-    padding-top: 12px;
   }
 
   .compose-rail {

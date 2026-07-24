@@ -514,10 +514,10 @@ test('creator writing and preview pages use the prototype surface system', () =>
 
   assert.match(write, /class="compose-shell"/)
   assert.match(write, /class="page-head"/)
-  assert.match(write, /class="head-meta preflight-panel"/)
+  assert.match(write, /class="rail-panel preflight-panel"/)
   assert.match(write, /class="preflight-head"/)
-  assert.match(write, /class="preflight-list"/)
-  assert.match(write, /class="preflight-item/)
+  assert.match(write, /class="preflight-dots"/)
+  assert.match(write, /class="preflight-token/)
   assert.match(write, /class="draft-stats"/)
   assert.match(write, /preflightChecks/)
   assert.match(write, /preflightReadyCount/)
@@ -526,7 +526,9 @@ test('creator writing and preview pages use the prototype surface system', () =>
   assert.match(write, /class="compose-grid"/)
   assert.match(write, /class="compose-panel"/)
   assert.match(write, /class="compose-rail"/)
+  assert.doesNotMatch(write, /class="head-meta preflight-panel"/)
   assert.doesNotMatch(write, /class="meta-line"/)
+  assert.doesNotMatch(write, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(260px,\s*340px\)/)
   assert.doesNotMatch(write, /class="page-header"/)
   assert.doesNotMatch(write, /\.page-header/)
 
