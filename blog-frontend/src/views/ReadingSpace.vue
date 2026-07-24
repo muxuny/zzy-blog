@@ -127,25 +127,25 @@
             <div
               class="signal-wave"
               aria-hidden="true"
-              @pointermove.stop="moveSignalWave"
+              @pointermove.stop="moveSurfaceWave"
               @pointerleave.stop="resetSignalWave"
               @pointerdown.stop.prevent="pulseSignalWave"
             >
               <svg class="wave-svg" viewBox="0 0 640 120" preserveAspectRatio="none" focusable="false">
                 <path
-                  class="wave-path is-glow"
+                  class="surface-line is-glow"
                   pathLength="100"
-                  d="M4 70 C 58 46, 84 45, 124 66 S 202 89, 250 56 322 28, 374 58 456 96, 520 58 590 30, 636 58"
+                  :d="surfaceWavePath"
                 />
                 <path
-                  class="wave-path is-core"
+                  class="surface-line is-core"
                   pathLength="100"
-                  d="M4 70 C 58 46, 84 45, 124 66 S 202 89, 250 56 322 28, 374 58 456 96, 520 58 590 30, 636 58"
+                  :d="surfaceWavePath"
                 />
                 <path
-                  class="wave-path is-echo"
+                  class="surface-line is-echo"
                   pathLength="100"
-                  d="M4 82 C 66 68, 100 82, 148 92 S 236 80, 282 72 356 80, 410 92 488 84, 540 70 604 68, 636 76"
+                  :d="surfaceEchoPath"
                 />
               </svg>
               <span class="wave-spark" />
@@ -175,25 +175,25 @@
             <div
               class="signal-wave"
               aria-hidden="true"
-              @pointermove.stop="moveSignalWave"
+              @pointermove.stop="moveSurfaceWave"
               @pointerleave.stop="resetSignalWave"
               @pointerdown.stop.prevent="pulseSignalWave"
             >
               <svg class="wave-svg" viewBox="0 0 640 120" preserveAspectRatio="none" focusable="false">
                 <path
-                  class="wave-path is-glow"
+                  class="surface-line is-glow"
                   pathLength="100"
-                  d="M4 70 C 58 46, 84 45, 124 66 S 202 89, 250 56 322 28, 374 58 456 96, 520 58 590 30, 636 58"
+                  :d="surfaceWavePath"
                 />
                 <path
-                  class="wave-path is-core"
+                  class="surface-line is-core"
                   pathLength="100"
-                  d="M4 70 C 58 46, 84 45, 124 66 S 202 89, 250 56 322 28, 374 58 456 96, 520 58 590 30, 636 58"
+                  :d="surfaceWavePath"
                 />
                 <path
-                  class="wave-path is-echo"
+                  class="surface-line is-echo"
                   pathLength="100"
-                  d="M4 82 C 66 68, 100 82, 148 92 S 236 80, 282 72 356 80, 410 92 488 84, 540 70 604 68, 636 76"
+                  :d="surfaceEchoPath"
                 />
               </svg>
               <span class="wave-spark" />
@@ -347,7 +347,7 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
 import AppHeader from '../components/AppHeader.vue'
 import { getReadingOverview } from '../api/reading'
@@ -363,9 +363,29 @@ const overview = ref({
 const loading = ref(false)
 const loadError = ref('')
 const wavePulsing = ref(false)
+const surfaceLifts = ref(Array(13).fill(0))
 let componentActive = true
 let requestVersion = 0
 let wavePulseTimer = 0
+
+const SURFACE_POINTS = Object.freeze([
+  { x: 6, y: 63 },
+  { x: 58, y: 61 },
+  { x: 112, y: 64 },
+  { x: 166, y: 60 },
+  { x: 220, y: 62 },
+  { x: 274, y: 59 },
+  { x: 328, y: 61 },
+  { x: 382, y: 58 },
+  { x: 436, y: 62 },
+  { x: 490, y: 60 },
+  { x: 544, y: 63 },
+  { x: 596, y: 61 },
+  { x: 634, y: 62 }
+])
+
+const surfaceWavePath = computed(() => buildSurfaceWavePath(surfaceLifts.value))
+const surfaceEchoPath = computed(() => buildSurfaceWavePath(surfaceLifts.value, 0.42, 10))
 
 onMounted(() => {
   void load()
@@ -421,28 +441,31 @@ function safeProgressPercent(value) {
   return Math.min(100, Math.max(0, Math.round(number)))
 }
 
-function moveSignalWave(event) {
+function moveSurfaceWave(event) {
   if (!(event.currentTarget instanceof HTMLElement)) return
 
   const wave = event.currentTarget
   const rect = wave.getBoundingClientRect()
   const xRatio = rect.width ? clampRatio((event.clientX - rect.left) / rect.width) : 0.5
-  const yRatio = rect.height ? clampRatio((event.clientY - rect.top) / rect.height) : 0.5
-  const lift = (0.5 - yRatio) * 14
-  const bend = (xRatio - 0.5) * 16
+  const focus = xRatio * (SURFACE_POINTS.length - 1)
 
-  wave.style.setProperty('--wave-cursor-x', `${Math.round(xRatio * 100)}%`)
-  wave.style.setProperty('--wave-lift', `${lift.toFixed(1)}px`)
-  wave.style.setProperty('--wave-bend', `${bend.toFixed(1)}px`)
+  wave.style.setProperty('--surface-cursor-x', `${Math.round(xRatio * 100)}%`)
+  surfaceLifts.value = SURFACE_POINTS.map((_, index) => {
+    const distance = Math.abs(index - focus)
+    const raise = -18 * Math.exp(-distance * distance / 1.2)
+    const settle = Math.min(5.5, Math.max(0, distance - 1.4) * 1.7)
+    return Number((raise + settle).toFixed(1))
+  })
 }
 
 function resetSignalWave(event) {
   if (!(event.currentTarget instanceof HTMLElement)) return
   setSignalWaveDefaults(event.currentTarget)
+  surfaceLifts.value = Array(SURFACE_POINTS.length).fill(0)
 }
 
 function pulseSignalWave(event) {
-  moveSignalWave(event)
+  moveSurfaceWave(event)
   wavePulsing.value = false
 
   window.requestAnimationFrame(() => {
@@ -456,9 +479,28 @@ function pulseSignalWave(event) {
 }
 
 function setSignalWaveDefaults(wave) {
-  wave.style.setProperty('--wave-cursor-x', '50%')
-  wave.style.setProperty('--wave-lift', '0px')
-  wave.style.setProperty('--wave-bend', '0px')
+  wave.style.setProperty('--surface-cursor-x', '50%')
+}
+
+function buildSurfaceWavePath(lifts, strength = 1, yOffset = 0) {
+  const points = SURFACE_POINTS.map((point, index) => ({
+    x: point.x,
+    y: point.y + yOffset + (Number(lifts[index]) || 0) * strength
+  }))
+
+  if (!points.length) return ''
+
+  let path = `M ${points[0].x} ${points[0].y.toFixed(1)}`
+  for (let index = 1; index < points.length; index += 1) {
+    const point = points[index]
+    const next = points[index + 1]
+    const end = next
+      ? { x: (point.x + next.x) / 2, y: (point.y + next.y) / 2 }
+      : point
+    path += ` Q ${point.x} ${point.y.toFixed(1)} ${end.x.toFixed(1)} ${end.y.toFixed(1)}`
+  }
+
+  return path
 }
 
 function clampRatio(value) {
@@ -992,13 +1034,13 @@ function continueSummary(item) {
 }
 
 .continue-panel {
-  --wave-cursor-x: 50%;
-  --wave-lift: 0px;
-  --wave-bend: 0px;
+  --surface-hot-color: #6dffea;
+  --surface-cool-color: #8fb6ff;
+  --surface-cursor-x: 50%;
   isolation: isolate;
   display: block;
   min-height: 340px;
-  padding: 26px 26px 150px;
+  padding: 26px 26px 126px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   background:
@@ -1107,7 +1149,7 @@ function continueSummary(item) {
   bottom: 18px;
   left: 26px;
   z-index: 3;
-  height: 112px;
+  height: 76px;
   background: transparent;
   color: var(--primary-color);
   cursor: pointer;
@@ -1128,26 +1170,26 @@ function continueSummary(item) {
 }
 
 .signal-wave::before {
-  bottom: 28px;
+  bottom: 18px;
   height: 1px;
   border-radius: 999px;
   background: linear-gradient(
     90deg,
     transparent,
-    color-mix(in srgb, var(--primary-color) 24%, transparent),
-    color-mix(in srgb, var(--accent-color) 22%, transparent),
+    color-mix(in srgb, var(--surface-hot-color) 38%, transparent),
+    color-mix(in srgb, var(--surface-cool-color) 30%, transparent),
     transparent
   );
-  opacity: 0.48;
+  opacity: 0.34;
 }
 
 .signal-wave::after {
-  top: 18px;
-  bottom: 8px;
+  top: 8px;
+  bottom: 2px;
   background: radial-gradient(
-    ellipse at var(--wave-cursor-x) 56%,
-    color-mix(in srgb, var(--accent-color) 18%, transparent),
-    transparent 34%
+    ellipse at var(--surface-cursor-x) 54%,
+    color-mix(in srgb, var(--surface-hot-color) 16%, transparent),
+    transparent 28%
   );
   opacity: 0;
   transition: opacity 0.2s ease;
@@ -1159,12 +1201,11 @@ function continueSummary(item) {
   height: 100%;
   overflow: visible;
   pointer-events: none;
-  transform: translateY(var(--wave-lift));
-  transform-origin: 50% 58%;
+  transform-origin: 50% 55%;
   transition: transform 0.18s ease;
 }
 
-.wave-path {
+.surface-line {
   fill: none;
   pointer-events: none;
   stroke-linecap: round;
@@ -1178,45 +1219,43 @@ function continueSummary(item) {
     transform 0.18s ease;
 }
 
-.wave-path.is-glow {
-  stroke: color-mix(in srgb, var(--primary-color) 70%, var(--accent-color));
-  stroke-width: 8px;
-  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--primary-color) 44%, transparent))
-    drop-shadow(0 0 22px color-mix(in srgb, var(--accent-color) 34%, transparent));
-  opacity: 0.26;
-  transform: translateY(var(--wave-bend));
+.surface-line.is-glow {
+  stroke: color-mix(in srgb, var(--surface-hot-color) 74%, var(--surface-cool-color));
+  stroke-width: 4px;
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--surface-hot-color) 62%, transparent))
+    drop-shadow(0 0 12px color-mix(in srgb, var(--surface-cool-color) 36%, transparent));
+  opacity: 0.28;
+  animation: surfaceBreathe 5.6s ease-in-out infinite;
 }
 
-.wave-path.is-core {
-  stroke: color-mix(in srgb, var(--primary-color) 82%, var(--accent-color));
-  stroke-width: 2.8px;
-  stroke-dasharray: 14 10 1 14;
-  stroke-dashoffset: 0;
-  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--primary-color) 34%, transparent));
-  opacity: 0.9;
-  transform: translateY(calc(var(--wave-bend) * -0.28));
+.surface-line.is-core {
+  stroke: color-mix(in srgb, var(--surface-hot-color) 82%, #ffffff);
+  stroke-width: 1.8px;
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--surface-hot-color) 48%, transparent));
+  opacity: 0.96;
+  animation: surfaceBreathe 4.8s ease-in-out infinite;
 }
 
-.wave-path.is-echo {
-  stroke: color-mix(in srgb, var(--accent-color) 58%, transparent);
-  stroke-width: 1.4px;
-  stroke-dasharray: 1 13;
-  opacity: 0.46;
-  transform: translateY(calc(var(--wave-bend) * 0.34));
+.surface-line.is-echo {
+  stroke: color-mix(in srgb, var(--surface-cool-color) 64%, transparent);
+  stroke-width: 1px;
+  stroke-dasharray: 1 12;
+  opacity: 0.4;
+  animation: surfaceBreathe 6.4s ease-in-out infinite reverse;
 }
 
 .wave-spark {
   position: absolute;
   top: 48%;
-  left: var(--wave-cursor-x);
-  width: 42px;
-  height: 42px;
+  left: var(--surface-cursor-x);
+  width: 32px;
+  height: 32px;
   border-radius: 999px;
   background: radial-gradient(
     circle,
-    color-mix(in srgb, #fff 72%, var(--accent-color)) 0 6%,
-    color-mix(in srgb, var(--accent-color) 36%, transparent) 7% 32%,
-    transparent 68%
+    color-mix(in srgb, #fff 78%, var(--surface-hot-color)) 0 5%,
+    color-mix(in srgb, var(--surface-hot-color) 34%, transparent) 6% 30%,
+    transparent 66%
   );
   opacity: 0;
   pointer-events: none;
@@ -1237,8 +1276,9 @@ function continueSummary(item) {
   opacity: 1;
 }
 
-.continue-panel:not(.is-unavailable):hover .wave-path.is-core {
-  animation: waveScan 1.45s linear infinite;
+.continue-panel:not(.is-unavailable):hover .surface-line.is-core {
+  stroke: color-mix(in srgb, var(--surface-hot-color) 88%, #ffffff);
+  opacity: 1;
 }
 
 .continue-panel:not(.is-unavailable):hover .wave-spark,
@@ -1259,20 +1299,25 @@ function continueSummary(item) {
   opacity: 0.78;
 }
 
-@keyframes waveScan {
-  to {
-    stroke-dashoffset: -120;
+@keyframes surfaceBreathe {
+  0%,
+  100% {
+    transform: translateY(0) scaleY(1);
+  }
+
+  50% {
+    transform: translateY(-2px) scaleY(1.035);
   }
 }
 
 @keyframes wavePulse {
   0%,
   100% {
-    transform: translateY(var(--wave-lift)) scaleY(1);
+    transform: scaleY(1);
   }
 
   38% {
-    transform: translateY(calc(var(--wave-lift) - 4px)) scaleY(1.28);
+    transform: translateY(-3px) scaleY(1.14);
   }
 }
 
@@ -1538,14 +1583,14 @@ function continueSummary(item) {
 
   .continue-panel {
     min-height: 0;
-    padding: 20px 20px 132px;
+    padding: 20px 20px 116px;
   }
 
   .signal-wave {
     right: 18px;
     bottom: 14px;
     left: 18px;
-    height: 92px;
+    height: 78px;
   }
 
   .section-title,
@@ -1567,7 +1612,7 @@ function continueSummary(item) {
 
 @media (prefers-reduced-motion: reduce) {
   .continue-panel::after,
-  .wave-path,
+  .surface-line,
   .wave-spark,
   .wave-svg,
   .progress-track span,
@@ -1579,7 +1624,7 @@ function continueSummary(item) {
     transition: none;
   }
 
-  .wave-path,
+  .surface-line,
   .wave-spark,
   .wave-svg {
     translate: none;
