@@ -45,8 +45,7 @@
             class="continue-panel"
             :class="[
               { 'is-unavailable': !overview.lastRead.available },
-              { 'is-toy-shuffling': toyShuffling },
-              { 'is-toy-grabbing': toyGrabbing }
+              { 'is-wave-pulsing': wavePulsing }
             ]"
           >
             <RouterLink
@@ -126,29 +125,37 @@
             </template>
 
             <div
-              class="kinetic-toy"
+              class="signal-wave"
               aria-hidden="true"
-              @pointermove.stop="moveKineticToy"
-              @pointerleave.stop="resetKineticToy"
-              @pointerdown.stop.prevent="grabKineticToy"
-              @pointerup.stop="releaseKineticToy"
-              @pointercancel.stop="releaseKineticToy"
-              @click.stop.prevent="shuffleKineticToy"
+              @pointermove.stop="moveSignalWave"
+              @pointerleave.stop="resetSignalWave"
+              @pointerdown.stop.prevent="pulseSignalWave"
             >
-              <span class="toy-thread is-a" />
-              <span class="toy-thread is-b" />
-              <span class="toy-orbit is-a"><span /></span>
-              <span class="toy-orbit is-b"><span /></span>
-              <span class="toy-chip is-a" />
-              <span class="toy-chip is-b" />
-              <span class="toy-chip is-c" />
+              <svg class="wave-svg" viewBox="0 0 640 120" preserveAspectRatio="none" focusable="false">
+                <path
+                  class="wave-path is-glow"
+                  pathLength="100"
+                  d="M4 70 C 58 46, 84 45, 124 66 S 202 89, 250 56 322 28, 374 58 456 96, 520 58 590 30, 636 58"
+                />
+                <path
+                  class="wave-path is-core"
+                  pathLength="100"
+                  d="M4 70 C 58 46, 84 45, 124 66 S 202 89, 250 56 322 28, 374 58 456 96, 520 58 590 30, 636 58"
+                />
+                <path
+                  class="wave-path is-echo"
+                  pathLength="100"
+                  d="M4 82 C 66 68, 100 82, 148 92 S 236 80, 282 72 356 80, 410 92 488 84, 540 70 604 68, 636 76"
+                />
+              </svg>
+              <span class="wave-spark" />
             </div>
           </article>
 
           <div
             v-else
             class="continue-panel empty-status"
-            :class="[{ 'is-toy-shuffling': toyShuffling }, { 'is-toy-grabbing': toyGrabbing }]"
+            :class="{ 'is-wave-pulsing': wavePulsing }"
             role="status"
             aria-live="polite"
           >
@@ -166,22 +173,30 @@
               </div>
             </div>
             <div
-              class="kinetic-toy"
+              class="signal-wave"
               aria-hidden="true"
-              @pointermove.stop="moveKineticToy"
-              @pointerleave.stop="resetKineticToy"
-              @pointerdown.stop.prevent="grabKineticToy"
-              @pointerup.stop="releaseKineticToy"
-              @pointercancel.stop="releaseKineticToy"
-              @click.stop.prevent="shuffleKineticToy"
+              @pointermove.stop="moveSignalWave"
+              @pointerleave.stop="resetSignalWave"
+              @pointerdown.stop.prevent="pulseSignalWave"
             >
-              <span class="toy-thread is-a" />
-              <span class="toy-thread is-b" />
-              <span class="toy-orbit is-a"><span /></span>
-              <span class="toy-orbit is-b"><span /></span>
-              <span class="toy-chip is-a" />
-              <span class="toy-chip is-b" />
-              <span class="toy-chip is-c" />
+              <svg class="wave-svg" viewBox="0 0 640 120" preserveAspectRatio="none" focusable="false">
+                <path
+                  class="wave-path is-glow"
+                  pathLength="100"
+                  d="M4 70 C 58 46, 84 45, 124 66 S 202 89, 250 56 322 28, 374 58 456 96, 520 58 590 30, 636 58"
+                />
+                <path
+                  class="wave-path is-core"
+                  pathLength="100"
+                  d="M4 70 C 58 46, 84 45, 124 66 S 202 89, 250 56 322 28, 374 58 456 96, 520 58 590 30, 636 58"
+                />
+                <path
+                  class="wave-path is-echo"
+                  pathLength="100"
+                  d="M4 82 C 66 68, 100 82, 148 92 S 236 80, 282 72 356 80, 410 92 488 84, 540 70 604 68, 636 76"
+                />
+              </svg>
+              <span class="wave-spark" />
             </div>
           </div>
 
@@ -347,11 +362,10 @@ const overview = ref({
 })
 const loading = ref(false)
 const loadError = ref('')
-const toyShuffling = ref(false)
-const toyGrabbing = ref(false)
+const wavePulsing = ref(false)
 let componentActive = true
 let requestVersion = 0
-let toyShuffleTimer = 0
+let wavePulseTimer = 0
 
 onMounted(() => {
   void load()
@@ -360,7 +374,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   componentActive = false
   requestVersion += 1
-  if (toyShuffleTimer) window.clearTimeout(toyShuffleTimer)
+  if (wavePulseTimer) window.clearTimeout(wavePulseTimer)
 })
 
 async function load() {
@@ -407,71 +421,44 @@ function safeProgressPercent(value) {
   return Math.min(100, Math.max(0, Math.round(number)))
 }
 
-function moveKineticToy(event) {
+function moveSignalWave(event) {
   if (!(event.currentTarget instanceof HTMLElement)) return
 
-  const toy = event.currentTarget
-  const rect = toy.getBoundingClientRect()
+  const wave = event.currentTarget
+  const rect = wave.getBoundingClientRect()
   const xRatio = rect.width ? clampRatio((event.clientX - rect.left) / rect.width) : 0.5
-  const yRatio = rect.height ? clampRatio((event.clientY - rect.top) / rect.height) : 0.52
-  const shiftX = xRatio - 0.5
-  const shiftY = yRatio - 0.5
+  const yRatio = rect.height ? clampRatio((event.clientY - rect.top) / rect.height) : 0.5
+  const lift = (0.5 - yRatio) * 14
+  const bend = (xRatio - 0.5) * 16
 
-  toy.style.setProperty('--toy-x', `${Math.round(xRatio * 100)}%`)
-  toy.style.setProperty('--toy-y', `${Math.round(yRatio * 100)}%`)
-  toy.style.setProperty('--toy-a-x', `${(shiftX * -18).toFixed(1)}px`)
-  toy.style.setProperty('--toy-a-y', `${(shiftY * -12).toFixed(1)}px`)
-  toy.style.setProperty('--toy-b-x', `${(shiftX * 24).toFixed(1)}px`)
-  toy.style.setProperty('--toy-b-y', `${(shiftY * 16).toFixed(1)}px`)
-  toy.style.setProperty('--toy-c-x', `${(shiftX * -11).toFixed(1)}px`)
-  toy.style.setProperty('--toy-c-y', `${(shiftY * 20).toFixed(1)}px`)
-  toy.style.setProperty('--toy-tilt', `${(shiftX * 10).toFixed(1)}deg`)
-  toy.style.setProperty('--toy-depth', `${(1 + Math.abs(shiftX) * 0.08 + Math.abs(shiftY) * 0.06).toFixed(2)}`)
+  wave.style.setProperty('--wave-cursor-x', `${Math.round(xRatio * 100)}%`)
+  wave.style.setProperty('--wave-lift', `${lift.toFixed(1)}px`)
+  wave.style.setProperty('--wave-bend', `${bend.toFixed(1)}px`)
 }
 
-function resetKineticToy(event) {
+function resetSignalWave(event) {
   if (!(event.currentTarget instanceof HTMLElement)) return
-  setKineticToyDefaults(event.currentTarget)
-  releaseKineticToy()
+  setSignalWaveDefaults(event.currentTarget)
 }
 
-function grabKineticToy(event) {
-  moveKineticToy(event)
-  toyGrabbing.value = true
-
-  if (event.currentTarget instanceof HTMLElement && typeof event.currentTarget.setPointerCapture === 'function') {
-    event.currentTarget.setPointerCapture(event.pointerId)
-  }
-}
-
-function releaseKineticToy() {
-  toyGrabbing.value = false
-}
-
-function shuffleKineticToy() {
-  toyShuffling.value = false
+function pulseSignalWave(event) {
+  moveSignalWave(event)
+  wavePulsing.value = false
 
   window.requestAnimationFrame(() => {
-    toyShuffling.value = true
-    if (toyShuffleTimer) window.clearTimeout(toyShuffleTimer)
-    toyShuffleTimer = window.setTimeout(() => {
-      toyShuffling.value = false
-      toyShuffleTimer = 0
-    }, 760)
+    wavePulsing.value = true
+    if (wavePulseTimer) window.clearTimeout(wavePulseTimer)
+    wavePulseTimer = window.setTimeout(() => {
+      wavePulsing.value = false
+      wavePulseTimer = 0
+    }, 680)
   })
 }
 
-function setKineticToyDefaults(toy) {
-  toy.style.setProperty('--toy-x', '54%')
-  toy.style.setProperty('--toy-y', '52%')
-  toy.style.setProperty('--toy-a-x', '0px')
-  toy.style.setProperty('--toy-a-y', '0px')
-  toy.style.setProperty('--toy-b-x', '0px')
-  toy.style.setProperty('--toy-b-y', '0px')
-  toy.style.setProperty('--toy-c-x', '0px')
-  toy.style.setProperty('--toy-c-y', '0px')
-  toy.style.setProperty('--toy-tilt', '0deg')
-  toy.style.setProperty('--toy-depth', '1')
+function setSignalWaveDefaults(wave) {
+  wave.style.setProperty('--wave-cursor-x', '50%')
+  wave.style.setProperty('--wave-lift', '0px')
+  wave.style.setProperty('--wave-bend', '0px')
 }
 
 function clampRatio(value) {
@@ -1005,16 +992,9 @@ function continueSummary(item) {
 }
 
 .continue-panel {
-  --toy-x: 54%;
-  --toy-y: 52%;
-  --toy-a-x: 0px;
-  --toy-a-y: 0px;
-  --toy-b-x: 0px;
-  --toy-b-y: 0px;
-  --toy-c-x: 0px;
-  --toy-c-y: 0px;
-  --toy-tilt: 0deg;
-  --toy-depth: 1;
+  --wave-cursor-x: 50%;
+  --wave-lift: 0px;
+  --wave-bend: 0px;
   isolation: isolate;
   display: block;
   min-height: 340px;
@@ -1121,280 +1101,190 @@ function continueSummary(item) {
   margin-top: 24px;
 }
 
-.kinetic-toy {
+.signal-wave {
   position: absolute;
-  right: 28px;
-  bottom: 22px;
-  left: 28px;
+  right: 26px;
+  bottom: 18px;
+  left: 26px;
   z-index: 3;
   height: 112px;
   background: transparent;
-  cursor: grab;
-  opacity: 0.94;
+  color: var(--primary-color);
+  cursor: pointer;
+  opacity: 0.88;
   pointer-events: auto;
-  touch-action: none;
+  touch-action: manipulation;
   user-select: none;
   transition: opacity 0.2s ease;
 }
 
-.kinetic-toy::before,
-.kinetic-toy::after {
+.signal-wave::before,
+.signal-wave::after {
   position: absolute;
+  right: 0;
+  left: 0;
   pointer-events: none;
   content: '';
 }
 
-.kinetic-toy::before {
-  position: absolute;
-  right: 5%;
-  bottom: 18px;
-  left: 4%;
+.signal-wave::before {
+  bottom: 28px;
   height: 1px;
   border-radius: 999px;
   background: linear-gradient(
     90deg,
     transparent,
-    color-mix(in srgb, var(--primary-color) 32%, transparent),
-    color-mix(in srgb, var(--accent-color) 26%, transparent),
+    color-mix(in srgb, var(--primary-color) 24%, transparent),
+    color-mix(in srgb, var(--accent-color) 22%, transparent),
     transparent
   );
-  opacity: 0.72;
-  transform: translateY(var(--toy-c-y)) rotate(-1deg);
-  transition: transform 0.18s ease, opacity 0.18s ease;
+  opacity: 0.48;
 }
 
-.kinetic-toy::after {
-  top: var(--toy-y);
-  left: var(--toy-x);
-  width: 30px;
-  height: 30px;
-  border: 1px solid color-mix(in srgb, #fff 52%, transparent);
-  border-radius: 999px;
-  box-shadow: 0 0 28px color-mix(in srgb, var(--accent-color) 34%, transparent);
+.signal-wave::after {
+  top: 18px;
+  bottom: 8px;
+  background: radial-gradient(
+    ellipse at var(--wave-cursor-x) 56%,
+    color-mix(in srgb, var(--accent-color) 18%, transparent),
+    transparent 34%
+  );
   opacity: 0;
-  translate: -50% -50%;
-  transform: scale(0.42);
+  transition: opacity 0.2s ease;
 }
 
-.toy-thread {
-  position: absolute;
-  height: 1px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--text-color) 20%, transparent), transparent);
-  opacity: 0.5;
-  pointer-events: none;
-  transform-origin: left center;
-  transition: transform 0.18s ease, opacity 0.18s ease;
-}
-
-.toy-thread.is-a {
-  top: 56%;
-  left: 15%;
-  width: 58%;
-  transform: translate(var(--toy-b-x), var(--toy-b-y)) rotate(-4deg);
-}
-
-.toy-thread.is-b {
-  top: 33%;
-  left: 42%;
-  width: 38%;
-  opacity: 0.36;
-  transform: translate(var(--toy-c-x), var(--toy-a-y)) rotate(8deg);
-}
-
-.toy-orbit {
-  position: absolute;
-  border: 1px solid color-mix(in srgb, var(--primary-color) 22%, transparent);
-  border-radius: 999px;
-  opacity: 0.52;
-  pointer-events: none;
-  transition: transform 0.18s ease, opacity 0.18s ease;
-}
-
-.toy-orbit span {
-  position: absolute;
-  width: 5px;
-  height: 5px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--accent-color) 72%, var(--panel-bg));
-  box-shadow: 0 0 16px color-mix(in srgb, var(--accent-color) 36%, transparent);
-}
-
-.toy-orbit.is-a {
-  bottom: 6px;
-  left: 7%;
-  width: 74px;
-  height: 42px;
-  transform: translate(var(--toy-a-x), var(--toy-a-y)) rotate(-10deg);
-}
-
-.toy-orbit.is-a span {
-  top: 7px;
-  right: 16px;
-}
-
-.toy-orbit.is-b {
-  top: 8px;
-  right: 8%;
-  width: 64px;
-  height: 64px;
-  border-color: color-mix(in srgb, var(--accent-color) 20%, transparent);
-  transform: translate(var(--toy-c-x), var(--toy-c-y)) rotate(18deg);
-}
-
-.toy-orbit.is-b span {
-  right: 12px;
-  bottom: 12px;
-}
-
-.toy-chip {
-  position: absolute;
+.wave-svg {
   display: block;
-  border: 1px solid color-mix(in srgb, #fff 36%, var(--border-color));
-  background: color-mix(in srgb, var(--panel-bg) 78%, var(--primary-color));
-  box-shadow: 0 14px 32px -24px var(--theme-glow-color);
+  width: 100%;
+  height: 100%;
+  overflow: visible;
   pointer-events: none;
+  transform: translateY(var(--wave-lift));
+  transform-origin: 50% 58%;
+  transition: transform 0.18s ease;
+}
+
+.wave-path {
+  fill: none;
+  pointer-events: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform-box: fill-box;
+  transform-origin: center;
+  vector-effect: non-scaling-stroke;
   transition:
-    box-shadow 0.18s ease,
+    opacity 0.18s ease,
+    stroke 0.18s ease,
+    transform 0.18s ease;
+}
+
+.wave-path.is-glow {
+  stroke: color-mix(in srgb, var(--primary-color) 70%, var(--accent-color));
+  stroke-width: 8px;
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--primary-color) 44%, transparent))
+    drop-shadow(0 0 22px color-mix(in srgb, var(--accent-color) 34%, transparent));
+  opacity: 0.26;
+  transform: translateY(var(--wave-bend));
+}
+
+.wave-path.is-core {
+  stroke: color-mix(in srgb, var(--primary-color) 82%, var(--accent-color));
+  stroke-width: 2.8px;
+  stroke-dasharray: 14 10 1 14;
+  stroke-dashoffset: 0;
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--primary-color) 34%, transparent));
+  opacity: 0.9;
+  transform: translateY(calc(var(--wave-bend) * -0.28));
+}
+
+.wave-path.is-echo {
+  stroke: color-mix(in srgb, var(--accent-color) 58%, transparent);
+  stroke-width: 1.4px;
+  stroke-dasharray: 1 13;
+  opacity: 0.46;
+  transform: translateY(calc(var(--wave-bend) * 0.34));
+}
+
+.wave-spark {
+  position: absolute;
+  top: 48%;
+  left: var(--wave-cursor-x);
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, #fff 72%, var(--accent-color)) 0 6%,
+    color-mix(in srgb, var(--accent-color) 36%, transparent) 7% 32%,
+    transparent 68%
+  );
+  opacity: 0;
+  pointer-events: none;
+  translate: -50% -50%;
+  transform: scale(0.74);
+  transition:
     opacity 0.18s ease,
     transform 0.18s ease;
-  animation: toyIdle 5.6s ease-in-out infinite;
-  will-change: transform, translate;
 }
 
-.toy-chip.is-a {
-  top: 46%;
-  left: 13%;
-  width: 54px;
-  height: 20px;
-  border-radius: 999px;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--primary-color) 72%, var(--panel-bg)),
-    color-mix(in srgb, var(--accent-color) 42%, var(--panel-bg))
-  );
-  transform: translate(var(--toy-a-x), var(--toy-a-y)) rotate(calc(-7deg + var(--toy-tilt))) scale(var(--toy-depth));
-}
-
-.toy-chip.is-b {
-  top: 60%;
-  left: 48%;
-  width: 28px;
-  height: 28px;
-  border-radius: 9px;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--accent-color) 62%, var(--panel-bg)),
-    color-mix(in srgb, #fff 34%, var(--primary-color))
-  );
-  transform: translate(var(--toy-b-x), var(--toy-b-y)) rotate(calc(11deg - var(--toy-tilt))) scale(var(--toy-depth));
-  animation-delay: -1.7s;
-}
-
-.toy-chip.is-c {
-  top: 30%;
-  right: 14%;
-  width: 44px;
-  height: 16px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--text-color) 72%, var(--panel-bg));
-  transform: translate(var(--toy-c-x), var(--toy-c-y)) rotate(calc(5deg + var(--toy-tilt))) scale(var(--toy-depth));
-  animation-delay: -3.1s;
-}
-
-.continue-panel:not(.is-unavailable):hover .kinetic-toy,
-.empty-status:hover .kinetic-toy {
+.continue-panel:not(.is-unavailable):hover .signal-wave,
+.empty-status:hover .signal-wave {
   opacity: 1;
 }
 
-.continue-panel:not(.is-unavailable):hover .toy-chip,
-.empty-status:hover .toy-chip {
-  box-shadow: 0 18px 36px -24px var(--theme-glow-color);
+.continue-panel:not(.is-unavailable):hover .signal-wave::after,
+.empty-status:hover .signal-wave::after {
+  opacity: 1;
 }
 
-.continue-panel.is-toy-grabbing .kinetic-toy {
-  cursor: grabbing;
+.continue-panel:not(.is-unavailable):hover .wave-path.is-core {
+  animation: waveScan 1.45s linear infinite;
 }
 
-.continue-panel.is-toy-grabbing .toy-chip,
-.continue-panel.is-toy-grabbing .toy-thread,
-.continue-panel.is-toy-grabbing .toy-orbit {
-  transition-duration: 0.08s;
+.continue-panel:not(.is-unavailable):hover .wave-spark,
+.empty-status:hover .wave-spark {
+  opacity: 0.72;
+  transform: scale(1);
 }
 
-.continue-panel.is-toy-shuffling .kinetic-toy::after {
-  animation: toyTap 0.58s ease-out;
+.continue-panel.is-wave-pulsing .wave-svg {
+  animation: wavePulse 0.68s cubic-bezier(0.2, 0.9, 0.22, 1);
 }
 
-.continue-panel.is-toy-shuffling .toy-chip.is-a {
-  animation: toyShuffleA 760ms cubic-bezier(0.22, 0.88, 0.25, 1);
+.continue-panel.is-wave-pulsing .wave-spark {
+  animation: waveSpark 0.68s ease-out;
 }
 
-.continue-panel.is-toy-shuffling .toy-chip.is-b {
-  animation: toyShuffleB 760ms cubic-bezier(0.22, 0.88, 0.25, 1);
+.empty-status .signal-wave {
+  opacity: 0.78;
 }
 
-.continue-panel.is-toy-shuffling .toy-chip.is-c {
-  animation: toyShuffleC 760ms cubic-bezier(0.22, 0.88, 0.25, 1);
+@keyframes waveScan {
+  to {
+    stroke-dashoffset: -120;
+  }
 }
 
-.empty-status .kinetic-toy {
-  opacity: 0.86;
-}
-
-@keyframes toyIdle {
+@keyframes wavePulse {
   0%,
   100% {
-    translate: 0 0;
+    transform: translateY(var(--wave-lift)) scaleY(1);
   }
 
-  50% {
-    translate: 0 -5px;
+  38% {
+    transform: translateY(calc(var(--wave-lift) - 4px)) scaleY(1.28);
   }
 }
 
-@keyframes toyTap {
+@keyframes waveSpark {
   0% {
-    opacity: 0.62;
-    transform: scale(0.42);
+    opacity: 0.78;
+    transform: scale(0.5);
   }
 
   100% {
     opacity: 0;
-    transform: scale(3.4);
-  }
-}
-
-@keyframes toyShuffleA {
-  0%,
-  100% {
-    transform: translate(var(--toy-a-x), var(--toy-a-y)) rotate(calc(-7deg + var(--toy-tilt))) scale(var(--toy-depth));
-  }
-
-  42% {
-    transform: translate(calc(var(--toy-a-x) + 30px), calc(var(--toy-a-y) - 24px)) rotate(18deg) scale(1.06);
-  }
-}
-
-@keyframes toyShuffleB {
-  0%,
-  100% {
-    transform: translate(var(--toy-b-x), var(--toy-b-y)) rotate(calc(11deg - var(--toy-tilt))) scale(var(--toy-depth));
-  }
-
-  46% {
-    transform: translate(calc(var(--toy-b-x) - 24px), calc(var(--toy-b-y) - 20px)) rotate(-22deg) scale(1.08);
-  }
-}
-
-@keyframes toyShuffleC {
-  0%,
-  100% {
-    transform: translate(var(--toy-c-x), var(--toy-c-y)) rotate(calc(5deg + var(--toy-tilt))) scale(var(--toy-depth));
-  }
-
-  40% {
-    transform: translate(calc(var(--toy-c-x) - 28px), calc(var(--toy-c-y) + 22px)) rotate(20deg) scale(1.04);
+    transform: scale(2.6);
   }
 }
 
@@ -1651,9 +1541,9 @@ function continueSummary(item) {
     padding: 20px 20px 132px;
   }
 
-  .kinetic-toy {
+  .signal-wave {
     right: 18px;
-    bottom: 16px;
+    bottom: 14px;
     left: 18px;
     height: 92px;
   }
@@ -1677,11 +1567,9 @@ function continueSummary(item) {
 
 @media (prefers-reduced-motion: reduce) {
   .continue-panel::after,
-  .kinetic-toy::before,
-  .kinetic-toy::after,
-  .toy-chip,
-  .toy-thread,
-  .toy-orbit,
+  .wave-path,
+  .wave-spark,
+  .wave-svg,
   .progress-track span,
   .timeline-item,
   .favorite-line,
@@ -1691,11 +1579,9 @@ function continueSummary(item) {
     transition: none;
   }
 
-  .kinetic-toy::before,
-  .kinetic-toy::after,
-  .toy-chip,
-  .toy-thread,
-  .toy-orbit {
+  .wave-path,
+  .wave-spark,
+  .wave-svg {
     translate: none;
     transform: none;
   }
