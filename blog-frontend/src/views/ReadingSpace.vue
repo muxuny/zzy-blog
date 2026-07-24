@@ -337,6 +337,7 @@ let signalAnimationFrame = 0
 
 const WAVE_FREQUENCY = 0.036
 const WAVE_AMPLITUDE = 34
+const WAVE_TOP_PADDING = 14
 const CURSOR_RADIUS = 150
 const CURSOR_LIFT = 40
 const PARTICLE_MAX = 18
@@ -513,7 +514,7 @@ function buildSignalWavePoints(width, height, timestamp) {
     const distance = Math.abs(x - cursor.x)
     if (cursor.active && distance <= CURSOR_RADIUS) {
       const gaussian = Math.exp(-(distance * distance) / (2 * sigma * sigma))
-      y -= CURSOR_LIFT * gaussian
+      y = applySignalCursorLift(y, CURSOR_LIFT * gaussian)
     }
     points.push({ x, y })
   }
@@ -528,6 +529,12 @@ function buildSignalWavePoints(width, height, timestamp) {
   }
 
   return { points, peaks }
+}
+
+function applySignalCursorLift(y, desiredLift) {
+  const availableLift = Math.max(0, y - WAVE_TOP_PADDING)
+  if (desiredLift <= 0 || availableLift <= 0) return Math.max(y, WAVE_TOP_PADDING)
+  return WAVE_TOP_PADDING + availableLift * Math.exp(-desiredLift / availableLift)
 }
 
 function randomNoise(x, time) {
