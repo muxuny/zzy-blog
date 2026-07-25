@@ -21,37 +21,6 @@
       </section>
 
       <article v-else-if="article" class="preview-page">
-        <header class="detail-head preview-head">
-          <div class="detail-copy">
-            <span class="eyebrow">文章预览</span>
-            <h1>{{ article.title }}</h1>
-            <div class="preview-meta">
-              <span class="status-pill" :data-status="article.status">{{ statusText(article.status) }}</span>
-              <span class="status-pill visibility-pill">{{ articleVisibilityText(article.visibility) }}</span>
-              <span>{{ formatDate(article.updatedAt || article.createdAt) }}</span>
-              <span v-if="article.createdBy">{{ article.createdBy }}</span>
-            </div>
-            <p v-if="article.summary" class="preview-summary">{{ article.summary }}</p>
-            <div v-if="article.tags?.length" class="preview-tags">
-              <span v-for="tag in article.tags" :key="tag.id" class="tag-chip">{{ tag.name }}</span>
-            </div>
-          </div>
-          <aside class="detail-meta" aria-label="预览摘要">
-            <div class="meta-line">
-              <span class="meta-label">状态</span>
-              <span class="meta-value">{{ statusText(article.status) }}</span>
-            </div>
-            <div class="meta-line">
-              <span class="meta-label">可见性</span>
-              <span class="meta-value">{{ articleVisibilityText(article.visibility) }}</span>
-            </div>
-            <div class="meta-line">
-              <span class="meta-label">更新</span>
-              <span class="meta-value">{{ formatDate(article.updatedAt || article.createdAt) }}</span>
-            </div>
-          </aside>
-        </header>
-
         <el-alert
           v-if="article.reviewReason"
           class="review-alert"
@@ -61,39 +30,50 @@
           :closable="false"
         />
 
-        <figure v-if="article.coverImage" class="preview-cover">
-          <img :src="article.coverImage" :alt="article.title" />
-        </figure>
-
         <div class="reading-canvas preview-reading-layout" :class="{ 'has-toc': toc.length }">
-          <section class="article-body preview-body">
-            <section v-if="toc.length" class="section-meter mobile-section-meter" aria-label="章节位置">
-              <button
-                v-for="item in toc"
-                :key="item.id"
-                type="button"
-                class="meter-dot"
-                :class="{ active: activeHeadingId === item.id }"
-                :title="item.text"
-                @click="scrollToHeading(item.id)"
-              />
-            </section>
+          <div class="reading-primary">
+            <header class="detail-head preview-head">
+              <div class="detail-copy">
+                <span class="eyebrow">文章预览</span>
+                <h1>{{ article.title }}</h1>
+                <p v-if="article.summary" class="detail-summary">{{ article.summary }}</p>
+                <div class="detail-meta">
+                  <span>{{ statusText(article.status) }}</span>
+                  <span>{{ articleVisibilityText(article.visibility) }}</span>
+                  <span>{{ formatDate(article.updatedAt || article.createdAt) }}</span>
+                  <span v-if="article.createdBy">{{ article.createdBy }}</span>
+                </div>
+                <div v-if="article.tags?.length" class="detail-actions">
+                  <div class="article-tags">
+                    <span v-for="tag in article.tags" :key="tag.id" class="tag-chip">{{ tag.name }}</span>
+                  </div>
+                </div>
+              </div>
+            </header>
 
-            <MarkdownRenderer :content="article.content" />
-          </section>
+            <figure v-if="article.coverImage" class="preview-cover">
+              <img :src="article.coverImage" :alt="article.title" />
+            </figure>
+
+            <section class="article-body preview-body">
+              <nav v-if="toc.length" class="mobile-toc" aria-label="文章目录">
+                <span class="eyebrow">目录</span>
+                <button
+                  v-for="item in toc"
+                  :key="item.id"
+                  type="button"
+                  :class="['toc-link', `level-${item.level}`, { active: activeHeadingId === item.id }]"
+                  @click="scrollToHeading(item.id)"
+                >
+                  {{ item.text }}
+                </button>
+              </nav>
+
+              <MarkdownRenderer :content="article.content" />
+            </section>
+          </div>
 
           <aside v-if="toc.length" class="reading-sidebar preview-sidebar">
-            <section class="section-meter" aria-label="章节位置">
-              <button
-                v-for="item in toc"
-                :key="item.id"
-                type="button"
-                class="meter-dot"
-                :class="{ active: activeHeadingId === item.id }"
-                :title="item.text"
-                @click="scrollToHeading(item.id)"
-              />
-            </section>
             <nav ref="tocPanelRef" class="toc-panel" aria-label="文章目录">
               <span class="eyebrow">目录</span>
               <button
@@ -107,6 +87,10 @@
                 {{ item.text }}
               </button>
             </nav>
+            <section class="note-panel">
+              <span class="eyebrow">阅读提示</span>
+              <p>目录会跟随章节、小节和细分标题生成，适合快速回到关键段落。</p>
+            </section>
           </aside>
         </div>
       </article>
@@ -347,15 +331,22 @@ function statusText(status) {
 }
 
 .detail-head {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
-  gap: 30px;
-  align-items: end;
-  padding-top: 6px;
+  position: relative;
+  margin-bottom: 30px;
+  padding: 6px 0 24px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
+  background: transparent;
+  box-shadow: none;
+}
+
+.reading-primary,
+.detail-copy {
+  min-width: 0;
 }
 
 .detail-copy {
-  min-width: 0;
+  display: grid;
+  align-content: start;
 }
 
 .eyebrow {
@@ -368,42 +359,66 @@ function statusText(status) {
 }
 
 .detail-head h1 {
-  max-width: 900px;
-  margin: 0 0 18px;
+  max-width: 820px;
+  margin: 0 0 22px;
   color: var(--text-color);
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(42px, 7vw, 82px);
+  font-size: clamp(52px, 7.4vw, 92px);
   font-weight: 500;
   line-height: 0.98;
   overflow-wrap: anywhere;
 }
 
-.preview-meta,
-.preview-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 12px;
-  align-items: center;
+.detail-summary {
+  max-width: 680px;
+  margin: 0 0 20px;
+  color: color-mix(in srgb, var(--text-color) 62%, var(--muted-text-color));
+  font-size: clamp(16px, 1.7vw, 18px);
+  line-height: 1.75;
+  overflow-wrap: anywhere;
 }
 
-.preview-meta {
+.detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
   color: var(--muted-text-color);
   font-size: 13px;
 }
 
-.preview-summary {
-  margin: 18px 0 0;
-  color: var(--muted-text-color);
-  font-size: 17px;
-  line-height: 1.85;
+.detail-meta span + span {
+  position: relative;
+  padding-left: 14px;
 }
 
-.preview-tags {
-  margin-top: 18px;
+.detail-meta span + span::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--primary-color) 36%, transparent);
+  content: '';
+  transform: translateY(-50%);
 }
 
-.tag-chip,
-.status-pill {
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.article-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
+
+.tag-chip {
   display: inline-flex;
   align-items: center;
   min-height: 28px;
@@ -411,67 +426,10 @@ function statusText(status) {
   font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
-}
-
-.tag-chip {
   padding: 4px 10px;
   border: 1px solid var(--border-color);
   background: color-mix(in srgb, var(--panel-bg) 92%, transparent);
   color: var(--muted-text-color);
-}
-
-.status-pill {
-  padding: 4px 10px;
-  background: color-mix(in srgb, var(--muted-text-color) 12%, transparent);
-  color: var(--muted-text-color);
-}
-
-.status-pill[data-status="pending"] {
-  background: color-mix(in srgb, var(--warning-color) 18%, transparent);
-  color: var(--warning-color);
-}
-
-.status-pill[data-status="published"],
-.visibility-pill {
-  background: color-mix(in srgb, var(--primary-color) 14%, transparent);
-  color: var(--primary-color);
-}
-
-.status-pill[data-status="rejected"] {
-  background: color-mix(in srgb, var(--danger-color) 14%, transparent);
-  color: var(--danger-color);
-}
-
-.detail-meta {
-  border-left: 1px solid var(--border-color);
-  padding-left: 18px;
-}
-
-.meta-line {
-  display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--soft-border-color);
-}
-
-.meta-line:last-child {
-  border-bottom: 0;
-}
-
-.meta-label {
-  color: var(--accent-color);
-  font-size: 12px;
-  font-weight: 760;
-}
-
-.meta-value {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--text-color);
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .review-alert {
@@ -494,13 +452,14 @@ function statusText(status) {
 
 .reading-canvas {
   display: grid;
-  grid-template-columns: minmax(0, var(--reading-width));
-  gap: 34px;
+  grid-template-columns: minmax(0, 760px);
+  gap: 36px;
   align-items: start;
+  justify-content: center;
 }
 
 .reading-canvas.has-toc {
-  grid-template-columns: minmax(0, 1fr) 260px;
+  grid-template-columns: minmax(0, 760px) 280px;
   max-width: none;
   margin: 0;
 }
@@ -516,71 +475,56 @@ function statusText(status) {
   position: sticky;
   top: calc(var(--app-header-height) + 22px);
   display: grid;
-  gap: 14px;
-}
-
-.toc-panel,
-.section-meter {
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
-  box-shadow: var(--shadow-sm);
+  gap: 16px;
+  padding-left: 18px;
+  border-left: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
 }
 
 .toc-panel {
   display: grid;
   gap: 6px;
-  padding: 16px;
-}
-
-.toc-panel {
   max-height: calc(100vh - var(--app-header-height) - 150px);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
 }
 
-.section-meter {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 14px 16px;
-}
-
-.mobile-section-meter {
+.mobile-toc {
   display: none;
+  gap: 6px;
   margin-bottom: 22px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-bg) 84%, transparent);
+  box-shadow: none;
 }
 
-.meter-dot {
-  width: 10px;
-  height: 10px;
+.note-panel {
   padding: 0;
-  border: 1px solid color-mix(in srgb, var(--primary-color) 38%, var(--border-color));
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--panel-bg) 92%, transparent);
-  cursor: pointer;
-  transition:
-    transform 0.18s ease,
-    border-color 0.18s ease,
-    background-color 0.18s ease,
-    box-shadow 0.18s ease;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
-.meter-dot:hover,
-.meter-dot.active {
-  transform: scale(1.18);
-  border-color: var(--primary-color);
-  background: var(--primary-color);
-  box-shadow: 0 0 0 6px var(--surface-wash-color);
+.note-panel p {
+  margin: 8px 0 0;
+  color: var(--muted-text-color);
+  font-size: 13px;
+  line-height: 1.7;
 }
 
 .toc-link {
   position: relative;
   width: 100%;
-  padding: 7px 8px;
+  padding: 7px 0;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   background: transparent;
   color: var(--muted-text-color);
   font: inherit;
@@ -593,31 +537,31 @@ function statusText(status) {
 .toc-link::before {
   position: absolute;
   top: 50%;
-  left: -7px;
+  left: -22px;
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: var(--primary-color);
   content: '';
   opacity: 0;
-  transform: translateY(-50%) scale(0.72);
+  transform: translateY(-50%) scale(0.45);
   transition: opacity 0.18s ease, transform 0.18s ease;
-}
-
-.toc-link:hover {
-  background: color-mix(in srgb, var(--primary-color) 8%, transparent);
-  color: var(--primary-color);
-}
-
-.toc-link.active {
-  background: color-mix(in srgb, var(--primary-color) 12%, transparent);
-  color: var(--primary-color);
-  font-weight: 800;
 }
 
 .toc-link.active::before {
   opacity: 1;
   transform: translateY(-50%) scale(1);
+}
+
+.toc-link:hover {
+  background: transparent;
+  color: var(--primary-color);
+}
+
+.toc-link.active {
+  background: transparent;
+  color: var(--primary-color);
+  font-weight: 800;
 }
 
 .toc-link.level-3 {
@@ -630,26 +574,18 @@ function statusText(status) {
 }
 
 @media (max-width: 980px) {
-  .detail-head,
   .reading-canvas.has-toc {
     grid-template-columns: 1fr;
     max-width: var(--reading-width);
     margin: 0 auto;
   }
 
-  .detail-meta {
-    border-left: 0;
-    border-top: 1px solid var(--border-color);
-    padding-top: 12px;
-    padding-left: 0;
-  }
-
   .reading-sidebar {
     display: none;
   }
 
-  .mobile-section-meter {
-    display: flex;
+  .mobile-toc {
+    display: grid;
   }
 }
 
@@ -672,26 +608,19 @@ function statusText(status) {
   .detail-head h1 {
     font-size: 42px;
   }
-
-  .meta-line {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .back-button,
   .edit-button,
-  .toc-link::before,
-  .meter-dot {
+  .toc-link::before {
     transition: none;
   }
 
   .back-button:hover,
   .back-button:focus-visible,
   .edit-button:hover,
-  .edit-button:focus-visible,
-  .meter-dot:hover,
-  .meter-dot.active {
+  .edit-button:focus-visible {
     transform: none;
   }
 }
