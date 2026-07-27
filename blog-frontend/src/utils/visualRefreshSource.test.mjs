@@ -519,6 +519,20 @@ test('secondary public and auth pages no longer expose legacy visual shells', ()
   }
 })
 
+test('login page explains the destination after authentication', () => {
+  const login = read('../views/Login.vue')
+
+  assert.match(login, /登录后继续/)
+  assert.match(login, /接上刚才的阅读和创作。/)
+  assert.match(login, /登录后会优先回到你刚才要打开的页面/)
+  assert.match(login, /继续上次阅读位置/)
+  assert.match(login, /仅管理员可进入/)
+  assert.match(login, /登录后继续访问刚才的页面/)
+  assert.doesNotMatch(login, /私人入口/)
+  assert.doesNotMatch(login, /回到你的知识空间。/)
+  assert.doesNotMatch(login, /进入后台，继续管理你的内容。/)
+})
+
 test('creator writing and preview pages use the prototype surface system', () => {
   const write = read('../views/creator/ArticleWrite.vue')
   const preview = read('../views/creator/ArticlePreview.vue')

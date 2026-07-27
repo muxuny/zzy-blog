@@ -1,28 +1,28 @@
 <template>
   <main class="auth-shell">
     <section class="auth-copy">
-      <span class="eyebrow">私人入口</span>
-      <h1>回到你的知识空间。</h1>
-      <p>继续阅读、管理草稿，或者进入后台处理需要你确认的内容。</p>
-      <div class="auth-index" aria-label="登录后可进入的区域">
+      <span class="eyebrow">登录后继续</span>
+      <h1>接上刚才的阅读和创作。</h1>
+      <p>登录后会优先回到你刚才要打开的页面；没有指定入口时，会进入首页，管理员可直接进入后台。</p>
+      <div class="auth-index" aria-label="登录后的去向">
         <div class="meta-line">
           <span class="meta-label">阅读</span>
-          <span class="meta-value">续接上次进度</span>
+          <span class="meta-value">继续上次阅读位置</span>
         </div>
         <div class="meta-line">
           <span class="meta-label">创作</span>
-          <span class="meta-value">回到文章工作台</span>
+          <span class="meta-value">管理自己的文章草稿</span>
         </div>
         <div class="meta-line">
-          <span class="meta-label">管理</span>
-          <span class="meta-value">按权限显示后台</span>
+          <span class="meta-label">后台</span>
+          <span class="meta-value">仅管理员可进入</span>
         </div>
       </div>
     </section>
 
     <section class="auth-panel" aria-label="登录表单">
       <span class="panel-kicker">登录</span>
-      <p class="auth-subtitle">进入后台，继续管理你的内容。</p>
+      <p class="auth-subtitle">登录后继续访问刚才的页面，或进入你有权限的空间。</p>
       <el-form :model="form" :rules="rules" ref="formRef">
         <el-form-item prop="username">
           <el-input v-model="form.username" placeholder="用户名" />
