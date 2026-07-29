@@ -667,6 +667,22 @@
       gap: 8px;
     }
 
+    .article-table-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) 104px 108px 190px;
+      align-items: center;
+      gap: 14px;
+      padding: 10px 0 8px;
+      border-bottom: 1px solid var(--soft-border-color);
+      color: var(--muted-text-color);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .article-table-head span:last-child {
+      text-align: right;
+    }
+
     .data-row,
     .review-item,
     .article-row {
@@ -765,7 +781,7 @@
 
     .article-row {
       display: grid;
-      grid-template-columns: minmax(0, 1.4fr) 112px 128px 142px;
+      grid-template-columns: minmax(0, 1.45fr) 104px 108px 190px;
       align-items: center;
       gap: 14px;
       min-height: 72px;
@@ -782,6 +798,9 @@
     }
 
     .row-actions {
+      display: grid;
+      grid-template-columns: repeat(3, 54px);
+      gap: 6px;
       justify-content: flex-end;
     }
 
@@ -797,11 +816,18 @@
     }
 
     .row-action-button {
+      width: 54px;
       min-height: 32px;
-      padding: 5px 10px;
+      padding: 5px 0;
+      border-radius: 6px;
       color: var(--text-color);
       font-size: 13px;
       white-space: nowrap;
+    }
+
+    .action-spacer {
+      width: 54px;
+      height: 32px;
     }
 
     .row-action-button.is-success {
@@ -1068,6 +1094,10 @@
         align-items: stretch;
       }
 
+      .article-table-head {
+        display: none;
+      }
+
       .row-actions {
         justify-content: flex-start;
       }
@@ -1327,6 +1357,13 @@
                 </div>
               </div>
 
+              <div class="article-table-head">
+                <span>文章</span>
+                <span>状态</span>
+                <span>可见性</span>
+                <span>操作</span>
+              </div>
+
               <div class="article-row">
                 <div>
                   <div class="article-title">后台视觉同步方案</div>
@@ -1350,6 +1387,7 @@
                 <span class="chip">公开</span>
                 <div class="row-actions">
                   <button class="row-action-button" type="button">编辑</button>
+                  <span class="action-spacer" aria-hidden="true"></span>
                   <button class="row-action-button is-danger" type="button">删除</button>
                 </div>
               </div>
@@ -1363,6 +1401,7 @@
                 <span class="chip">仅自己</span>
                 <div class="row-actions">
                   <button class="row-action-button" type="button">编辑</button>
+                  <span class="action-spacer" aria-hidden="true"></span>
                   <button class="row-action-button is-danger" type="button">删除</button>
                 </div>
               </div>
