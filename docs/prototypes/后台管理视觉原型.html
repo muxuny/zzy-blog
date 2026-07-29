@@ -209,8 +209,8 @@
     .theme-button,
     .tool-button,
     .nav-item,
-    .view-tab,
-    .icon-button {
+    .icon-button,
+    .row-action-button {
       border: 1px solid var(--border-color);
       border-radius: 999px;
       color: var(--text-color);
@@ -225,7 +225,6 @@
     }
 
     .theme-button.is-active,
-    .view-tab.is-active,
     .tool-button.is-primary {
       border-color: color-mix(in srgb, var(--primary-color) 48%, transparent);
       color: var(--panel-bg);
@@ -360,10 +359,39 @@
 
     .main-surface {
       min-width: 0;
-      padding: 26px;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      background: color-mix(in srgb, var(--bg-color) 76%, transparent);
     }
 
     .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      min-height: 64px;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--soft-border-color);
+      background: color-mix(in srgb, var(--panel-bg) 84%, transparent);
+      backdrop-filter: blur(14px);
+    }
+
+    .welcome-line {
+      color: var(--text-color);
+      font-weight: 760;
+    }
+
+    .welcome-line span {
+      color: var(--muted-text-color);
+      font-weight: 500;
+    }
+
+    .admin-page-body {
+      min-width: 0;
+      padding: 24px;
+    }
+
+    .page-head {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
@@ -371,7 +399,7 @@
       margin-bottom: 18px;
     }
 
-    .topbar h2 {
+    .page-head h2 {
       margin: 4px 0 0;
       color: var(--text-color);
       font-family: Georgia, "Times New Roman", serif;
@@ -380,14 +408,13 @@
       line-height: 1.05;
     }
 
-    .topbar p {
+    .page-head p {
       max-width: 620px;
       margin: 8px 0 0;
       color: var(--muted-text-color);
     }
 
     .toolbar,
-    .view-tabs,
     .filter-group,
     .row-actions,
     .chip-row {
@@ -400,8 +427,7 @@
       justify-content: flex-end;
     }
 
-    .tool-button,
-    .view-tab {
+    .tool-button {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -411,16 +437,10 @@
     }
 
     .tool-button:hover,
-    .view-tab:hover,
-    .icon-button:hover {
+    .icon-button:hover,
+    .row-action-button:hover {
       transform: translateY(-1px);
       border-color: color-mix(in srgb, var(--primary-color) 34%, transparent);
-    }
-
-    .view-tabs {
-      margin: 0 0 18px;
-      padding-bottom: 14px;
-      border-bottom: 1px solid var(--soft-border-color);
     }
 
     .prototype-view {
@@ -705,6 +725,32 @@
       color: var(--text-color);
     }
 
+    .row-action-button {
+      min-height: 32px;
+      padding: 5px 10px;
+      color: var(--text-color);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .row-action-button.is-success {
+      border-color: color-mix(in srgb, var(--primary-color) 38%, transparent);
+      color: color-mix(in srgb, var(--primary-color) 76%, var(--text-color));
+      background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+    }
+
+    .row-action-button.is-warning {
+      border-color: color-mix(in srgb, var(--warning-color) 42%, transparent);
+      color: color-mix(in srgb, var(--warning-color) 76%, var(--text-color));
+      background: color-mix(in srgb, var(--warning-color) 10%, transparent);
+    }
+
+    .row-action-button.is-danger {
+      border-color: color-mix(in srgb, var(--danger-color) 42%, transparent);
+      color: color-mix(in srgb, var(--danger-color) 78%, var(--text-color));
+      background: color-mix(in srgb, var(--danger-color) 10%, transparent);
+    }
+
     .queue-line {
       display: grid;
       gap: 9px;
@@ -718,6 +764,17 @@
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
+    }
+
+    .resource-summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .resource-summary .resource-tile {
+      min-height: 88px;
     }
 
     .resource-tile {
@@ -740,9 +797,9 @@
 
     .mini-image-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 7px;
-      margin-top: 14px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 9px;
+      margin-top: 12px;
     }
 
     .mini-image {
@@ -752,6 +809,56 @@
       background:
         linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 22%, transparent), transparent),
         color-mix(in srgb, var(--code-bg) 88%, var(--accent-color));
+    }
+
+    .resource-board {
+      display: grid;
+      grid-template-columns: minmax(280px, 0.72fr) minmax(0, 1fr);
+      gap: 16px;
+    }
+
+    .inline-create {
+      display: flex;
+      gap: 8px;
+      margin: 14px 0;
+    }
+
+    .inline-create input {
+      min-width: 0;
+      flex: 1;
+      border: 1px solid var(--border-color);
+      border-radius: 999px;
+      padding: 8px 12px;
+      color: var(--text-color);
+      background: color-mix(in srgb, var(--panel-bg) 86%, transparent);
+    }
+
+    .tag-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .tag-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--soft-border-color);
+    }
+
+    .tag-item:last-child {
+      border-bottom: 0;
+    }
+
+    .image-card {
+      display: grid;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .image-card .row-meta {
+      word-break: break-all;
     }
 
     .profile-layout {
@@ -804,7 +911,7 @@
 
     @media (max-width: 1040px) {
       .prototype-note,
-      .topbar {
+      .page-head {
         flex-direction: column;
       }
 
@@ -820,7 +927,9 @@
       .article-shell,
       .dashboard-grid,
       .admin-split,
-      .profile-layout {
+      .profile-layout,
+      .resource-board,
+      .resource-summary {
         grid-template-columns: 1fr;
       }
     }
@@ -845,10 +954,20 @@
       }
 
       .main-surface {
+        display: block;
+      }
+
+      .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 16px 18px;
+      }
+
+      .admin-page-body {
         padding: 18px;
       }
 
-      .topbar h2 {
+      .page-head h2 {
         font-size: 34px;
       }
 
@@ -873,7 +992,6 @@
         grid-template-columns: 1fr;
       }
 
-      .view-tab,
       .tool-button,
       .theme-button {
         width: 100%;
@@ -887,7 +1005,7 @@
       <div>
         <span class="eyebrow">后台视觉同步原型</span>
         <h1>把后台做成同一套私人知识空间的管理中枢。</h1>
-        <p>这份原型只展示视觉和布局方向，不接入真实数据。上方可切换主题，下方可切换后台场景，用来确认后台是否应该按这个基调进入正式实现。</p>
+        <p>这份原型只展示视觉和布局方向，不接入真实数据。后台结构按现有项目的左侧菜单、顶部欢迎栏和内容区来模拟，方便判断正式落地后的差距。</p>
       </div>
       <div class="theme-switcher" aria-label="主题切换">
         <button class="theme-button is-active" type="button" data-palette="juniper" data-theme-button>Juniper</button>
@@ -918,7 +1036,7 @@
           </button>
           <button class="nav-item" type="button" data-nav-target="resources">
             <span class="nav-icon">R</span>
-            <span>标签图片</span>
+            <span>资源管理</span>
             <span class="nav-badge">82</span>
           </button>
           <button class="nav-item" type="button" data-nav-target="users">
@@ -942,27 +1060,27 @@
 
       <main class="main-surface">
         <header class="topbar">
-          <div>
-            <span class="page-eyebrow">今日后台</span>
-            <h2>管理中枢</h2>
-            <p>后台不再像另一套系统，而是延续前台的网格背景、安静面板和清晰状态层级。</p>
-          </div>
+          <div class="welcome-line">欢迎回来，zhangziyi <span>管理员</span></div>
           <div class="toolbar">
             <button class="tool-button" type="button">返回博客</button>
-            <button class="tool-button is-primary" type="button">刷新数据</button>
+            <button class="tool-button" type="button">退出登录</button>
           </div>
         </header>
 
-        <div class="view-tabs" role="tablist" aria-label="后台场景切换">
-          <button class="view-tab is-active" type="button" data-view-target="dashboard">仪表盘</button>
-          <button class="view-tab" type="button" data-view-target="articles">文章管理</button>
-          <button class="view-tab" type="button" data-view-target="resources">标签图片</button>
-          <button class="view-tab" type="button" data-view-target="users">用户管理</button>
-          <button class="view-tab" type="button" data-view-target="profile">个人资料</button>
-        </div>
+        <div class="admin-page-body">
+          <section class="prototype-view is-visible" data-view="dashboard">
+            <div class="page-head">
+              <div>
+                <span class="page-eyebrow">概览</span>
+                <h2>仪表盘</h2>
+                <p>把文章状态、审核队列、标签和素材放在一个总览面，仍然复用现有后台接口。</p>
+              </div>
+              <div class="toolbar">
+                <button class="tool-button is-primary" type="button">刷新数据</button>
+              </div>
+            </div>
 
-        <section class="prototype-view is-visible" data-view="dashboard">
-          <div class="signal-strip">
+            <div class="signal-strip">
             <div class="signal-primary">
               <div>
                 <span class="section-eyebrow">待处理</span>
@@ -1083,7 +1201,15 @@
           </div>
         </section>
 
-        <section class="prototype-view" data-view="articles">
+          <section class="prototype-view" data-view="articles">
+            <div class="page-head">
+              <div>
+                <span class="page-eyebrow">内容审核</span>
+                <h2>文章管理</h2>
+                <p>延续现有文章管理能力，保留状态筛选、可见性筛选、审核、驳回、编辑和删除。</p>
+              </div>
+            </div>
+
           <div class="article-shell">
             <section class="surface article-board">
               <div class="filter-bar">
@@ -1120,9 +1246,9 @@
                 <span class="chip is-warning">待审核</span>
                 <span class="chip">公开</span>
                 <div class="row-actions">
-                  <button class="icon-button" type="button" aria-label="编辑">E</button>
-                  <button class="icon-button" type="button" aria-label="通过">Y</button>
-                  <button class="icon-button" type="button" aria-label="驳回">N</button>
+                  <button class="row-action-button" type="button">编辑</button>
+                  <button class="row-action-button is-success" type="button">通过</button>
+                  <button class="row-action-button is-warning" type="button">驳回</button>
                 </div>
               </div>
 
@@ -1134,8 +1260,8 @@
                 <span class="chip is-success">已发布</span>
                 <span class="chip">公开</span>
                 <div class="row-actions">
-                  <button class="icon-button" type="button" aria-label="编辑">E</button>
-                  <button class="icon-button" type="button" aria-label="删除">D</button>
+                  <button class="row-action-button" type="button">编辑</button>
+                  <button class="row-action-button is-danger" type="button">删除</button>
                 </div>
               </div>
 
@@ -1147,8 +1273,8 @@
                 <span class="chip">草稿</span>
                 <span class="chip">仅自己</span>
                 <div class="row-actions">
-                  <button class="icon-button" type="button" aria-label="编辑">E</button>
-                  <button class="icon-button" type="button" aria-label="删除">D</button>
+                  <button class="row-action-button" type="button">编辑</button>
+                  <button class="row-action-button is-danger" type="button">删除</button>
                 </div>
               </div>
             </section>
@@ -1180,30 +1306,68 @@
           </div>
         </section>
 
-        <section class="prototype-view" data-view="resources">
-          <div class="admin-split">
+          <section class="prototype-view" data-view="resources">
+            <div class="page-head">
+              <div>
+                <span class="page-eyebrow">内容资源</span>
+                <h2>资源管理</h2>
+                <p>把原来的标签管理和图片管理合并到一个页面，但操作区仍然分成标签库和图片素材两块。</p>
+              </div>
+            </div>
+
+          <div class="resource-summary">
+            <div class="resource-tile">
+              <span class="tiny-label">标签数量</span>
+              <strong>18</strong>
+              <div class="row-meta">用于首页筛选和文章归类</div>
+            </div>
+            <div class="resource-tile">
+              <span class="tiny-label">图片素材</span>
+              <strong>64</strong>
+              <div class="row-meta">封面和正文图片</div>
+            </div>
+            <div class="resource-tile">
+              <span class="tiny-label">最近上传</span>
+              <strong>8</strong>
+              <div class="row-meta">近 7 天变化</div>
+            </div>
+            <div class="resource-tile">
+              <span class="tiny-label">资源操作</span>
+              <strong>2</strong>
+              <div class="row-meta">新增标签 / 上传图片</div>
+            </div>
+          </div>
+
+          <div class="resource-board">
             <section class="surface">
               <div class="panel-head">
                 <div>
-                  <span class="section-eyebrow">标签管理</span>
-                  <h3>内容索引</h3>
+                  <span class="section-eyebrow">标签库</span>
+                  <h3>新增和维护标签</h3>
                 </div>
-                <button class="tool-button is-primary" type="button">新建标签</button>
               </div>
-              <div class="resource-grid">
-                <div class="resource-tile">
-                  <span class="tiny-label">标签数量</span>
-                  <strong>18</strong>
-                  <div class="chip-row">
-                    <span class="chip">Vue</span>
-                    <span class="chip">阅读</span>
-                    <span class="chip">设计</span>
-                  </div>
+
+              <div class="inline-create">
+                <input aria-label="标签名" value="设计复盘">
+                <button class="tool-button is-primary" type="button">新增</button>
+              </div>
+
+              <div class="tag-list">
+                <div class="tag-item">
+                  <span class="chip">Vue</span>
+                  <button class="row-action-button is-danger" type="button">删除</button>
                 </div>
-                <div class="resource-tile">
-                  <span class="tiny-label">近期新增</span>
-                  <strong>3</strong>
-                  <div class="row-meta">用于观察分类是否过度膨胀。</div>
+                <div class="tag-item">
+                  <span class="chip">阅读</span>
+                  <button class="row-action-button is-danger" type="button">删除</button>
+                </div>
+                <div class="tag-item">
+                  <span class="chip">设计</span>
+                  <button class="row-action-button is-danger" type="button">删除</button>
+                </div>
+                <div class="tag-item">
+                  <span class="chip">项目记录</span>
+                  <button class="row-action-button is-danger" type="button">删除</button>
                 </div>
               </div>
             </section>
@@ -1211,36 +1375,47 @@
             <section class="surface">
               <div class="panel-head">
                 <div>
-                  <span class="section-eyebrow">图片管理</span>
-                  <h3>素材维护</h3>
+                  <span class="section-eyebrow">图片素材</span>
+                  <h3>上传和清理图片</h3>
                 </div>
-                <button class="tool-button" type="button">上传图片</button>
+                <button class="tool-button is-primary" type="button">上传图片</button>
               </div>
-              <div class="resource-grid">
-                <div class="resource-tile">
-                  <span class="tiny-label">素材总数</span>
-                  <strong>64</strong>
-                  <div class="row-meta">封面和正文图片。</div>
-                </div>
-                <div class="resource-tile">
-                  <span class="tiny-label">最近上传</span>
-                  <strong>8</strong>
-                  <div class="row-meta">近 7 天素材变化。</div>
-                </div>
-              </div>
+
               <div class="mini-image-grid" aria-label="图片缩略预览">
-                <span class="mini-image"></span>
-                <span class="mini-image"></span>
-                <span class="mini-image"></span>
-                <span class="mini-image"></span>
-                <span class="mini-image"></span>
-                <span class="mini-image"></span>
+                <div class="image-card">
+                  <span class="mini-image"></span>
+                  <div class="row-meta">cover-reading.png</div>
+                  <button class="row-action-button is-danger" type="button">删除</button>
+                </div>
+                <div class="image-card">
+                  <span class="mini-image"></span>
+                  <div class="row-meta">article-flow.jpg</div>
+                  <button class="row-action-button is-danger" type="button">删除</button>
+                </div>
+                <div class="image-card">
+                  <span class="mini-image"></span>
+                  <div class="row-meta">dashboard-note.png</div>
+                  <button class="row-action-button is-danger" type="button">删除</button>
+                </div>
+                <div class="image-card">
+                  <span class="mini-image"></span>
+                  <div class="row-meta">visual-grid.jpg</div>
+                  <button class="row-action-button is-danger" type="button">删除</button>
+                </div>
               </div>
             </section>
           </div>
         </section>
 
-        <section class="prototype-view" data-view="users">
+          <section class="prototype-view" data-view="users">
+            <div class="page-head">
+              <div>
+                <span class="page-eyebrow">账号审核</span>
+                <h2>用户管理</h2>
+                <p>保留现有用户列表、审核通过和禁用能力，把状态说明和处理规则放得更清楚。</p>
+              </div>
+            </div>
+
           <div class="admin-split">
             <section class="surface">
               <div class="panel-head">
@@ -1302,7 +1477,15 @@
           </div>
         </section>
 
-        <section class="prototype-view" data-view="profile">
+          <section class="prototype-view" data-view="profile">
+            <div class="page-head">
+              <div>
+                <span class="page-eyebrow">个人资料</span>
+                <h2>个人资料</h2>
+                <p>保持轻量，只呈现当前登录账号、角色和状态，不做额外功能扩张。</p>
+              </div>
+            </div>
+
           <div class="profile-layout">
             <section class="surface">
               <div class="profile-mark">Z</div>
@@ -1339,26 +1522,21 @@
             </section>
           </div>
         </section>
+        </div>
       </main>
     </section>
   </div>
 
   <script>
     const root = document.body;
-    const viewTabs = Array.from(document.querySelectorAll('[data-view-target]'));
     const navItems = Array.from(document.querySelectorAll('[data-nav-target]'));
     const views = Array.from(document.querySelectorAll('[data-view]'));
     const themeButtons = Array.from(document.querySelectorAll('[data-theme-button]'));
 
     function showView(target) {
-      viewTabs.forEach((tab) => tab.classList.toggle('is-active', tab.dataset.viewTarget === target));
       navItems.forEach((item) => item.classList.toggle('is-active', item.dataset.navTarget === target));
       views.forEach((view) => view.classList.toggle('is-visible', view.dataset.view === target));
     }
-
-    viewTabs.forEach((tab) => {
-      tab.addEventListener('click', () => showView(tab.dataset.viewTarget));
-    });
 
     navItems.forEach((item) => {
       item.addEventListener('click', () => showView(item.dataset.navTarget));
