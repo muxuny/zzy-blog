@@ -520,33 +520,6 @@
       padding: 18px;
     }
 
-    .inline-notice {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-      margin: -2px 0 14px;
-      padding: 10px 13px;
-      border: 1px solid color-mix(in srgb, var(--primary-color) 18%, var(--soft-border-color));
-      border-radius: var(--radius-md);
-      color: var(--muted-text-color);
-      background:
-        linear-gradient(90deg, color-mix(in srgb, var(--primary-color) 9%, transparent), transparent 68%),
-        color-mix(in srgb, var(--panel-bg) 82%, transparent);
-      box-shadow: 0 8px 18px rgba(37, 39, 34, 0.05);
-      font-size: 13px;
-    }
-
-    .inline-notice strong {
-      flex: 0 0 auto;
-      color: var(--text-color);
-      font-weight: 760;
-    }
-
-    .inline-notice span {
-      min-width: 0;
-    }
-
     .panel-head,
     .filter-bar,
     .row-title,
@@ -559,6 +532,90 @@
 
     .panel-head {
       margin-bottom: 15px;
+    }
+
+    .help-heading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .help-popover {
+      position: relative;
+      display: inline-flex;
+      flex: 0 0 auto;
+    }
+
+    .help-trigger {
+      display: grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      border: 1px solid color-mix(in srgb, var(--primary-color) 26%, var(--border-color));
+      border-radius: 999px;
+      color: var(--primary-color);
+      background: color-mix(in srgb, var(--panel-bg) 80%, transparent);
+      box-shadow: 0 5px 12px rgba(37, 39, 34, 0.06);
+      font-size: 13px;
+      font-weight: 760;
+      line-height: 1;
+      transition: color 0.16s ease, background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+    }
+
+    .help-trigger:hover,
+    .help-trigger:focus-visible,
+    .help-popover.is-open .help-trigger {
+      border-color: color-mix(in srgb, var(--primary-color) 48%, transparent);
+      color: var(--panel-bg);
+      background: var(--primary-color);
+      transform: translateY(-1px);
+      outline: 0;
+    }
+
+    .help-card {
+      position: absolute;
+      top: calc(100% + 10px);
+      left: 50%;
+      z-index: 10;
+      width: min(292px, calc(100vw - 48px));
+      padding: 12px 13px;
+      border: 1px solid color-mix(in srgb, var(--primary-color) 22%, var(--soft-border-color));
+      border-radius: var(--radius-md);
+      color: var(--muted-text-color);
+      background:
+        linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 9%, transparent), transparent 68%),
+        color-mix(in srgb, var(--panel-bg) 94%, var(--bg-color));
+      box-shadow: var(--shadow-md);
+      font-size: 13px;
+      line-height: 1.55;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translate(-50%, -4px);
+      transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s ease;
+    }
+
+    .help-card::before {
+      content: "";
+      position: absolute;
+      top: -6px;
+      left: 50%;
+      width: 10px;
+      height: 10px;
+      border-top: 1px solid color-mix(in srgb, var(--primary-color) 22%, var(--soft-border-color));
+      border-left: 1px solid color-mix(in srgb, var(--primary-color) 22%, var(--soft-border-color));
+      background: inherit;
+      transform: translateX(-50%) rotate(45deg);
+    }
+
+    .help-popover:hover .help-card,
+    .help-popover:focus-within .help-card,
+    .help-popover.is-open .help-card {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: translate(-50%, 0);
     }
 
     .status-ledger {
@@ -979,14 +1036,25 @@
         padding: 18px;
       }
 
-      .inline-notice {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 5px;
-      }
-
       .page-head h2 {
         font-size: 34px;
+      }
+
+      .help-card {
+        left: 0;
+        width: min(272px, calc(100vw - 52px));
+        transform: translate(0, -4px);
+      }
+
+      .help-card::before {
+        left: 12px;
+        transform: rotate(45deg);
+      }
+
+      .help-popover:hover .help-card,
+      .help-popover:focus-within .help-card,
+      .help-popover.is-open .help-card {
+        transform: translate(0, 0);
       }
 
       .signal-strip,
@@ -1226,16 +1294,17 @@
               </div>
             </div>
 
-          <div class="inline-notice" role="note">
-            <strong>审核规则</strong>
-            <span>通过后进入对应可见范围；驳回时必须填写原因，原因会同步回创作者工作台。</span>
-          </div>
-
             <section class="surface article-board">
               <div class="filter-bar">
                 <div>
                   <span class="section-eyebrow">文章管理</span>
-                  <h3>内容审核台</h3>
+                  <div class="help-heading">
+                    <h3>内容审核台</h3>
+                    <span class="help-popover">
+                      <button class="help-trigger" type="button" aria-label="查看审核规则" aria-expanded="false" data-help-trigger>?</button>
+                      <span class="help-card" role="tooltip">通过后进入对应可见范围。驳回时必须填写原因，原因会同步回创作者工作台。</span>
+                    </span>
+                  </div>
                 </div>
                 <div class="filter-group" aria-label="筛选条件">
                   <label class="filter-field">状态
@@ -1408,16 +1477,17 @@
               </div>
             </div>
 
-          <div class="inline-notice" role="note">
-            <strong>账号处理</strong>
-            <span>通过后用户可登录创作中心和个人阅读页；禁用只停用账号，不清理历史内容。</span>
-          </div>
-
             <section class="surface">
               <div class="panel-head">
                 <div>
                   <span class="section-eyebrow">用户管理</span>
-                  <h3>账号状态</h3>
+                  <div class="help-heading">
+                    <h3>账号状态</h3>
+                    <span class="help-popover">
+                      <button class="help-trigger" type="button" aria-label="查看账号处理规则" aria-expanded="false" data-help-trigger>?</button>
+                      <span class="help-card" role="tooltip">通过后用户可登录创作中心和个人阅读页。禁用只停用账号，不清理历史内容。</span>
+                    </span>
+                  </div>
                 </div>
                 <span class="chip is-warning">2 个待审核</span>
               </div>
@@ -1501,8 +1571,20 @@
     const navItems = Array.from(document.querySelectorAll('[data-nav-target]'));
     const views = Array.from(document.querySelectorAll('[data-view]'));
     const themeButtons = Array.from(document.querySelectorAll('[data-theme-button]'));
+    const helpTriggers = Array.from(document.querySelectorAll('[data-help-trigger]'));
+
+    function closeHelpPopovers(except) {
+      helpTriggers.forEach((trigger) => {
+        const popover = trigger.closest('.help-popover');
+        if (popover !== except) {
+          popover.classList.remove('is-open');
+          trigger.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
 
     function showView(target) {
+      closeHelpPopovers();
       navItems.forEach((item) => item.classList.toggle('is-active', item.dataset.navTarget === target));
       views.forEach((view) => view.classList.toggle('is-visible', view.dataset.view === target));
     }
@@ -1532,6 +1614,24 @@
           document.querySelector(`[data-palette="${root.dataset.palette}"]`).classList.add('is-active');
         }
       });
+    });
+
+    helpTriggers.forEach((trigger) => {
+      trigger.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const popover = trigger.closest('.help-popover');
+        const nextOpen = !popover.classList.contains('is-open');
+        closeHelpPopovers(popover);
+        popover.classList.toggle('is-open', nextOpen);
+        trigger.setAttribute('aria-expanded', String(nextOpen));
+      });
+    });
+
+    document.addEventListener('click', () => closeHelpPopovers());
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        closeHelpPopovers();
+      }
     });
   </script>
 </body>
