@@ -797,6 +797,57 @@
       font-weight: 760;
     }
 
+    .article-state,
+    .visibility-mark {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 24px;
+      color: var(--muted-text-color);
+      font-size: 13px;
+      font-weight: 760;
+      white-space: nowrap;
+    }
+
+    .state-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--info-color);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--info-color) 12%, transparent);
+    }
+
+    .article-state.is-warning .state-dot {
+      background: var(--warning-color);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--warning-color) 13%, transparent);
+    }
+
+    .article-state.is-success .state-dot {
+      background: var(--primary-color);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 12%, transparent);
+    }
+
+    .visibility-mark {
+      color: color-mix(in srgb, var(--muted-text-color) 84%, var(--text-color));
+      font-weight: 700;
+    }
+
+    .visibility-mark::before {
+      content: "";
+      display: inline-block;
+      width: 12px;
+      height: 1px;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--muted-text-color) 42%, transparent);
+    }
+
+    .visibility-mark.is-public::before {
+      width: 8px;
+      height: 8px;
+      border: 1px solid color-mix(in srgb, var(--primary-color) 38%, transparent);
+      background: transparent;
+    }
+
     .row-actions {
       justify-content: flex-end;
     }
@@ -1411,8 +1462,8 @@
                   <div class="article-title">后台视觉同步方案</div>
                   <div class="row-meta">zhangziyi / 今天 11:42 / 驳回原因为空</div>
                 </div>
-                <span class="chip is-warning">待审核</span>
-                <span class="chip">公开</span>
+                <span class="article-state is-warning"><span class="state-dot" aria-hidden="true"></span>待审核</span>
+                <span class="visibility-mark is-public">公开</span>
                 <div class="row-actions">
                   <button class="row-action-button" type="button">编辑</button>
                   <button class="row-action-button is-success" type="button">通过</button>
@@ -1425,8 +1476,8 @@
                   <div class="article-title">创作中心预览页目录对齐</div>
                   <div class="row-meta">zhangziyi / 昨天 18:16 / 阅读 248</div>
                 </div>
-                <span class="chip is-success">已发布</span>
-                <span class="chip">公开</span>
+                <span class="article-state is-success"><span class="state-dot" aria-hidden="true"></span>已发布</span>
+                <span class="visibility-mark is-public">公开</span>
                 <div class="row-actions">
                   <button class="row-action-button" type="button">编辑</button>
                   <button class="row-action-button is-danger" type="button">删除</button>
@@ -1438,8 +1489,8 @@
                   <div class="article-title">私人阅读空间的视觉收口</div>
                   <div class="row-meta">zhangziyi / 07-28 21:09 / 阅读 612</div>
                 </div>
-                <span class="chip">草稿</span>
-                <span class="chip">仅自己</span>
+                <span class="article-state"><span class="state-dot" aria-hidden="true"></span>草稿</span>
+                <span class="visibility-mark">仅自己</span>
                 <div class="row-actions">
                   <button class="row-action-button" type="button">编辑</button>
                   <button class="row-action-button is-danger" type="button">删除</button>
