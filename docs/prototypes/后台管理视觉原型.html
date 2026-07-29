@@ -516,8 +516,7 @@
       line-height: 1.15;
     }
 
-    .dashboard-grid,
-    .admin-split {
+    .dashboard-grid {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(290px, 0.72fr);
       gap: 16px;
@@ -525,6 +524,33 @@
 
     .surface {
       padding: 18px;
+    }
+
+    .inline-notice {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin: -2px 0 14px;
+      padding: 10px 13px;
+      border: 1px solid color-mix(in srgb, var(--primary-color) 18%, var(--soft-border-color));
+      border-radius: var(--radius-md);
+      color: var(--muted-text-color);
+      background:
+        linear-gradient(90deg, color-mix(in srgb, var(--primary-color) 9%, transparent), transparent 68%),
+        color-mix(in srgb, var(--panel-bg) 82%, transparent);
+      box-shadow: 0 8px 18px rgba(37, 39, 34, 0.05);
+      font-size: 13px;
+    }
+
+    .inline-notice strong {
+      flex: 0 0 auto;
+      color: var(--text-color);
+      font-weight: 760;
+    }
+
+    .inline-notice span {
+      min-width: 0;
     }
 
     .panel-head,
@@ -651,12 +677,6 @@
       border-color: color-mix(in srgb, var(--danger-color) 42%, transparent);
       color: color-mix(in srgb, var(--danger-color) 78%, var(--text-color));
       background: color-mix(in srgb, var(--danger-color) 12%, transparent);
-    }
-
-    .article-shell {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 260px;
-      gap: 16px;
     }
 
     .filter-bar {
@@ -924,9 +944,7 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
-      .article-shell,
       .dashboard-grid,
-      .admin-split,
       .profile-layout,
       .resource-board,
       .resource-summary {
@@ -965,6 +983,12 @@
 
       .admin-page-body {
         padding: 18px;
+      }
+
+      .inline-notice {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
       }
 
       .page-head h2 {
@@ -1210,7 +1234,11 @@
               </div>
             </div>
 
-          <div class="article-shell">
+          <div class="inline-notice" role="note">
+            <strong>审核规则</strong>
+            <span>通过后进入对应可见范围；驳回时必须填写原因，原因会同步回创作者工作台。</span>
+          </div>
+
             <section class="surface article-board">
               <div class="filter-bar">
                 <div>
@@ -1278,32 +1306,6 @@
                 </div>
               </div>
             </section>
-
-            <aside class="surface">
-              <div class="panel-head">
-                <div>
-                  <span class="section-eyebrow">审核提示</span>
-                  <h3>操作需要明确</h3>
-                </div>
-              </div>
-              <div class="queue-line">
-                <div class="review-item">
-                  <div class="review-title">
-                    <span>通过</span>
-                    <span class="chip is-success">发布</span>
-                  </div>
-                  <div class="row-meta">文章会进入公开阅读面，私密文章只对作者保留。</div>
-                </div>
-                <div class="review-item">
-                  <div class="review-title">
-                    <span>驳回</span>
-                    <span class="chip is-warning">需原因</span>
-                  </div>
-                  <div class="row-meta">驳回原因会回到创作者工作台。</div>
-                </div>
-              </div>
-            </aside>
-          </div>
         </section>
 
           <section class="prototype-view" data-view="resources">
@@ -1412,11 +1414,15 @@
               <div>
                 <span class="page-eyebrow">账号审核</span>
                 <h2>用户管理</h2>
-                <p>保留现有用户列表、审核通过和禁用能力，把状态说明和处理规则放得更清楚。</p>
+                <p>保留现有用户列表、审核通过和禁用能力，把账号处理说明收进顶部轻提示，列表区域保持完整宽度。</p>
               </div>
             </div>
 
-          <div class="admin-split">
+          <div class="inline-notice" role="note">
+            <strong>账号处理</strong>
+            <span>通过后用户可登录创作中心和个人阅读页；禁用只停用账号，不清理历史内容。</span>
+          </div>
+
             <section class="surface">
               <div class="panel-head">
                 <div>
@@ -1449,32 +1455,6 @@
                 </div>
               </div>
             </section>
-
-            <section class="surface">
-              <div class="panel-head">
-                <div>
-                  <span class="section-eyebrow">处理规则</span>
-                  <h3>少而清楚</h3>
-                </div>
-              </div>
-              <div class="review-list">
-                <div class="review-item">
-                  <div class="review-title">
-                    <span>通过用户</span>
-                    <span class="chip is-success">启用</span>
-                  </div>
-                  <div class="row-meta">通过后可登录创作中心和个人阅读页。</div>
-                </div>
-                <div class="review-item">
-                  <div class="review-title">
-                    <span>禁用用户</span>
-                    <span class="chip is-danger">停用</span>
-                  </div>
-                  <div class="row-meta">禁用前保留内容和历史，不做物理删除。</div>
-                </div>
-              </div>
-            </section>
-          </div>
         </section>
 
           <section class="prototype-view" data-view="profile">
