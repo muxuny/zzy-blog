@@ -832,20 +832,23 @@
       font-weight: 700;
     }
 
-    .visibility-mark::before {
-      content: "";
-      display: inline-block;
-      width: 12px;
-      height: 1px;
-      border-radius: 999px;
-      background: color-mix(in srgb, var(--muted-text-color) 42%, transparent);
+    .visibility-mark.is-public {
+      color: color-mix(in srgb, var(--accent-color) 64%, var(--muted-text-color));
     }
 
-    .visibility-mark.is-public::before {
-      width: 8px;
-      height: 8px;
-      border: 1px solid color-mix(in srgb, var(--primary-color) 38%, transparent);
-      background: transparent;
+    .visibility-mark.is-private {
+      color: color-mix(in srgb, var(--muted-text-color) 86%, var(--text-color));
+    }
+
+    .visibility-icon {
+      width: 14px;
+      height: 14px;
+      flex: 0 0 auto;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
     }
 
     .row-actions {
@@ -1463,7 +1466,13 @@
                   <div class="row-meta">zhangziyi / 今天 11:42 / 驳回原因为空</div>
                 </div>
                 <span class="article-state is-warning"><span class="state-dot" aria-hidden="true"></span>待审核</span>
-                <span class="visibility-mark is-public">公开</span>
+                <span class="visibility-mark is-public">
+                  <svg class="visibility-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  公开
+                </span>
                 <div class="row-actions">
                   <button class="row-action-button" type="button">编辑</button>
                   <button class="row-action-button is-success" type="button">通过</button>
@@ -1477,7 +1486,13 @@
                   <div class="row-meta">zhangziyi / 昨天 18:16 / 阅读 248</div>
                 </div>
                 <span class="article-state is-success"><span class="state-dot" aria-hidden="true"></span>已发布</span>
-                <span class="visibility-mark is-public">公开</span>
+                <span class="visibility-mark is-public">
+                  <svg class="visibility-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  公开
+                </span>
                 <div class="row-actions">
                   <button class="row-action-button" type="button">编辑</button>
                   <button class="row-action-button is-danger" type="button">删除</button>
@@ -1490,7 +1505,13 @@
                   <div class="row-meta">zhangziyi / 07-28 21:09 / 阅读 612</div>
                 </div>
                 <span class="article-state"><span class="state-dot" aria-hidden="true"></span>草稿</span>
-                <span class="visibility-mark">仅自己</span>
+                <span class="visibility-mark is-private">
+                  <svg class="visibility-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="5" y="11" width="14" height="10" rx="2" />
+                    <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+                  </svg>
+                  仅自己
+                </span>
                 <div class="row-actions">
                   <button class="row-action-button" type="button">编辑</button>
                   <button class="row-action-button is-danger" type="button">删除</button>
