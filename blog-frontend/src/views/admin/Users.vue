@@ -1,76 +1,151 @@
 <template>
-  <div class="admin-page">
-    <h2>用户管理</h2>
+  <div class="users-page">
+    <div class="page-head">
+      <div>
+        <span class="page-eyebrow">账号审核</span>
+        <h2>用户管理</h2>
+      </div>
+    </div>
 
-    <el-table :data="users" stripe class="admin-table">
-      <el-table-column prop="username" label="用户名" />
-      <el-table-column prop="nickname" label="昵称" />
-      <el-table-column prop="email" label="邮箱" />
-      <el-table-column prop="role" label="角色" width="100">
-        <template #default="{ row }">
-          <el-tag :type="row.role === 'admin' ? 'danger' : 'info'">{{ row.role }}</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="status" label="状态" width="100">
-        <template #default="{ row }">
-          <el-tag :type="row.status === 'active' ? 'success' : row.status === 'pending' ? 'warning' : 'info'">
-            {{ row.status === 'active' ? '已激活' : row.status === 'pending' ? '待审核' : '已禁用' }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" width="200">
-        <template #default="{ row }">
-          <el-button v-if="row.status === 'pending'" size="small" type="success" @click="handleApprove(row.id)">
-            审核通过
-          </el-button>
-          <el-button
-            v-if="row.status === 'active' && !isAdminUser(row)"
-            size="small"
-            type="warning"
-            @click="handleDisable(row.id)"
-          >
-            禁用
-          </el-button>
-          <el-text v-else-if="row.status === 'active'" type="info" size="small">不可禁用</el-text>
-        </template>
-      </el-table-column>
-    </el-table>
+    <section class="surface" v-loading="loading">
+      <div class="panel-head">
+        <div>
+          <span class="section-eyebrow">用户管理</span>
+          <div class="help-heading">
+            <h3>账号状态</h3>
+            <span class="help-popover" :class="{ 'is-open': helpOpen }">
+              <button
+                class="help-trigger"
+                type="button"
+                aria-label="查看账号处理规则"
+                :aria-expanded="helpOpen"
+                @click="helpOpen = !helpOpen"
+              >
+                ?
+              </button>
+              <span class="help-card" role="tooltip">
+                通过后用户可登录创作中心和个人阅读页。禁用只停用账号，不清理历史内容。
+              </span>
+            </span>
+          </div>
+        </div>
+        <span class="chip" :class="{ 'is-warning': pendingCount > 0, 'is-success': pendingCount === 0 }">
+          {{ pendingCount }} 个待审核
+        </span>
+      </div>
+
+      <div v-if="users.length" class="row-list">
+        <article v-for="user in users" :key="user.id" class="data-row">
+          <div class="row-title">
+            <span>{{ user.nickname || user.username }}</span>
+            <span class="chip" :class="userStatusClass(user.status)">{{ userStatusText(user.status) }}</span>
+          </div>
+          <div class="row-meta">
+            {{ user.username }} / {{ user.email || '未填写邮箱' }} / {{ user.role || 'user' }}
+          </div>
+          <div class="row-actions">
+            <button
+              v-if="user.status === 'pending'"
+              class="row-action-button is-success"
+              type="button"
+              @click="handleApprove(user.id)"
+            >
+              通过
+            </button>
+            <button
+              v-if="user.status === 'active' && !isAdminUser(user)"
+              class="row-action-button is-warning"
+              type="button"
+              @click="handleDisable(user.id)"
+            >
+              禁用
+            </button>
+            <span v-else-if="user.status === 'active'" class="row-meta">管理员账号</span>
+          </div>
+        </article>
+      </div>
+      <div v-else class="empty-state">暂无用户</div>
+    </section>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { getUsers, approveUser, disableUser } from '../../api/user'
+import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { approveUser, disableUser, getUsers } from '../../api/user'
 
 const users = ref([])
+const loading = ref(false)
+const helpOpen = ref(false)
+
+const pendingCount = computed(() => users.value.filter(user => user.status === 'pending').length)
+
+onMounted(loadUsers)
 
 function isAdminUser(user) {
   return user.role?.toLowerCase() === 'admin'
 }
 
-onMounted(async () => {
-  const r = await getUsers({ size: 100 })
-  users.value = r.data || []
-})
+function userStatusText(status) {
+  if (status === 'active') return '已启用'
+  if (status === 'pending') return '待审核'
+  if (status === 'disabled') return '已禁用'
+  return status || '-'
+}
+
+function userStatusClass(status) {
+  if (status === 'active') return 'is-success'
+  if (status === 'pending') return 'is-warning'
+  if (status === 'disabled') return 'is-danger'
+  return ''
+}
+
+async function loadUsers() {
+  loading.value = true
+  try {
+    const result = await getUsers({ size: 100 })
+    users.value = result.data || []
+  } finally {
+    loading.value = false
+  }
+}
 
 async function handleApprove(id) {
   await approveUser(id)
   ElMessage.success('已通过')
-  const r = await getUsers({ size: 100 })
-  users.value = r.data || []
+  await loadUsers()
 }
 
 async function handleDisable(id) {
   await disableUser(id)
   ElMessage.success('已禁用')
-  const r = await getUsers({ size: 100 })
-  users.value = r.data || []
+  await loadUsers()
 }
 </script>
 
 <style scoped>
-.admin-table {
-  margin-top: 16px;
+.users-page {
+  display: grid;
+  gap: 16px;
+}
+
+.row-list .data-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) auto;
+  align-items: center;
+}
+
+.row-list .row-actions {
+  justify-content: flex-end;
+}
+
+@media (max-width: 780px) {
+  .row-list .data-row {
+    grid-template-columns: 1fr;
+  }
+
+  .row-list .row-actions {
+    justify-content: flex-start;
+  }
 }
 </style>

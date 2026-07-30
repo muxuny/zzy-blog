@@ -59,8 +59,9 @@ const routes = [
       { path: 'articles', component: () => import('../views/admin/Articles.vue') },
       { path: 'articles/create', component: () => import('../views/admin/ArticleEdit.vue') },
       { path: 'articles/edit/:id', component: () => import('../views/admin/ArticleEdit.vue') },
-      { path: 'tags', component: () => import('../views/admin/Tags.vue') },
-      { path: 'images', component: () => import('../views/admin/Images.vue') },
+      { path: 'resources', component: () => import('../views/admin/Resources.vue') },
+      { path: 'tags', redirect: '/admin/resources' },
+      { path: 'images', redirect: '/admin/resources' },
       { path: 'users', component: () => import('../views/admin/Users.vue') },
       { path: 'profile', component: () => import('../views/admin/Profile.vue') },
     ]

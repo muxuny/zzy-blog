@@ -1,9 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 
 function read(relativePath) {
   return readFileSync(new URL(relativePath, import.meta.url), 'utf8')
+}
+
+function exists(relativePath) {
+  return existsSync(new URL(relativePath, import.meta.url))
 }
 
 test('theme toggle renders an appearance popover with palette and mode choices', () => {
@@ -580,6 +584,114 @@ test('creator writing and preview pages use the prototype surface system', () =>
   assert.doesNotMatch(preview, /\.toc-panel,\s*\n\s*\.section-meter/)
   assert.doesNotMatch(preview, /\.toc-panel\s*\{[^}]*border:\s*1px solid/)
   assert.doesNotMatch(preview, /preview-head,\s*\n\s*\.preview-body,[\s\S]*background:\s*var\(--panel-bg\)/)
+})
+
+test('admin layout uses the backend management prototype frame and merged resource entry', () => {
+  const layout = read('../components/admin/AdminLayout.vue')
+  const router = read('../router/index.js')
+
+  assert.match(layout, /class="admin-frame"/)
+  assert.match(layout, /class="admin-sidebar"/)
+  assert.match(layout, /class="brand-lockup"/)
+  assert.match(layout, /class="nav-stack"/)
+  assert.match(layout, /管理中枢/)
+  assert.match(layout, /to="\/admin\/resources"/)
+  assert.match(layout, /资源管理/)
+  assert.match(layout, /class="main-surface"/)
+  assert.match(layout, /class="topbar"/)
+  assert.match(layout, /class="tool-button/)
+  assert.doesNotMatch(layout, /Blog Admin/)
+  assert.doesNotMatch(layout, /#172334/)
+  assert.doesNotMatch(layout, /<el-container\b/)
+  assert.doesNotMatch(layout, /<el-menu\b/)
+  assert.doesNotMatch(layout, /\/admin\/tags[\s\S]{0,80}标签管理/)
+  assert.doesNotMatch(layout, /\/admin\/images[\s\S]{0,80}图片管理/)
+
+  assert.match(router, /path:\s*'resources'[\s\S]*Resources\.vue/)
+  assert.match(router, /path:\s*'tags'[\s\S]{0,80}redirect:\s*'\/admin\/resources'/)
+  assert.match(router, /path:\s*'images'[\s\S]{0,80}redirect:\s*'\/admin\/resources'/)
+})
+
+test('admin article management uses the prototype list rows instead of element tables', () => {
+  const source = read('../views/admin/Articles.vue')
+
+  assert.match(source, /class="page-head"/)
+  assert.match(source, /class="surface article-board"/)
+  assert.match(source, /class="help-popover"/)
+  assert.match(source, /class="help-trigger"/)
+  assert.match(source, /class="help-card"/)
+  assert.match(source, /class="filter-bar"/)
+  assert.match(source, /class="article-table-head"/)
+  assert.match(source, /class="article-row/)
+  assert.match(source, /class="article-state/)
+  assert.match(source, /class="state-dot"/)
+  assert.match(source, /class="visibility-mark/)
+  assert.match(source, /class="visibility-icon"/)
+  assert.match(source, /class="row-actions"/)
+  assert.match(source, /class="row-action-button/)
+  assert.match(source, /reviewReason/)
+  assert.match(source, /articleVisibilityText/)
+  assert.doesNotMatch(source, /<el-table\b/)
+  assert.doesNotMatch(source, /<el-table-column\b/)
+  assert.doesNotMatch(source, /class="admin-toolbar"/)
+})
+
+test('admin resources merges tag and image management into one prototype board', () => {
+  assert.ok(exists('../views/admin/Resources.vue'))
+  const source = read('../views/admin/Resources.vue')
+
+  assert.match(source, /class="page-head"/)
+  assert.match(source, /class="resource-summary"/)
+  assert.match(source, /class="resource-tile"/)
+  assert.match(source, /class="resource-board"/)
+  assert.match(source, /class="surface"/)
+  assert.match(source, /class="inline-create"/)
+  assert.match(source, /class="tag-list"/)
+  assert.match(source, /class="tag-item"/)
+  assert.match(source, /class="mini-image-grid"/)
+  assert.match(source, /class="image-card"/)
+  assert.match(source, /class="mini-image"/)
+  assert.match(source, /getTags/)
+  assert.match(source, /getImages/)
+  assert.match(source, /createTag/)
+  assert.match(source, /deleteTag/)
+  assert.match(source, /deleteImage/)
+  assert.doesNotMatch(source, /<el-table\b/)
+  assert.doesNotMatch(source, /<el-table-column\b/)
+})
+
+test('admin dashboard users profile and editor share the prototype surface system', () => {
+  const dashboard = read('../views/admin/Dashboard.vue')
+  const users = read('../views/admin/Users.vue')
+  const profile = read('../views/admin/Profile.vue')
+  const editor = read('../views/admin/ArticleEdit.vue')
+
+  assert.match(dashboard, /class="signal-strip"/)
+  assert.match(dashboard, /class="surface"/)
+  assert.match(dashboard, /class="status-ledger"/)
+  assert.match(dashboard, /class="review-list"/)
+  assert.doesNotMatch(dashboard, /class="stat-card"/)
+
+  assert.match(users, /class="page-head"/)
+  assert.match(users, /class="surface"/)
+  assert.match(users, /class="help-popover"/)
+  assert.match(users, /class="row-list"/)
+  assert.match(users, /class="data-row"/)
+  assert.match(users, /class="row-action-button/)
+  assert.doesNotMatch(users, /<el-table\b/)
+  assert.doesNotMatch(users, /<el-table-column\b/)
+
+  assert.match(profile, /class="profile-layout"/)
+  assert.match(profile, /class="profile-mark"/)
+  assert.match(profile, /class="info-grid"/)
+  assert.match(profile, /class="info-item"/)
+  assert.doesNotMatch(profile, /<el-descriptions\b/)
+
+  assert.match(editor, /class="page-head"/)
+  assert.match(editor, /class="editor-layout"/)
+  assert.match(editor, /class="editor-panel"/)
+  assert.match(editor, /class="tool-button/)
+  assert.doesNotMatch(editor, /<h2>\{\{ isEdit/)
 })
 
 test('primary page summaries use index rails instead of card shells', () => {
