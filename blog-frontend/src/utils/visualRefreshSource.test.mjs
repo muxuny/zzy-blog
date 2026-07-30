@@ -700,6 +700,7 @@ test('admin dashboard users profile and editor share the prototype surface syste
   assert.match(profile, /class="profile-mark"/)
   assert.match(profile, /class="info-grid"/)
   assert.match(profile, /class="info-item"/)
+  assert.doesNotMatch(profile, /这里保持轻|多余装饰/)
   assert.doesNotMatch(profile, /<el-descriptions\b/)
 
   assert.match(editor, /class="page-head"/)

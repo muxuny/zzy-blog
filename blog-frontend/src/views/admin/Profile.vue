@@ -12,7 +12,6 @@
         <div class="profile-mark">{{ profileInitial }}</div>
         <span class="section-eyebrow">个人资料</span>
         <h3>{{ user?.nickname || user?.username || '管理员' }}</h3>
-        <p class="panel-caption">管理员账号。这里保持轻，不做多余装饰。</p>
       </section>
 
       <section class="surface">
