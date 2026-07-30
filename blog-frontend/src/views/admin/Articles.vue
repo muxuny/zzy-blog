@@ -60,7 +60,7 @@
               @keyup.enter="handleFilterChange"
             >
           </label>
-          <button class="tool-button" type="button" @click="handleFilterChange">筛选</button>
+          <button class="tool-button filter-action" type="button" @click="handleFilterChange">筛选</button>
         </div>
       </div>
 
@@ -301,9 +301,47 @@ async function handleDelete(id) {
   display: grid;
 }
 
+.filter-group {
+  align-items: flex-end;
+}
+
+.filter-action {
+  height: 34px;
+  min-height: 34px;
+  padding: 0 13px;
+  border-radius: var(--radius-sm);
+}
+
+.article-table-head,
+.article-row {
+  grid-template-columns: minmax(0, 1.45fr) 96px 96px max-content;
+}
+
+.article-table-head span:last-child {
+  justify-self: end;
+}
+
+.article-row .row-actions {
+  width: max-content;
+  justify-self: end;
+}
+
+.article-row .row-action-button {
+  width: 44px;
+}
+
 @media (max-width: 980px) {
   .filter-group {
+    align-items: stretch;
     width: 100%;
+  }
+
+  .filter-action {
+    width: 100%;
+  }
+
+  .article-row .row-actions {
+    justify-self: start;
   }
 }
 </style>

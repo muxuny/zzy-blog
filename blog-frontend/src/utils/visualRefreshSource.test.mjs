@@ -621,6 +621,7 @@ test('admin article management uses the prototype list rows instead of element t
   assert.match(source, /class="help-trigger"/)
   assert.match(source, /class="help-card"/)
   assert.match(source, /class="filter-bar"/)
+  assert.match(source, /class="tool-button filter-action"/)
   assert.match(source, /class="article-table-head"/)
   assert.match(source, /class="article-row/)
   assert.match(source, /class="article-state/)
@@ -634,6 +635,20 @@ test('admin article management uses the prototype list rows instead of element t
   assert.doesNotMatch(source, /<el-table\b/)
   assert.doesNotMatch(source, /<el-table-column\b/)
   assert.doesNotMatch(source, /class="admin-toolbar"/)
+})
+
+test('admin article management keeps filters and row actions compact', () => {
+  const source = read('../views/admin/Articles.vue')
+
+  assert.match(source, /\.filter-group\s*\{[^}]*align-items:\s*flex-end;/)
+  assert.match(source, /\.filter-action\s*\{[^}]*height:\s*34px;/)
+  assert.match(source, /\.filter-action\s*\{[^}]*border-radius:\s*var\(--radius-sm\);/)
+  assert.match(source, /\.article-table-head,\s*\.article-row\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1\.45fr\)\s+96px\s+96px\s+max-content;/)
+  assert.match(source, /\.article-table-head span:last-child\s*\{[^}]*justify-self:\s*end;/)
+  assert.match(source, /\.article-row \.row-actions\s*\{[^}]*width:\s*max-content;/)
+  assert.match(source, /\.article-row \.row-actions\s*\{[^}]*justify-self:\s*end;/)
+  assert.match(source, /\.article-row \.row-action-button\s*\{[^}]*width:\s*44px;/)
+  assert.doesNotMatch(source, /190px/)
 })
 
 test('admin resources merges tag and image management into one prototype board', () => {
