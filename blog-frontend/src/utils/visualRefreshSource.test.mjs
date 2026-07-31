@@ -696,10 +696,17 @@ test('admin dashboard users profile and editor share the prototype surface syste
   assert.doesNotMatch(users, /<el-table\b/)
   assert.doesNotMatch(users, /<el-table-column\b/)
 
-  assert.match(profile, /class="profile-layout"/)
+  assert.match(profile, /class="surface profile-overview"/)
+  assert.match(profile, /class="profile-hero"/)
   assert.match(profile, /class="profile-mark"/)
+  assert.match(profile, /class="profile-headline"/)
+  assert.match(profile, /class="profile-tags"/)
+  assert.match(profile, /class="profile-access"/)
   assert.match(profile, /class="info-grid"/)
   assert.match(profile, /class="info-item"/)
+  assert.match(profile, /\.profile-hero\s*\{[^}]*grid-template-columns:\s*auto\s+minmax\(0,\s*1fr\)\s+auto;/)
+  assert.doesNotMatch(profile, /class="profile-layout"/)
+  assert.doesNotMatch(profile, /class="surface profile-card"/)
   assert.doesNotMatch(profile, /这里保持轻|多余装饰/)
   assert.doesNotMatch(profile, /<el-descriptions\b/)
 

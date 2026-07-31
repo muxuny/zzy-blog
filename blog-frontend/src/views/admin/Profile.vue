@@ -7,22 +7,31 @@
       </div>
     </div>
 
-    <div class="profile-layout">
-      <section class="surface profile-card">
+    <section class="surface profile-overview">
+      <div class="profile-hero">
         <div class="profile-mark">{{ profileInitial }}</div>
-        <span class="section-eyebrow">个人资料</span>
-        <h3>{{ user?.nickname || user?.username || '管理员' }}</h3>
-      </section>
+        <div class="profile-headline">
+          <span class="section-eyebrow">当前账号</span>
+          <h3>{{ displayName }}</h3>
+          <div class="profile-tags">
+            <span class="chip">{{ roleText }}</span>
+            <span class="chip" :class="{ 'is-success': user?.status === 'active', 'is-warning': user?.status !== 'active' }">
+              {{ userStatusText }}
+            </span>
+          </div>
+        </div>
+        <div class="profile-access">
+          <span class="tiny-label">后台入口</span>
+          <strong>{{ adminAccessText }}</strong>
+        </div>
+      </div>
 
-      <section class="surface">
+      <div class="profile-details">
         <div class="panel-head">
           <div>
             <span class="section-eyebrow">账号信息</span>
-            <h3>当前权限</h3>
+            <h3>权限与联系信息</h3>
           </div>
-          <span class="chip" :class="{ 'is-success': user?.status === 'active', 'is-warning': user?.status !== 'active' }">
-            {{ userStatusText }}
-          </span>
         </div>
         <div class="info-grid">
           <div class="info-item">
@@ -42,16 +51,16 @@
             <strong>{{ user?.role || '-' }}</strong>
           </div>
           <div class="info-item">
-            <span class="tiny-label">后台入口</span>
-            <strong>{{ user?.role === 'admin' ? '全部可见' : '不可见' }}</strong>
+            <span class="tiny-label">账号状态</span>
+            <strong>{{ userStatusText }}</strong>
           </div>
           <div class="info-item">
             <span class="tiny-label">注册时间</span>
             <strong>{{ formatDate(user?.createdAt) || '-' }}</strong>
           </div>
         </div>
-      </section>
-    </div>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -63,10 +72,15 @@ import { formatDate } from '../../utils'
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
 
+const displayName = computed(() => user.value?.nickname || user.value?.username || '管理员')
+
 const profileInitial = computed(() => {
-  const name = user.value?.nickname || user.value?.username || 'A'
-  return String(name).slice(0, 1).toUpperCase()
+  return String(displayName.value || 'A').slice(0, 1).toUpperCase()
 })
+
+const roleText = computed(() => user.value?.role || '-')
+
+const adminAccessText = computed(() => (user.value?.role === 'admin' ? '全部可见' : '不可见'))
 
 const userStatusText = computed(() => {
   if (user.value?.status === 'active') return '已启用'
@@ -82,24 +96,30 @@ const userStatusText = computed(() => {
   gap: 16px;
 }
 
-.profile-layout {
+.profile-overview {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  gap: 16px;
+  gap: 18px;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 10%, transparent), transparent 44%),
+    linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-color) 8%, transparent)),
+    color-mix(in srgb, var(--panel-bg) 94%, var(--bg-color));
 }
 
-.profile-card {
+.profile-hero {
   display: grid;
-  align-content: start;
-  gap: 8px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--soft-border-color);
 }
 
 .profile-mark {
   display: grid;
   place-items: center;
-  width: 68px;
-  height: 68px;
-  margin-bottom: 8px;
+  width: 78px;
+  height: 78px;
   border: 1px solid color-mix(in srgb, var(--primary-color) 28%, var(--border-color));
   border-radius: var(--radius-md);
   color: var(--primary-color);
@@ -111,9 +131,49 @@ const userStatusText = computed(() => {
   line-height: 1;
 }
 
+.profile-headline {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.profile-headline h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-color);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1.15;
+}
+
+.profile-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.profile-access {
+  display: grid;
+  gap: 6px;
+  min-width: 150px;
+  padding-left: 18px;
+  border-left: 1px solid var(--soft-border-color);
+}
+
+.profile-access strong {
+  color: var(--text-color);
+  font-size: 15px;
+}
+
+.profile-details {
+  display: grid;
+  gap: 14px;
+}
+
 .info-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -133,10 +193,33 @@ const userStatusText = computed(() => {
   font-size: 15px;
 }
 
+@media (max-width: 980px) {
+  .profile-hero {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .profile-access {
+    grid-column: 1 / -1;
+    min-width: 0;
+    padding: 12px 0 0;
+    border-top: 1px solid var(--soft-border-color);
+    border-left: 0;
+  }
+
+  .info-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 860px) {
-  .profile-layout,
+  .profile-hero,
   .info-grid {
     grid-template-columns: 1fr;
+  }
+
+  .profile-mark {
+    width: 68px;
+    height: 68px;
   }
 }
 </style>
