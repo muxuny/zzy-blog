@@ -21,23 +21,6 @@
       </section>
 
       <article v-else-if="article" class="preview-page">
-        <header class="preview-head">
-          <span class="page-kicker">文章预览</span>
-          <h1>{{ article.title }}</h1>
-          <div class="preview-meta">
-            <el-tag :type="statusType(article.status)">{{ statusText(article.status) }}</el-tag>
-            <el-tag :type="articleVisibilityType(article.visibility)" effect="plain">
-              {{ articleVisibilityText(article.visibility) }}
-            </el-tag>
-            <span>{{ formatDate(article.updatedAt || article.createdAt) }}</span>
-            <span v-if="article.createdBy">{{ article.createdBy }}</span>
-          </div>
-          <p v-if="article.summary" class="preview-summary">{{ article.summary }}</p>
-          <div v-if="article.tags?.length" class="preview-tags">
-            <el-tag v-for="tag in article.tags" :key="tag.id" size="small">{{ tag.name }}</el-tag>
-          </div>
-        </header>
-
         <el-alert
           v-if="article.reviewReason"
           class="review-alert"
@@ -47,31 +30,52 @@
           :closable="false"
         />
 
-        <figure v-if="article.coverImage" class="preview-cover">
-          <img :src="article.coverImage" :alt="article.title" />
-        </figure>
+        <div class="reading-canvas preview-reading-layout" :class="{ 'has-toc': toc.length }">
+          <div class="reading-primary">
+            <header class="detail-head preview-head">
+              <div class="detail-copy">
+                <span class="eyebrow">文章预览</span>
+                <h1>{{ article.title }}</h1>
+                <p v-if="article.summary" class="detail-summary">{{ article.summary }}</p>
+                <div class="detail-meta">
+                  <span>{{ statusText(article.status) }}</span>
+                  <span>{{ articleVisibilityText(article.visibility) }}</span>
+                  <span>{{ formatDate(article.updatedAt || article.createdAt) }}</span>
+                  <span v-if="article.createdBy">{{ article.createdBy }}</span>
+                </div>
+                <div v-if="article.tags?.length" class="detail-actions">
+                  <div class="article-tags">
+                    <span v-for="tag in article.tags" :key="tag.id" class="tag-chip">{{ tag.name }}</span>
+                  </div>
+                </div>
+              </div>
+            </header>
 
-        <div class="preview-reading-layout" :class="{ 'has-toc': toc.length }">
-          <section class="preview-body">
-            <nav v-if="toc.length" class="mobile-toc" aria-label="文章目录">
-              <span class="page-kicker">目录</span>
-              <button
-                v-for="item in toc"
-                :key="item.id"
-                type="button"
-                :class="['toc-link', `level-${item.level}`, { active: activeHeadingId === item.id }]"
-                @click="scrollToHeading(item.id)"
-              >
-                {{ item.text }}
-              </button>
-            </nav>
+            <figure v-if="article.coverImage" class="preview-cover">
+              <img :src="article.coverImage" :alt="article.title" />
+            </figure>
 
-            <MarkdownRenderer :content="article.content" />
-          </section>
+            <section class="article-body preview-body">
+              <nav v-if="toc.length" class="mobile-toc" aria-label="文章目录">
+                <span class="eyebrow">目录</span>
+                <button
+                  v-for="item in toc"
+                  :key="item.id"
+                  type="button"
+                  :class="['toc-link', `level-${item.level}`, { active: activeHeadingId === item.id }]"
+                  @click="scrollToHeading(item.id)"
+                >
+                  {{ item.text }}
+                </button>
+              </nav>
 
-          <aside v-if="toc.length" class="preview-sidebar">
+              <MarkdownRenderer :content="article.content" />
+            </section>
+          </div>
+
+          <aside v-if="toc.length" class="reading-sidebar preview-sidebar">
             <nav ref="tocPanelRef" class="toc-panel" aria-label="文章目录">
-              <span class="page-kicker">目录</span>
+              <span class="eyebrow">目录</span>
               <button
                 v-for="item in toc"
                 :key="item.id"
@@ -83,6 +87,10 @@
                 {{ item.text }}
               </button>
             </nav>
+            <section class="note-panel">
+              <span class="eyebrow">阅读提示</span>
+              <p>目录会跟随章节、小节和细分标题生成，适合快速回到关键段落。</p>
+            </section>
           </aside>
         </div>
       </article>
@@ -97,7 +105,7 @@ import { ArrowLeft, Edit } from '@element-plus/icons-vue'
 import AppHeader from '../../components/AppHeader.vue'
 import MarkdownRenderer from '../../components/MarkdownRenderer.vue'
 import { getMyArticle } from '../../api/myArticle'
-import { articleVisibilityText, articleVisibilityType } from '../../utils/articleVisibility'
+import { articleVisibilityText } from '../../utils/articleVisibility'
 import { getCreatorEditRoute } from '../../utils/creatorPreview'
 import { formatDate } from '../../utils'
 import { extractMarkdownToc } from '../../utils/reading'
@@ -209,17 +217,29 @@ function statusText(status) {
   return statusMap[status]?.text || status || '-'
 }
 
-function statusType(status) {
-  return statusMap[status]?.type || 'info'
-}
 </script>
 
 <style scoped>
 .main {
-  width: min(100%, var(--content-width));
+  position: relative;
+  isolation: isolate;
+  width: min(1180px, calc(100% - 36px));
   margin: 0 auto;
-  padding: 32px 24px 72px;
+  padding: 22px 0 72px;
   overflow: visible;
+}
+
+.main::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, var(--theme-grid-x) 1px, transparent 1px),
+    linear-gradient(180deg, var(--theme-grid-y) 1px, transparent 1px);
+  background-size: 44px 44px;
+  content: '';
+  opacity: 0.52;
+  pointer-events: none;
 }
 
 .page-actions {
@@ -228,7 +248,9 @@ function statusType(status) {
   gap: 10px;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 22px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--soft-border-color);
 }
 
 .back-button,
@@ -238,33 +260,42 @@ function statusType(status) {
   gap: 6px;
   min-height: 36px;
   padding: 0 12px;
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-sm);
-  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-bg) 92%, transparent);
   color: var(--muted-text-color);
   font: inherit;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .edit-button {
   border-color: color-mix(in srgb, var(--primary-color) 42%, var(--soft-border-color));
-  background: var(--primary-color);
-  color: #fff;
+  background: var(--surface-wash-color);
+  color: var(--primary-color);
 }
 
 .back-button:hover,
 .back-button:focus-visible {
   border-color: var(--primary-color);
   color: var(--primary-color);
-  background: color-mix(in srgb, var(--primary-color) 8%, var(--panel-bg));
+  background: var(--surface-wash-color);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
 .edit-button:hover,
 .edit-button:focus-visible {
   border-color: var(--primary-hover-color);
-  background: var(--primary-hover-color);
+  background: color-mix(in srgb, var(--primary-color) 14%, transparent);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
 .back-button:focus-visible,
@@ -274,21 +305,12 @@ function statusType(status) {
   outline-offset: 2px;
 }
 
-.empty-state,
-.preview-head,
-.preview-body,
-.toc-panel,
-.mobile-toc {
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-lg);
-  background: var(--panel-bg);
-  box-shadow: var(--shadow-sm);
-}
-
 .empty-state {
   max-width: var(--reading-width);
   margin: 0 auto;
   padding: 40px 24px;
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--soft-border-color);
   text-align: center;
 }
 
@@ -305,49 +327,109 @@ function statusType(status) {
 
 .preview-page {
   display: grid;
-  gap: 16px;
+  gap: 28px;
 }
 
-.preview-head {
-  padding: clamp(24px, 4vw, 36px);
+.detail-head {
+  position: relative;
+  margin-bottom: 30px;
+  padding: 6px 0 24px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
+  background: transparent;
+  box-shadow: none;
 }
 
-.page-kicker {
-  color: var(--accent-color);
+.reading-primary,
+.detail-copy {
+  min-width: 0;
+}
+
+.detail-copy {
+  display: grid;
+  align-content: start;
+}
+
+.eyebrow {
+  display: inline-flex;
+  margin: 0 0 12px;
+  color: var(--primary-color);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 760;
+  letter-spacing: 0;
 }
 
-.preview-head h1 {
-  margin: 10px 0 14px;
+.detail-head h1 {
+  max-width: 820px;
+  margin: 0 0 22px;
   color: var(--text-color);
-  font-size: clamp(32px, 5vw, 54px);
-  line-height: 1.08;
-  font-weight: 900;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(52px, 7.4vw, 92px);
+  font-weight: 500;
+  line-height: 0.98;
+  overflow-wrap: anywhere;
 }
 
-.preview-meta,
-.preview-tags {
+.detail-summary {
+  max-width: 680px;
+  margin: 0 0 20px;
+  color: color-mix(in srgb, var(--text-color) 62%, var(--muted-text-color));
+  font-size: clamp(16px, 1.7vw, 18px);
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+.detail-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 12px;
-  align-items: center;
-}
-
-.preview-meta {
+  gap: 8px 14px;
   color: var(--muted-text-color);
   font-size: 13px;
 }
 
-.preview-summary {
-  margin: 18px 0 0;
-  color: var(--muted-text-color);
-  font-size: 15px;
-  line-height: 1.8;
+.detail-meta span + span {
+  position: relative;
+  padding-left: 14px;
 }
 
-.preview-tags {
-  margin-top: 18px;
+.detail-meta span + span::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--primary-color) 36%, transparent);
+  content: '';
+  transform: translateY(-50%);
+}
+
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.article-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  padding: 4px 10px;
+  border: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--panel-bg) 92%, transparent);
+  color: var(--muted-text-color);
 }
 
 .review-alert {
@@ -363,45 +445,50 @@ function statusType(status) {
   width: 100%;
   max-height: 380px;
   object-fit: cover;
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
 }
 
-.preview-reading-layout {
+.reading-canvas {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 26px;
+  grid-template-columns: minmax(0, 760px);
+  gap: 36px;
   align-items: start;
-  max-width: var(--reading-width);
-  margin: 0 auto;
-  width: 100%;
+  justify-content: center;
 }
 
-.preview-reading-layout.has-toc {
-  grid-template-columns: minmax(0, 1fr) 260px;
+.reading-canvas.has-toc {
+  grid-template-columns: minmax(0, 760px) 280px;
   max-width: none;
   margin: 0;
 }
 
-.preview-body {
+.article-body {
   min-width: 0;
-  padding: clamp(22px, 4vw, 34px);
+  padding: clamp(20px, 3vw, 34px) 0;
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--soft-border-color);
 }
 
-.preview-sidebar {
+.reading-sidebar {
   position: sticky;
   top: calc(var(--app-header-height) + 22px);
-}
-
-.toc-panel,
-.mobile-toc {
   display: grid;
-  gap: 6px;
-  padding: 16px;
+  gap: 16px;
+  padding-left: 18px;
+  border-left: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
 }
 
 .toc-panel {
+  display: grid;
+  gap: 6px;
   max-height: calc(100vh - var(--app-header-height) - 150px);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
@@ -409,15 +496,35 @@ function statusType(status) {
 
 .mobile-toc {
   display: none;
+  gap: 6px;
   margin-bottom: 22px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-bg) 84%, transparent);
   box-shadow: none;
 }
 
-.toc-link {
-  width: 100%;
-  padding: 7px 8px;
+.note-panel {
+  padding: 0;
   border: 0;
-  border-radius: var(--radius-sm);
+  background: transparent;
+  box-shadow: none;
+}
+
+.note-panel p {
+  margin: 8px 0 0;
+  color: var(--muted-text-color);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.toc-link {
+  position: relative;
+  width: 100%;
+  padding: 7px 0;
+  border: 0;
+  border-radius: 0;
   background: transparent;
   color: var(--muted-text-color);
   font: inherit;
@@ -427,13 +534,32 @@ function statusType(status) {
   cursor: pointer;
 }
 
+.toc-link::before {
+  position: absolute;
+  top: 50%;
+  left: -22px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  content: '';
+  opacity: 0;
+  transform: translateY(-50%) scale(0.45);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.toc-link.active::before {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+
 .toc-link:hover {
-  background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+  background: transparent;
   color: var(--primary-color);
 }
 
 .toc-link.active {
-  background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+  background: transparent;
   color: var(--primary-color);
   font-weight: 800;
 }
@@ -448,13 +574,13 @@ function statusType(status) {
 }
 
 @media (max-width: 980px) {
-  .preview-reading-layout.has-toc {
+  .reading-canvas.has-toc {
     grid-template-columns: 1fr;
     max-width: var(--reading-width);
     margin: 0 auto;
   }
 
-  .preview-sidebar {
+  .reading-sidebar {
     display: none;
   }
 
@@ -465,7 +591,8 @@ function statusType(status) {
 
 @media (max-width: 640px) {
   .main {
-    padding: 24px 14px 56px;
+    width: min(100% - 28px, var(--content-width));
+    padding: 16px 0 56px;
   }
 
   .page-actions {
@@ -478,9 +605,23 @@ function statusType(status) {
     justify-content: center;
   }
 
-  .preview-head,
-  .preview-body {
-    padding: 18px;
+  .detail-head h1 {
+    font-size: 42px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .back-button,
+  .edit-button,
+  .toc-link::before {
+    transition: none;
+  }
+
+  .back-button:hover,
+  .back-button:focus-visible,
+  .edit-button:hover,
+  .edit-button:focus-visible {
+    transform: none;
   }
 }
 </style>

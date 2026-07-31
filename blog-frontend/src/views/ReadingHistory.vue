@@ -2,26 +2,37 @@
   <div class="layout">
     <AppHeader />
     <main class="history-main" :aria-busy="loading">
-      <RouterLink class="back-link" to="/reading">
-        <el-icon><ArrowLeft /></el-icon>
-        <span>返回阅读空间</span>
-      </RouterLink>
-
-      <header class="page-heading">
-        <div class="heading-copy">
+      <header class="page-head">
+        <div class="head-copy">
+          <RouterLink class="back-link" to="/reading">
+            <el-icon><ArrowLeft /></el-icon>
+            <span>返回阅读空间</span>
+          </RouterLink>
+          <span class="eyebrow">Reading trail</span>
           <h1>阅读历史</h1>
-          <span class="history-count">共 {{ total }} 条</span>
+          <p>按时间回看读过的文章，保留标题快照，也允许清理不再需要的单条记录。</p>
         </div>
-        <el-button
-          type="danger"
-          plain
-          :icon="Delete"
-          :loading="clearing"
-          :disabled="total === 0 || removingIds.size > 0"
-          @click="clearAllHistory"
-        >
-          清空历史
-        </el-button>
+        <aside class="head-meta" aria-label="阅读历史摘要">
+          <div class="meta-line">
+            <span class="meta-label">总数</span>
+            <span class="meta-value">{{ total }} 条记录</span>
+          </div>
+          <div class="meta-line">
+            <span class="meta-label">分页</span>
+            <span class="meta-value">每页 {{ size }} 条</span>
+          </div>
+          <el-button
+            class="clear-button"
+            type="danger"
+            plain
+            :icon="Delete"
+            :loading="clearing"
+            :disabled="total === 0 || removingIds.size > 0"
+            @click="clearAllHistory"
+          >
+            清空历史
+          </el-button>
+        </aside>
       </header>
 
       <div v-if="error" class="error-row">
@@ -251,9 +262,37 @@ async function clearAllHistory() {
 
 <style scoped>
 .history-main {
-  width: min(100%, var(--content-width));
+  position: relative;
+  isolation: isolate;
+  width: min(1180px, calc(100% - 36px));
   margin: 0 auto;
-  padding: 24px 24px 56px;
+  padding: 22px 0 64px;
+}
+
+.history-main::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, var(--theme-grid-x) 1px, transparent 1px),
+    linear-gradient(180deg, var(--theme-grid-y) 1px, transparent 1px);
+  background-size: 44px 44px;
+  content: '';
+  opacity: 0.56;
+  pointer-events: none;
+}
+
+.page-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  gap: 30px;
+  align-items: end;
+  margin-bottom: 28px;
+  padding-top: 22px;
+}
+
+.head-copy {
+  min-width: 0;
 }
 
 .back-link {
@@ -261,40 +300,90 @@ async function clearAllHistory() {
   align-items: center;
   gap: 5px;
   min-height: 36px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   color: var(--muted-text-color);
   font-size: 13px;
   font-weight: 700;
 }
 
-.page-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  margin-bottom: 22px;
-  padding-bottom: 17px;
-  border-bottom: 1px solid var(--soft-border-color);
+.back-link:hover {
+  color: var(--primary-color);
 }
 
-.heading-copy {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 8px 14px;
-  min-width: 0;
+.eyebrow {
+  display: inline-flex;
+  margin: 0 0 12px;
+  color: var(--primary-color);
+  font-size: 12px;
+  font-weight: 760;
+  letter-spacing: 0;
 }
 
-.page-heading h1 {
-  margin: 0;
+.page-head h1 {
+  max-width: 820px;
+  margin: 0 0 18px;
   color: var(--text-color);
-  font-size: 30px;
-  line-height: 1.25;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(42px, 7vw, 76px);
+  font-weight: 500;
+  line-height: 0.98;
 }
 
-.history-count {
+.head-copy p {
+  max-width: 640px;
+  margin: 0;
   color: var(--muted-text-color);
-  font-size: 13px;
+  font-size: 17px;
+  line-height: 1.85;
+}
+
+.head-meta {
+  display: grid;
+  gap: 13px;
+  padding: 18px 20px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--panel-bg);
+  box-shadow: var(--shadow-soft);
+}
+
+.meta-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: center;
+  padding: 0;
+}
+
+.meta-label {
+  color: var(--muted-text-color);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.meta-value {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-color);
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clear-button {
+  width: 100%;
+  min-height: 38px;
+  margin-top: 6px;
+  border-radius: 999px;
+}
+
+.back-link:focus-visible,
+.clear-button:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
 }
 
 .error-row {
@@ -322,22 +411,20 @@ async function clearAllHistory() {
 }
 
 .history-timeline {
+  display: grid;
   width: min(100%, 980px);
+  gap: 30px;
 }
 
 .timeline-group {
   display: grid;
-  grid-template-columns: 88px minmax(0, 1fr);
-  gap: 0 12px;
-}
-
-.timeline-group + .timeline-group {
-  margin-top: 30px;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 0 14px;
 }
 
 .group-label {
   margin: 3px 0 0;
-  color: var(--muted-text-color);
+  color: var(--primary-color);
   font-size: 13px;
   font-weight: 800;
   line-height: 1.4;
@@ -358,8 +445,9 @@ async function clearAllHistory() {
   bottom: 7px;
   left: 8px;
   width: 1px;
-  background: var(--border-color);
+  background: linear-gradient(180deg, var(--primary-color), var(--accent-color));
   content: '';
+  opacity: 0.45;
 }
 
 .timeline-group:not(:last-child) .timeline-items::before {
@@ -381,39 +469,49 @@ async function clearAllHistory() {
   border: 3px solid var(--panel-bg);
   border-radius: 50%;
   background: var(--accent-color);
-  box-shadow: 0 0 0 1px var(--border-color);
+  box-shadow: 0 0 0 1px var(--border-color), 0 0 0 7px var(--surface-wash-color);
   content: '';
+  pointer-events: none;
 }
 
 .pagination {
   display: flex;
   justify-content: center;
-  margin-top: 28px;
+  margin-top: 30px;
+}
+
+@media (max-width: 900px) {
+  .page-head {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .head-meta {
+    padding: 16px;
+  }
 }
 
 @media (max-width: 720px) {
   .history-main {
-    padding: 18px 14px 40px;
+    width: min(100% - 28px, var(--content-width));
+    padding: 16px 0 44px;
   }
 
-  .page-heading {
-    align-items: flex-start;
+  .page-head {
+    gap: 22px;
+    padding-top: 14px;
   }
 
-  .page-heading h1 {
-    font-size: 26px;
+  .page-head h1 {
+    font-size: 42px;
   }
 
-  .error-row {
+  .error-row,
+  .timeline-group {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .error-row .el-button {
     justify-self: end;
-  }
-
-  .timeline-group {
-    grid-template-columns: minmax(0, 1fr);
   }
 
   .group-label {
@@ -435,13 +533,13 @@ async function clearAllHistory() {
 }
 
 @media (max-width: 440px) {
-  .page-heading {
-    align-items: stretch;
-    flex-direction: column;
+  .meta-line {
+    grid-template-columns: 1fr;
+    gap: 4px;
   }
 
-  .page-heading .el-button {
-    align-self: flex-start;
+  .meta-value {
+    text-align: left;
   }
 }
 

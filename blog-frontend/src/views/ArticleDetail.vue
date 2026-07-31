@@ -1,6 +1,14 @@
 <template>
   <div class="layout">
     <AppHeader />
+    <div
+      v-if="article"
+      class="article-progress-bar"
+      aria-hidden="true"
+      :style="{ '--article-read-progress': `${currentReadingProgress}%` }"
+    >
+      <span />
+    </div>
     <el-main class="main">
       <button type="button" class="back-button" @click="goBack">
         <el-icon><ArrowLeft /></el-icon>
@@ -16,72 +24,59 @@
       </section>
 
       <article v-else-if="article" class="article-page">
-        <header class="article-hero" :class="{ 'has-cover': article.coverImage }">
-          <div class="article-hero-copy">
-            <span class="eyebrow">文章</span>
-            <h1>{{ article.title }}</h1>
-            <div class="hero-meta">
-              <span>{{ formatDate(article.createdAt) }}</span>
-              <span>{{ authorName }}</span>
-              <span>阅读 {{ article.viewCount || 0 }}</span>
-              <span>{{ readingStats.readingTimeText }}</span>
-            </div>
-            <div v-if="articleTags.length" class="article-tags">
-              <el-tag v-for="tag in articleTags" :key="tag.id" size="small">{{ tag.name }}</el-tag>
-            </div>
-            <div class="favorite-action">
-              <el-button
-                class="favorite-button"
-                :loading="favoriteLoading"
-                :aria-pressed="favorited"
-                @click="handleFavorite"
-              >
-                <el-icon>
-                  <StarFilled v-if="favorited" />
-                  <Star v-else />
-                </el-icon>
-                <span>{{ favorited ? '已收藏' : '收藏' }}</span>
-              </el-button>
-            </div>
-          </div>
-          <figure v-if="article.coverImage" class="article-cover">
-            <img :src="article.coverImage" :alt="article.title" />
-          </figure>
-        </header>
+        <div class="reading-canvas">
+          <div class="reading-primary">
+            <header class="detail-head">
+              <div class="detail-copy">
+                <span class="eyebrow">文章</span>
+                <h1>{{ article.title }}</h1>
+                <p v-if="article.summary" class="detail-summary">{{ article.summary }}</p>
+                <div class="detail-meta">
+                  <span>{{ formatDate(article.createdAt) }}</span>
+                  <span>{{ authorName }}</span>
+                  <span>阅读 {{ article.viewCount || 0 }}</span>
+                  <span>{{ readingStats.readingTimeText }}</span>
+                  <span>字数 {{ readingStats.wordCount }}</span>
+                </div>
+                <div class="detail-actions">
+                  <div v-if="articleTags.length" class="article-tags">
+                    <el-tag v-for="tag in articleTags" :key="tag.id" size="small">{{ tag.name }}</el-tag>
+                  </div>
+                  <div class="favorite-action">
+                    <el-button
+                      class="favorite-button"
+                      :loading="favoriteLoading"
+                      :aria-pressed="favorited"
+                      @click="handleFavorite"
+                    >
+                      <el-icon>
+                        <StarFilled v-if="favorited" />
+                        <Star v-else />
+                      </el-icon>
+                      <span>{{ favorited ? '已收藏' : '收藏' }}</span>
+                    </el-button>
+                  </div>
+                </div>
+              </div>
+            </header>
 
-        <section class="reading-summary">
-          <div>
-            <span>字数</span>
-            <strong>{{ readingStats.wordCount }}</strong>
-          </div>
-          <div>
-            <span>预计阅读</span>
-            <strong>{{ readingStats.readingTimeText }}</strong>
-          </div>
-          <div>
-            <span>作者</span>
-            <strong>{{ authorName }}</strong>
-          </div>
-        </section>
+            <main class="article-body">
+              <nav v-if="toc.length" class="mobile-toc" aria-label="文章目录">
+                <span class="eyebrow">目录</span>
+                <button
+                  v-for="item in toc"
+                  :key="item.id"
+                  type="button"
+                  :class="['toc-link', `level-${item.level}`, { active: activeHeadingId === item.id }]"
+                  @click="scrollToHeading(item.id)"
+                >
+                  {{ item.text }}
+                </button>
+              </nav>
 
-        <div class="reading-layout">
-          <main class="article-body">
-            <nav v-if="toc.length" class="mobile-toc" aria-label="文章目录">
-              <span class="eyebrow">目录</span>
-              <button
-                v-for="item in toc"
-                :key="item.id"
-                type="button"
-                :class="['toc-link', `level-${item.level}`, { active: activeHeadingId === item.id }]"
-                @click="scrollToHeading(item.id)"
-              >
-                {{ item.text }}
-              </button>
-            </nav>
-
-            <MarkdownRenderer :content="article.content" />
-
-          </main>
+              <MarkdownRenderer :content="article.content" />
+            </main>
+          </div>
 
           <aside class="reading-sidebar">
             <nav v-if="toc.length" ref="tocPanelRef" class="toc-panel" aria-label="文章目录">
@@ -104,45 +99,50 @@
           </aside>
         </div>
 
-        <section v-if="hasContinuation" class="continuation-section">
+        <section v-if="hasContinuation" class="article-epilogue">
+          <div class="epilogue-heading">
+            <span class="eyebrow">继续阅读</span>
+            <h2>读到这里之后</h2>
+          </div>
+
           <div v-if="neighbors.previous || neighbors.next" class="neighbor-grid">
             <button
               v-if="neighbors.previous"
               type="button"
-              class="neighbor-card previous"
+              class="neighbor-link previous"
               @click="openArticle(neighbors.previous.id)"
             >
-              <span>上一篇</span>
+              <span class="neighbor-direction"><span aria-hidden="true">←</span> 上一篇</span>
               <strong>{{ neighbors.previous.title }}</strong>
               <small>{{ formatDate(neighbors.previous.createdAt) }} · 阅读 {{ neighbors.previous.viewCount || 0 }}</small>
             </button>
             <button
               v-if="neighbors.next"
               type="button"
-              class="neighbor-card next"
+              class="neighbor-link next"
               @click="openArticle(neighbors.next.id)"
             >
-              <span>下一篇</span>
+              <span class="neighbor-direction">下一篇 <span aria-hidden="true">→</span></span>
               <strong>{{ neighbors.next.title }}</strong>
               <small>{{ formatDate(neighbors.next.createdAt) }} · 阅读 {{ neighbors.next.viewCount || 0 }}</small>
             </button>
           </div>
 
           <div v-if="relatedArticles.length" class="related-panel">
-            <div class="section-heading">
-              <span class="eyebrow">继续阅读</span>
-              <h2>相关文章</h2>
-            </div>
-            <div class="related-grid">
+            <span class="related-kicker">同主题线索</span>
+            <div class="related-list">
               <button
-                v-for="item in relatedArticles"
+                v-for="(item, index) in relatedArticles"
                 :key="item.id"
                 type="button"
-                class="related-card"
+                class="related-link"
                 @click="openArticle(item.id)"
               >
-                <strong>{{ item.title }}</strong>
-                <small>{{ formatDate(item.createdAt) }} · 阅读 {{ item.viewCount || 0 }}</small>
+                <span class="related-index">{{ String(index + 1).padStart(2, '0') }}</span>
+                <span class="related-copy">
+                  <strong>{{ item.title }}</strong>
+                  <small>{{ formatDate(item.createdAt) }} · 阅读 {{ item.viewCount || 0 }}</small>
+                </span>
                 <span v-if="item.tags?.length" class="related-tags">
                   <el-tag v-for="tag in item.tags.slice(0, 2)" :key="tag.id" size="small">{{ tag.name }}</el-tag>
                 </span>
@@ -244,6 +244,7 @@ const favoriteLoading = ref(false)
 const neighbors = ref({ previous: null, next: null })
 const relatedArticles = ref([])
 const activeHeadingId = ref('')
+const currentReadingProgress = ref(0)
 const showBackToTop = ref(false)
 const readingPosition = ref(null)
 const resumePromptDismissed = ref(false)
@@ -321,6 +322,7 @@ async function loadArticle() {
   neighbors.value = { previous: null, next: null }
   relatedArticles.value = []
   activeHeadingId.value = ''
+  currentReadingProgress.value = 0
   readingPosition.value = null
   resumePromptDismissed.value = false
   lastPositionSavedAt = 0
@@ -493,8 +495,17 @@ function handleFloatingBack() {
   goBack()
 }
 
+function prefersReducedMotion() {
+  return typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
 function scrollToHeading(id) {
-  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  document.getElementById(id)?.scrollIntoView({
+    behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+    block: 'start'
+  })
 }
 
 function getArticleBodyMetrics() {
@@ -563,7 +574,10 @@ function continueReadingFromSavedPosition() {
   const scrollY = Number(readingPosition.value?.resumeScrollY)
   if (!Number.isFinite(scrollY)) return
   resumePromptDismissed.value = true
-  window.scrollTo({ top: Math.max(0, scrollY), behavior: 'smooth' })
+  window.scrollTo({
+    top: Math.max(0, scrollY),
+    behavior: prefersReducedMotion() ? 'auto' : 'smooth'
+  })
 }
 
 function dismissResumePrompt() {
@@ -572,6 +586,15 @@ function dismissResumePrompt() {
 
 function updateScrollState() {
   showBackToTop.value = window.scrollY > 360
+  const metrics = getArticleBodyMetrics()
+  if (metrics) {
+    currentReadingProgress.value = calculateReadingProgress({
+      scrollY: window.scrollY,
+      articleTop: metrics.articleTop,
+      articleHeight: metrics.articleHeight,
+      viewportHeight: metrics.viewportHeight
+    })
+  }
   if (!toc.value.length) {
     activeHeadingId.value = ''
     scheduleReadingPositionSave(false)
@@ -621,15 +644,34 @@ function openArticle(id) {
 }
 
 function scrollToTop(smooth = true) {
-  window.scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'auto' })
+  window.scrollTo({ top: 0, behavior: smooth && !prefersReducedMotion() ? 'smooth' : 'auto' })
 }
 </script>
 
 <style scoped>
+.article-progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 120;
+  width: 100%;
+  height: 3px;
+  pointer-events: none;
+}
+
+.article-progress-bar span {
+  display: block;
+  width: var(--article-read-progress);
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-color), var(--accent-color), var(--danger-color));
+  box-shadow: 0 0 16px var(--theme-glow-color);
+  transition: width 0.12s linear;
+}
+
 .main {
-  width: min(100%, var(--content-width));
+  width: min(1180px, calc(100% - 36px));
   margin: 0 auto;
-  padding: 34px 24px 72px;
+  padding: 22px 0 72px;
   overflow: visible;
 }
 
@@ -640,27 +682,33 @@ function scrollToTop(smooth = true) {
   min-height: 36px;
   margin-bottom: 16px;
   padding: 0 12px;
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-sm);
-  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
   color: var(--muted-text-color);
   font: inherit;
   font-weight: 700;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
+  transition:
+    transform 0.22s ease,
+    border-color 0.22s ease,
+    background-color 0.22s ease,
+    color 0.22s ease;
 }
 
 .back-button:hover {
-  border-color: var(--primary-color);
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--primary-color) 72%, var(--border-color));
   color: var(--primary-color);
-  background: color-mix(in srgb, var(--primary-color) 8%, var(--panel-bg));
+  background: var(--surface-wash-color);
 }
 
 .back-button:focus-visible,
 .home-button:focus-visible,
 .toc-link:focus-visible,
-.neighbor-card:focus-visible,
-.related-card:focus-visible,
+.neighbor-link:focus-visible,
+.related-link:focus-visible,
 .floating-tool-button:focus-visible {
   outline: 2px solid var(--primary-color);
   outline-offset: 2px;
@@ -668,9 +716,9 @@ function scrollToTop(smooth = true) {
 
 .empty-state {
   padding: 44px 28px;
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-lg);
-  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
   text-align: center;
   box-shadow: var(--shadow-sm);
 }
@@ -700,148 +748,170 @@ function scrollToTop(smooth = true) {
 
 .article-page {
   display: grid;
-  gap: 20px;
+  gap: 28px;
 }
 
-.article-hero {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 26px;
-  align-items: stretch;
-  padding: clamp(24px, 4vw, 44px);
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-lg);
-  background: var(--panel-bg);
-  box-shadow: var(--shadow-sm);
+.detail-head {
+  position: relative;
+  margin-bottom: 30px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
+  background: transparent;
+  box-shadow: none;
 }
 
-.article-hero.has-cover {
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
-}
-
-.article-hero-copy {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+.reading-primary,
+.detail-copy {
   min-width: 0;
 }
 
+.detail-copy {
+  display: grid;
+  align-content: start;
+}
+
 .eyebrow {
-  color: var(--accent-color);
+  display: inline-flex;
+  margin: 0 0 12px;
+  color: var(--primary-color);
   font-size: 12px;
-  font-weight: 850;
+  font-weight: 760;
+  letter-spacing: 0;
 }
 
-.article-hero h1 {
-  max-width: 900px;
-  margin: 12px 0 18px;
+.detail-head h1 {
+  max-width: 820px;
+  margin: 0 0 22px;
   color: var(--text-color);
-  font-size: clamp(36px, 6vw, 68px);
-  line-height: 1;
-  font-weight: 900;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(52px, 7.4vw, 92px);
+  font-weight: 500;
+  line-height: 0.98;
+  overflow-wrap: anywhere;
 }
 
-.hero-meta {
+.detail-summary {
+  max-width: 680px;
+  margin: 0 0 20px;
+  color: color-mix(in srgb, var(--text-color) 62%, var(--muted-text-color));
+  font-size: clamp(16px, 1.7vw, 18px);
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+.detail-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 16px;
+  gap: 8px 14px;
   color: var(--muted-text-color);
-  font-size: 14px;
+  font-size: 13px;
+}
+
+.detail-meta span + span {
+  position: relative;
+  padding-left: 14px;
+}
+
+.detail-meta span + span::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--primary-color) 36%, transparent);
+  content: '';
+  transform: translateY(-50%);
+}
+
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  align-items: center;
+  margin-top: 20px;
 }
 
 .article-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 18px;
+  margin: 0;
+}
+
+.article-tags :deep(.el-tag) {
+  border-color: color-mix(in srgb, var(--primary-color) 24%, var(--border-color));
+  background: color-mix(in srgb, var(--panel-bg) 72%, transparent);
+  color: var(--primary-color);
 }
 
 .favorite-action {
   display: flex;
   align-items: center;
   min-height: 40px;
-  margin-top: 18px;
 }
 
 .favorite-button {
-  width: 112px;
+  min-width: 112px;
   height: 40px;
   flex: 0 0 auto;
-}
-
-.article-cover {
-  margin: 0;
-  min-width: 0;
-}
-
-.article-cover img {
-  width: 100%;
-  height: 100%;
-  min-height: 280px;
-  object-fit: cover;
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-md);
-}
-
-.reading-summary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.reading-summary div {
-  padding: 14px 16px;
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-md);
-  background: var(--panel-bg);
-}
-
-.reading-summary span,
-.reading-summary strong {
-  display: block;
-}
-
-.reading-summary span {
-  color: var(--muted-text-color);
-  font-size: 12px;
-}
-
-.reading-summary strong {
-  margin-top: 6px;
+  border-color: color-mix(in srgb, var(--border-color) 92%, transparent);
+  background: color-mix(in srgb, var(--panel-bg) 78%, transparent);
   color: var(--text-color);
-  font-size: 16px;
+  box-shadow: none;
 }
 
-.reading-layout {
+.reading-canvas {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
-  gap: 30px;
+  grid-template-columns: minmax(0, 760px) 280px;
+  gap: 36px;
   align-items: start;
+  justify-content: center;
 }
 
 .article-body {
   min-width: 0;
-  padding: clamp(22px, 4vw, 38px);
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-lg);
-  background: var(--panel-bg);
-  box-shadow: var(--shadow-sm);
+  min-height: clamp(360px, 42vh, 560px);
+  padding: clamp(28px, 4vw, 52px) clamp(22px, 4vw, 46px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-bg) 92%, transparent);
+  box-shadow: 0 18px 46px color-mix(in srgb, var(--text-color) 7%, transparent);
+}
+
+.article-body :deep(.article-content > :first-child) {
+  margin-top: 0;
+}
+
+.article-body :deep(.article-content > :last-child) {
+  margin-bottom: 0;
 }
 
 .reading-sidebar {
   position: sticky;
   top: calc(var(--app-header-height) + 22px);
   display: grid;
-  gap: 14px;
+  gap: 16px;
+  padding-left: 18px;
+  border-left: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
 }
 
-.toc-panel,
-.note-panel,
+.toc-panel {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.mobile-toc {
+  border: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-bg) 84%, transparent);
+  box-shadow: none;
+}
+
 .mobile-toc {
   padding: 16px;
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-md);
-  background: var(--panel-bg);
 }
 
 .toc-panel,
@@ -851,10 +921,18 @@ function scrollToTop(smooth = true) {
 }
 
 .toc-panel {
-  max-height: calc(100vh - var(--app-header-height) - 170px);
+  max-height: calc(100vh - var(--app-header-height) - 218px);
+  padding: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
+}
+
+.note-panel {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .note-panel p {
@@ -865,10 +943,11 @@ function scrollToTop(smooth = true) {
 }
 
 .toc-link {
+  position: relative;
   width: 100%;
-  padding: 7px 8px;
+  padding: 7px 0;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   background: transparent;
   color: var(--muted-text-color);
   font: inherit;
@@ -878,13 +957,32 @@ function scrollToTop(smooth = true) {
   cursor: pointer;
 }
 
+.toc-link::before {
+  position: absolute;
+  top: 50%;
+  left: -22px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  content: '';
+  opacity: 0;
+  transform: translateY(-50%) scale(0.45);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.toc-link.active::before {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+
 .toc-link:hover {
-  background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+  background: transparent;
   color: var(--primary-color);
 }
 
 .toc-link.active {
-  background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+  background: transparent;
   color: var(--primary-color);
   font-weight: 800;
 }
@@ -903,83 +1001,169 @@ function scrollToTop(smooth = true) {
   margin-bottom: 22px;
 }
 
-.continuation-section {
+.article-epilogue {
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   display: grid;
-  gap: 18px;
+  gap: 24px;
+  padding: clamp(22px, 4vw, 34px) clamp(14px, 3vw, 26px) 4px;
+  border-top: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--surface-wash-color) 74%, transparent) 0%,
+    color-mix(in srgb, var(--panel-bg) 28%, transparent) 46%,
+    transparent 100%
+  );
+}
+
+.epilogue-heading {
+  display: grid;
+  gap: 6px;
+}
+
+.epilogue-heading .eyebrow {
+  margin-bottom: 0;
+}
+
+.epilogue-heading h2 {
+  margin: 0;
+  color: var(--text-color);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 500;
+  line-height: 1.04;
+  overflow-wrap: anywhere;
 }
 
 .neighbor-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 0;
+  border-top: 1px solid color-mix(in srgb, var(--border-color) 58%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 58%, transparent);
 }
 
-.neighbor-card,
-.related-card {
+.neighbor-link,
+.related-link {
+  position: relative;
   display: grid;
   gap: 8px;
   width: 100%;
   min-width: 0;
-  padding: 18px;
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-md);
-  background: var(--panel-bg);
+  padding: 18px 14px;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
   color: var(--text-color);
   font: inherit;
   text-align: left;
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  box-shadow: none;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
 }
 
-.neighbor-card:hover,
-.related-card:hover {
-  border-color: var(--primary-color);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+.neighbor-link::after,
+.related-link::after {
+  position: absolute;
+  right: 14px;
+  bottom: 10px;
+  left: 14px;
+  height: 1px;
+  background: color-mix(in srgb, var(--primary-color) 58%, transparent);
+  content: '';
+  opacity: 0;
+  transform: scaleX(0.2);
+  transform-origin: left center;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-.neighbor-card span,
-.neighbor-card small,
-.related-card small {
+.neighbor-link.next {
+  border-left: 1px solid color-mix(in srgb, var(--border-color) 58%, transparent);
+  text-align: right;
+  justify-items: end;
+}
+
+.neighbor-link.next::after {
+  transform-origin: right center;
+}
+
+.neighbor-link:hover,
+.related-link:hover {
+  background: color-mix(in srgb, var(--surface-wash-color) 62%, transparent);
+  color: var(--primary-color);
+}
+
+.neighbor-link:hover::after,
+.related-link:hover::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.neighbor-direction {
+  color: var(--muted-text-color);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.neighbor-link small,
+.related-link small {
   color: var(--muted-text-color);
   font-size: 13px;
 }
 
-.neighbor-card strong,
-.related-card strong {
+.neighbor-link strong,
+.related-link strong {
   min-width: 0;
-  color: var(--text-color);
+  color: currentColor;
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
 
 .related-panel {
   display: grid;
-  gap: 14px;
-  padding: clamp(20px, 3vw, 28px);
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-lg);
-  background: var(--panel-bg);
-  box-shadow: var(--shadow-sm);
+  gap: 10px;
 }
 
-.section-heading h2 {
-  margin: 6px 0 0;
-  color: var(--text-color);
-  font-size: 24px;
+.related-kicker {
+  color: var(--muted-text-color);
+  font-size: 13px;
+  font-weight: 760;
 }
 
-.related-grid {
+.related-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--border-color) 58%, transparent);
+}
+
+.related-link {
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  column-gap: 16px;
+  align-items: center;
+  padding: 16px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 48%, transparent);
+}
+
+.related-index {
+  color: color-mix(in srgb, var(--primary-color) 68%, var(--muted-text-color));
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.related-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
 }
 
 .related-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  justify-content: flex-end;
 }
 
 .resume-reading-dialog :deep(.el-dialog__header) {
@@ -1028,8 +1212,8 @@ function scrollToTop(smooth = true) {
   border-radius: 999px;
   background: var(--panel-bg);
   box-shadow:
-    0 16px 36px rgba(15, 23, 42, 0.16),
-    0 4px 12px rgba(15, 23, 42, 0.12);
+    0 16px 36px var(--theme-glow-color),
+    0 4px 12px rgba(15, 23, 42, 0.1);
 }
 
 .floating-tool-button {
@@ -1069,9 +1253,13 @@ function scrollToTop(smooth = true) {
 }
 
 @media (max-width: 980px) {
-  .article-hero,
-  .reading-layout {
+  .reading-canvas {
     grid-template-columns: 1fr;
+  }
+
+  .detail-head {
+    margin-bottom: 24px;
+    padding-bottom: 22px;
   }
 
   .reading-sidebar {
@@ -1085,21 +1273,65 @@ function scrollToTop(smooth = true) {
 
 @media (max-width: 640px) {
   .main {
-    padding: 22px 14px 48px;
+    width: min(100% - 28px, var(--content-width));
+    padding: 16px 0 48px;
   }
 
-  .article-hero,
+  .detail-head h1 {
+    font-size: 42px;
+  }
+
+  .detail-head {
+    margin-bottom: 22px;
+    padding-bottom: 20px;
+  }
+
+  .detail-actions,
+  .favorite-action {
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .favorite-button {
+    width: 100%;
+  }
+
   .article-body {
-    padding: 18px;
+    min-height: 320px;
+    padding: 24px 18px;
   }
 
-  .reading-summary {
+  .article-epilogue {
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  .neighbor-grid {
     grid-template-columns: 1fr;
   }
 
-  .neighbor-grid,
-  .related-grid {
-    grid-template-columns: 1fr;
+  .neighbor-grid {
+    gap: 0;
+  }
+
+  .neighbor-link + .neighbor-link {
+    border-top: 1px solid color-mix(in srgb, var(--border-color) 48%, transparent);
+  }
+
+  .neighbor-link.next {
+    border-left: 0;
+    text-align: left;
+    justify-items: start;
+  }
+
+  .related-link {
+    grid-template-columns: 34px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .related-tags {
+    grid-column: 2;
+    justify-content: flex-start;
   }
 
   .floating-reading-tools {
@@ -1112,15 +1344,24 @@ function scrollToTop(smooth = true) {
     width: 36px;
     height: 36px;
   }
-
-  .article-cover img {
-    min-height: 210px;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .article-progress-bar span,
+  .back-button,
+  .toc-link,
+  .toc-link::before,
+  .neighbor-link,
+  .neighbor-link::after,
+  .related-link,
+  .related-link::after,
   .floating-tool-button {
     transition: none;
+  }
+
+  .back-button:hover,
+  .floating-tool-button:hover {
+    transform: none;
   }
 }
 </style>

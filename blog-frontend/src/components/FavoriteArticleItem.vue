@@ -78,16 +78,44 @@ defineEmits(['remove'])
 .favorite-item {
   position: relative;
   min-width: 0;
-  padding: 18px 20px;
-  border: 1px solid var(--soft-border-color);
+  padding: 18px 64px 18px 24px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  background: var(--panel-bg);
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  background: color-mix(in srgb, var(--panel-bg) 96%, transparent);
+  transition:
+    transform 0.22s ease,
+    border-color 0.22s ease,
+    background-color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.favorite-item::before {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: -1px;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--primary-color), var(--accent-color));
+  content: '';
+  opacity: 0;
+  pointer-events: none;
+  transform: scaleY(0.55);
+  transform-origin: center;
+  transition: opacity 0.22s ease, transform 0.22s ease;
 }
 
 .favorite-item:not(.is-unavailable):hover {
-  border-color: color-mix(in srgb, var(--primary-color) 36%, var(--soft-border-color));
-  box-shadow: var(--shadow-sm);
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--primary-color) 72%, var(--border-color));
+  background: var(--panel-bg);
+  box-shadow: var(--shadow-sm), 0 18px 42px var(--theme-glow-color);
+}
+
+.favorite-item:not(.is-unavailable):hover::before {
+  opacity: 1;
+  transform: scaleY(1);
 }
 
 .card-open-link {
@@ -143,7 +171,7 @@ defineEmits(['remove'])
 .remove-button {
   position: absolute;
   top: 18px;
-  right: 20px;
+  right: 18px;
   z-index: 2;
   width: 36px;
   height: 36px;
@@ -218,7 +246,7 @@ defineEmits(['remove'])
 
 @media (max-width: 640px) {
   .favorite-item {
-    padding: 14px;
+    padding: 14px 54px 14px 14px;
   }
 
   .item-heading {
@@ -244,6 +272,17 @@ defineEmits(['remove'])
     width: 100%;
     height: auto;
     aspect-ratio: 16 / 9;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .favorite-item,
+  .favorite-item::before {
+    transition: none;
+  }
+
+  .favorite-item:not(.is-unavailable):hover {
+    transform: none;
   }
 }
 </style>

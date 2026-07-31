@@ -1,11 +1,13 @@
 <template>
-  <div class="admin-page dashboard-page">
-    <div class="page-header dashboard-header">
+  <div class="dashboard-page">
+    <div class="page-head">
       <div>
-        <span class="page-kicker">概览</span>
+        <span class="page-eyebrow">概览</span>
         <h2>仪表盘</h2>
       </div>
-      <el-button :loading="loading" @click="loadDashboard">刷新</el-button>
+      <button class="tool-button" type="button" :disabled="loading" @click="loadDashboard">
+        {{ loading ? '刷新中' : '刷新' }}
+      </button>
     </div>
 
     <el-alert
@@ -17,109 +19,120 @@
       :closable="false"
     />
 
-    <div class="stat-grid">
-      <section
-        v-for="card in metricCards"
-        :key="card.label"
-        class="stat-card"
-        :class="`tone-${card.tone}`"
-      >
-        <span>{{ card.label }}</span>
+    <div class="signal-strip" v-loading="loading">
+      <section class="signal-primary">
+        <div>
+          <span class="section-eyebrow">内容总览</span>
+          <h3>当前内容池</h3>
+          <p class="panel-caption">文章、用户和资源状态在这里汇总。</p>
+        </div>
+        <strong class="big-number">{{ stats.metrics.totalArticles }}</strong>
+      </section>
+
+      <section v-for="card in quickStats" :key="card.label" class="signal-stat">
+        <span class="tiny-label">{{ card.label }}</span>
         <strong>{{ card.value }}</strong>
-        <small>{{ card.note }}</small>
+        <div class="row-meta">{{ card.note }}</div>
       </section>
     </div>
 
     <div class="dashboard-grid">
-      <section v-loading="loading" class="panel status-panel">
+      <section class="surface" v-loading="loading">
         <div class="panel-head">
           <div>
-            <span class="panel-kicker">内容流转</span>
+            <span class="section-eyebrow">内容流转</span>
             <h3>文章状态分布</h3>
           </div>
-          <strong>{{ stats.metrics.totalArticles }}</strong>
+          <span class="chip">{{ stats.metrics.totalArticles }} 篇</span>
         </div>
 
-        <div class="status-track" aria-label="文章状态分布">
-          <template v-for="item in stats.articleStatus" :key="item.key">
-            <span
-              v-if="item.percent > 0"
-              :class="`status-segment tone-${item.tone}`"
-              :style="{ width: `${item.percent}%` }"
-              :title="`${item.label} ${item.count}`"
-            />
-          </template>
-        </div>
-
-        <div class="status-list">
-          <div v-for="item in stats.articleStatus" :key="item.key" class="status-row">
-            <span class="status-dot" :class="`tone-${item.tone}`" />
+        <div class="status-ledger" aria-label="文章状态分布">
+          <div v-for="item in stats.articleStatus" :key="item.key" class="ledger-row">
             <span>{{ item.label }}</span>
-            <strong>{{ item.count }}</strong>
-            <em>{{ item.percent }}%</em>
+            <div class="track" :class="trackClass(item.tone)">
+              <span :style="{ width: `${Math.max(item.percent, item.count ? 6 : 0)}%` }"></span>
+            </div>
+            <strong>{{ item.percent }}%</strong>
           </div>
+        </div>
+
+        <div class="content-preview">
+          <div class="panel-head">
+            <div>
+              <span class="section-eyebrow">标签概览</span>
+              <h3>内容归类</h3>
+            </div>
+            <button class="tool-button is-text" type="button" @click="router.push('/admin/resources')">管理资源</button>
+          </div>
+          <div v-if="stats.tagSummary.items.length" class="chip-row">
+            <span v-for="tag in stats.tagSummary.items" :key="tag.id || tag.name" class="chip">{{ tag.name }}</span>
+          </div>
+          <div v-else class="empty-state">暂无标签</div>
         </div>
       </section>
 
-      <section v-loading="loading" class="panel queue-panel">
+      <section class="surface" v-loading="loading">
         <div class="panel-head">
           <div>
-            <span class="panel-kicker">待处理</span>
-            <h3>审核队列</h3>
+            <span class="section-eyebrow">工作队列</span>
+            <h3>优先处理</h3>
           </div>
-          <el-tag :type="hasWork ? 'warning' : 'success'">
+          <span class="chip" :class="{ 'is-warning': hasWork, 'is-success': !hasWork }">
             {{ hasWork ? '有待处理' : '已清空' }}
-          </el-tag>
+          </span>
         </div>
 
-        <div class="queue-group">
-          <div class="queue-title">待审核文章</div>
-          <button
-            v-for="article in stats.pendingArticles"
-            :key="article.id"
-            class="queue-item"
-            type="button"
-            @click="goArticle(article)"
-          >
-            <span>{{ article.title }}</span>
-            <small>{{ article.createdBy || '未知作者' }}</small>
-          </button>
-          <el-empty v-if="!stats.pendingArticles.length" description="暂无待审核文章" :image-size="64" />
-        </div>
+        <div class="review-list">
+          <div class="review-item">
+            <div class="review-title">
+              <span>文章审核</span>
+              <span>{{ stats.metrics.pendingArticles }}</span>
+            </div>
+            <div v-if="stats.pendingArticles.length" class="queue-lines">
+              <button
+                v-for="article in stats.pendingArticles"
+                :key="article.id"
+                class="queue-line"
+                type="button"
+                @click="goArticle(article)"
+              >
+                <span>{{ article.title }}</span>
+                <small>{{ article.createdBy || '未知作者' }}</small>
+              </button>
+            </div>
+            <div v-else class="row-meta">没有需要审核的文章。</div>
+          </div>
 
-        <div class="queue-group">
-          <div class="queue-title">待审核用户</div>
-          <button
-            v-for="user in stats.pendingUsers"
-            :key="user.id"
-            class="queue-item"
-            type="button"
-            @click="goUsers"
-          >
-            <span>{{ user.nickname || user.username }}</span>
-            <small>{{ user.email || user.username }}</small>
-          </button>
-          <el-empty v-if="!stats.pendingUsers.length" description="暂无待审核用户" :image-size="64" />
+          <div class="review-item">
+            <div class="review-title">
+              <span>用户审核</span>
+              <span>{{ stats.metrics.pendingUsers }}</span>
+            </div>
+            <div v-if="stats.pendingUsers.length" class="queue-lines">
+              <button
+                v-for="user in stats.pendingUsers"
+                :key="user.id"
+                class="queue-line"
+                type="button"
+                @click="goUsers"
+              >
+                <span>{{ user.nickname || user.username }}</span>
+                <small>{{ user.email || user.username }}</small>
+              </button>
+            </div>
+            <div v-else class="row-meta">没有等待通过的账号。</div>
+          </div>
+
+          <div class="review-item">
+            <div class="review-title">
+              <span>资源维护</span>
+              <span>{{ stats.tagSummary.total }}</span>
+            </div>
+            <div class="row-meta">标签和图片已合并到资源管理。</div>
+          </div>
         </div>
       </section>
     </div>
-
-    <section v-loading="loading" class="panel tag-panel">
-      <div class="panel-head">
-        <div>
-          <span class="panel-kicker">内容组织</span>
-          <h3>标签概览</h3>
-        </div>
-        <strong>{{ stats.tagSummary.total }}</strong>
-      </div>
-
-      <div v-if="stats.tagSummary.items.length" class="tag-cloud">
-        <el-tag v-for="tag in stats.tagSummary.items" :key="tag.id || tag.name" effect="plain">
-          {{ tag.name }}
-        </el-tag>
-      </div>
-      <el-empty v-else description="暂无标签" :image-size="64" />
-    </section>
   </div>
 </template>
 
@@ -136,13 +149,10 @@ const loading = ref(true)
 const loadError = ref('')
 const stats = ref(buildDashboardStats())
 
-const metricCards = computed(() => [
-  { label: '文章总数', value: stats.value.metrics.totalArticles, note: '全部状态内容', tone: 'primary' },
-  { label: '已发布', value: stats.value.metrics.publishedArticles, note: '包含公开和私密', tone: 'success' },
-  { label: '公开可见', value: stats.value.metrics.publicPublishedArticles, note: '会展示在博客前台', tone: 'public' },
-  { label: '仅自己可见', value: stats.value.metrics.privateArticles, note: '作者私密保留', tone: 'private' },
-  { label: '待审核文章', value: stats.value.metrics.pendingArticles, note: '需要管理员处理', tone: 'warning' },
-  { label: '待审核用户', value: stats.value.metrics.pendingUsers, note: '注册后等待通过', tone: 'danger' }
+const quickStats = computed(() => [
+  { label: '已发布', value: stats.value.metrics.publishedArticles, note: '公开和私密内容' },
+  { label: '公开可见', value: stats.value.metrics.publicPublishedArticles, note: '展示在前台' },
+  { label: '待处理', value: stats.value.metrics.pendingArticles + stats.value.metrics.pendingUsers, note: '文章和账号' },
 ])
 
 const hasWork = computed(() => stats.value.pendingArticles.length > 0 || stats.value.pendingUsers.length > 0)
@@ -180,6 +190,12 @@ async function loadDashboard() {
   loading.value = false
 }
 
+function trackClass(tone) {
+  if (tone === 'warning') return 'is-warning'
+  if (tone === 'danger') return 'is-danger'
+  return ''
+}
+
 function goArticle(article) {
   router.push(`/admin/articles/edit/${article.id}`)
 }
@@ -193,243 +209,103 @@ onMounted(loadDashboard)
 
 <style scoped>
 .dashboard-page {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.dashboard-header {
-  align-items: center;
-}
-
-.page-kicker,
-.panel-kicker {
-  display: inline-block;
-  margin-bottom: 4px;
-  color: var(--accent-color);
-  font-size: 12px;
-  font-weight: 800;
+  display: grid;
+  gap: 16px;
 }
 
 .dashboard-alert {
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 
-.stat-grid {
+.signal-strip {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: 1.34fr repeat(3, minmax(0, 1fr));
+  gap: 12px;
 }
 
-.stat-card,
-.panel {
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: 0 14px 36px var(--shadow-color);
-}
-
-.stat-card {
-  position: relative;
-  min-height: 132px;
-  overflow: hidden;
+.signal-primary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   padding: 18px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 12%, transparent), transparent 66%),
+    color-mix(in srgb, var(--panel-bg) 96%, var(--bg-color));
 }
 
-.stat-card::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  background: var(--tone-color, var(--accent-color));
-}
-
-.stat-card span,
-.stat-card small {
-  display: block;
-  color: var(--muted-text-color);
-}
-
-.stat-card span {
-  font-size: 13px;
-  font-weight: 750;
-}
-
-.stat-card strong {
-  display: block;
-  margin-top: 12px;
+.big-number {
   color: var(--text-color);
-  font-size: 36px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 48px;
+  font-weight: 500;
   line-height: 1;
 }
 
-.stat-card small {
-  margin-top: 12px;
-  font-size: 12px;
+.signal-stat {
+  padding: 16px;
+}
+
+.signal-stat strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-color);
+  font-size: 24px;
+  font-weight: 760;
+  line-height: 1.15;
 }
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.85fr);
-  gap: 18px;
-}
-
-.panel {
-  padding: 18px;
-}
-
-.panel-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  grid-template-columns: minmax(0, 1fr) minmax(290px, 0.72fr);
   gap: 16px;
-  margin-bottom: 18px;
 }
 
-.panel-head h3 {
-  margin: 0;
-  color: var(--text-color);
-  font-size: 18px;
+.content-preview {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--soft-border-color);
 }
 
-.panel-head strong {
-  color: var(--text-color);
-  font-size: 28px;
-  line-height: 1;
-}
-
-.status-track {
-  display: flex;
-  width: 100%;
-  height: 18px;
-  overflow: hidden;
-  background: var(--hover-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 999px;
-}
-
-.status-segment {
-  min-width: 0;
-  height: 100%;
-  background: var(--tone-color);
-}
-
-.status-list {
+.queue-lines {
   display: grid;
-  gap: 12px;
-  margin-top: 18px;
+  gap: 6px;
+  margin-top: 8px;
 }
 
-.status-row {
+.queue-line {
   display: grid;
-  grid-template-columns: 14px 1fr auto 48px;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
-  color: var(--text-color);
-  font-size: 14px;
-}
-
-.status-row em {
-  color: var(--muted-text-color);
-  font-style: normal;
-  text-align: right;
-}
-
-.status-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 999px;
-  background: var(--tone-color);
-}
-
-.queue-panel {
-  display: grid;
-  gap: 14px;
-}
-
-.queue-group {
-  display: grid;
-  gap: 8px;
-}
-
-.queue-title {
-  color: var(--muted-text-color);
-  font-size: 13px;
-  font-weight: 750;
-}
-
-.queue-item {
-  display: grid;
-  gap: 4px;
   width: 100%;
-  padding: 10px 12px;
+  padding: 8px 0;
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--soft-border-color) 72%, transparent);
   color: var(--text-color);
+  background: transparent;
   text-align: left;
-  background: var(--hover-bg);
-  border: 1px solid transparent;
-  border-radius: 8px;
-  cursor: pointer;
 }
 
-.queue-item:hover,
-.queue-item:focus-visible {
-  border-color: var(--accent-color);
-  outline: none;
-}
-
-.queue-item span {
+.queue-line span,
+.queue-line small {
   overflow: hidden;
-  font-size: 14px;
-  font-weight: 750;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.queue-item small {
-  overflow: hidden;
+.queue-line span {
+  font-weight: 700;
+}
+
+.queue-line small {
   color: var(--muted-text-color);
   font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tag-cloud {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.tone-primary {
-  --tone-color: var(--accent-color);
-}
-
-.tone-success {
-  --tone-color: #22a06b;
-}
-
-.tone-public {
-  --tone-color: #2877d9;
-}
-
-.tone-private {
-  --tone-color: #8a6be8;
-}
-
-.tone-warning {
-  --tone-color: #d9971a;
-}
-
-.tone-danger {
-  --tone-color: #d84c4c;
-}
-
-.tone-neutral {
-  --tone-color: #7b8794;
 }
 
 @media (max-width: 1080px) {
-  .stat-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .signal-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .dashboard-grid {
@@ -437,22 +313,9 @@ onMounted(loadDashboard)
   }
 }
 
-@media (max-width: 560px) {
-  .stat-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .panel-head {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .status-row {
-    grid-template-columns: 14px 1fr auto;
-  }
-
-  .status-row em {
-    display: none;
+@media (max-width: 640px) {
+  .signal-strip {
+    grid-template-columns: 1fr;
   }
 }
 </style>

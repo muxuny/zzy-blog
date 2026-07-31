@@ -1,38 +1,90 @@
 <template>
   <div class="layout">
     <AppHeader />
-    <el-main class="main">
-      <div class="page-header">
-        <div>
-          <span class="page-kicker">创作中心</span>
-          <h1>我的文章</h1>
+    <el-main class="main creator-shell">
+      <header class="page-head">
+        <div class="head-copy">
+          <span class="eyebrow">Creator console</span>
+          <h1>创作空间保留控制台感，但触感更轻。</h1>
+          <p>创作者最需要效率，所以动态只用于聚焦当前行、状态筛选和预览反馈。它应该让后台工作更顺手，而不是更花。</p>
         </div>
-        <el-button type="primary" @click="$router.push('/creator/articles/create')">写文章</el-button>
-      </div>
-
-      <div class="workspace">
-        <aside v-loading="groupsLoading" class="group-panel">
-          <div class="group-panel-head">
-            <span>文章分组</span>
-            <el-button size="small" text @click="createGroup">新建</el-button>
+        <aside class="head-meta" aria-label="创作摘要">
+          <div class="meta-line">
+            <span class="meta-label">全部文章</span>
+            <span class="meta-value">{{ total }} 篇</span>
           </div>
-          <button
-            type="button"
-            class="group-item"
-            :class="{ 'is-active': selectedGroup === GROUP_FILTER_ALL }"
-            @click="selectGroup(GROUP_FILTER_ALL)"
+          <div class="meta-line">
+            <span class="meta-label">待处理</span>
+            <span class="meta-value">{{ attentionText }}</span>
+          </div>
+          <div class="meta-line">
+            <span class="meta-label">最近更新</span>
+            <span class="meta-value">{{ latestUpdateText }}</span>
+          </div>
+        </aside>
+      </header>
+
+      <section class="creator-toolbar" aria-label="创作筛选">
+        <div class="searchbox">
+          <input
+            id="creatorSearch"
+            v-model="keyword"
+            type="search"
+            placeholder="搜索自己的文章"
+            aria-label="搜索自己的文章"
+            @keydown.esc="keyword = ''"
           >
-            <span>全部文章</span>
-          </button>
+        </div>
+        <div class="status-filters">
           <button
+            v-for="option in statusOptions"
+            :key="option.value || 'all'"
             type="button"
-            class="group-item"
-            :class="{ 'is-active': selectedGroup === GROUP_FILTER_UNGROUPED }"
-            @click="selectGroup(GROUP_FILTER_UNGROUPED)"
+            class="chip"
+            :class="{ 'is-active': status === option.value }"
+            @click="selectStatus(option.value)"
           >
-            <span>未分组</span>
+            {{ option.label }}
           </button>
+          <el-select
+            v-model="visibility"
+            class="visibility-filter"
+            placeholder="全部可见性"
+            clearable
+            @change="handleVisibilityChange"
+          >
+            <el-option label="公开" value="public" />
+            <el-option label="仅自己可见" value="private" />
+          </el-select>
+          <el-button class="primary-button" type="primary" @click="$router.push('/creator/articles/create')">写文章</el-button>
+        </div>
+      </section>
+
+      <section class="creator-workspace">
+        <aside v-loading="groupsLoading" class="group-rail">
+          <div class="rail-head">
+            <strong>文章分组</strong>
+            <el-button class="mini-button" size="small" text @click="createGroup">新建</el-button>
+          </div>
           <div class="group-list">
+            <button
+              type="button"
+              class="group-item"
+              :class="{ 'is-active': selectedGroup === GROUP_FILTER_ALL }"
+              @click="selectGroup(GROUP_FILTER_ALL)"
+            >
+              <span>全部文章</span>
+              <span>{{ total }}</span>
+            </button>
+            <button
+              type="button"
+              class="group-item"
+              :class="{ 'is-active': selectedGroup === GROUP_FILTER_UNGROUPED }"
+              @click="selectGroup(GROUP_FILTER_UNGROUPED)"
+            >
+              <span>未分组</span>
+              <span>--</span>
+            </button>
             <div
               v-for="group in articleGroups"
               :key="group.id"
@@ -60,75 +112,30 @@
         </aside>
 
         <section class="article-section">
-          <div class="filters">
-            <div>
-              <strong>{{ activeGroupTitle }}</strong>
-              <span class="article-count">共 {{ total }} 篇</span>
-            </div>
-            <el-select v-model="status" placeholder="全部状态" clearable @change="handleStatusChange">
-              <el-option label="草稿" value="draft" />
-              <el-option label="待审核" value="pending" />
-              <el-option label="已发布" value="published" />
-              <el-option label="已驳回" value="rejected" />
-            </el-select>
-            <el-select v-model="visibility" placeholder="全部可见性" clearable @change="handleVisibilityChange">
-              <el-option label="公开" value="public" />
-              <el-option label="仅自己可见" value="private" />
-            </el-select>
-          </div>
-
-          <el-table v-loading="loading" :data="articles" stripe class="article-table">
-            <el-table-column prop="title" label="标题" min-width="220">
-              <template #default="{ row }">
-                <button type="button" class="article-title-button" @click="openPreview(row)">
-                  {{ row.title }}
-                </button>
-              </template>
-            </el-table-column>
-            <el-table-column label="分组" min-width="130">
-              <template #default="{ row }">
-                <span class="group-cell" :class="{ 'is-empty': !row.groups?.length }">
-                  {{ formatArticleGroupNames(row.groups || []) }}
-                </span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="status" label="状态" width="110">
-              <template #default="{ row }">
-                <el-tag :type="statusType(row.status)">{{ statusText(row.status) }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="visibility" label="可见性" width="130">
-              <template #default="{ row }">
-                <el-tag :type="articleVisibilityType(row.visibility)" effect="plain">
-                  {{ articleVisibilityText(row.visibility) }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="reviewReason" label="审核反馈" min-width="180">
-              <template #default="{ row }">{{ row.reviewReason || '-' }}</template>
-            </el-table-column>
-            <el-table-column label="更新时间" width="180">
-              <template #default="{ row }">{{ formatDate(row.updatedAt || row.createdAt) }}</template>
-            </el-table-column>
-            <el-table-column
-              label="操作"
-              width="124"
-              fixed="right"
-              class-name="article-action-column"
-              header-class-name="article-action-header"
-            >
-              <template #default="{ row }">
-                <div class="article-actions">
-                  <el-button
-                    size="small"
-                    class="article-primary-action"
-                    :class="`article-primary-action--${primaryAction(row).tone}`"
-                    :loading="rowAction[row.id] === primaryAction(row).loading"
-                    :disabled="isRowBusy(row.id)"
-                    @click="handlePrimaryAction(row)"
-                  >
-                    {{ primaryAction(row).text }}
-                  </el-button>
+          <section v-loading="loading" class="article-flow-panel" aria-label="我的文章">
+            <div class="creator-list">
+              <article
+                v-for="(row, index) in displayedArticles"
+                :key="row.id"
+                class="creator-article-card"
+                :class="[`creator-article-card--${row.status || 'unknown'}`, { 'is-selected': index === 0 }]"
+              >
+                <div class="row-copy">
+                  <div class="row-meta">
+                    <span>{{ primaryGroupName(row) }}</span>
+                    <span>{{ formatCreatorDate(row.updatedAt || row.createdAt) }}</span>
+                    <span>{{ articleVisibilityText(row.visibility) }}</span>
+                  </div>
+                  <h3>
+                    <button type="button" class="article-title-button" @click="openPreview(row)">
+                      {{ row.title }}
+                    </button>
+                  </h3>
+                  <p>{{ rowSummary(row) }}</p>
+                </div>
+                <div class="row-actions">
+                  <span class="status-pill" :data-status="row.status">{{ statusText(row.status) }}</span>
+                  <el-button size="small" class="ghost-button preview-action" @click="openPreview(row)">预览</el-button>
                   <el-dropdown
                     trigger="click"
                     popper-class="article-action-menu"
@@ -146,13 +153,15 @@
                     <template #dropdown>
                       <el-dropdown-menu>
                         <el-dropdown-item command="groups">分组</el-dropdown-item>
-                        <el-dropdown-item v-if="row.status === 'published'" command="edit">编辑</el-dropdown-item>
+                        <el-dropdown-item v-if="canOpenPublicArticle(row)" command="view">查看公开页</el-dropdown-item>
+                        <el-dropdown-item v-if="row.status !== 'pending'" command="edit">编辑</el-dropdown-item>
                         <el-dropdown-item
                           v-if="row.status === 'draft' || row.status === 'rejected'"
                           command="submit"
                         >
                           提交审核
                         </el-dropdown-item>
+                        <el-dropdown-item v-if="row.status === 'pending'" command="withdraw">撤回</el-dropdown-item>
                         <el-dropdown-item command="visibility">
                           {{ nextVisibilityText(row.visibility) }}
                         </el-dropdown-item>
@@ -161,11 +170,23 @@
                     </template>
                   </el-dropdown>
                 </div>
-              </template>
-            </el-table-column>
-          </el-table>
+              </article>
 
-          <el-empty v-if="!articles.length && !loading" description="暂无文章" />
+              <article v-if="!displayedArticles.length && !loading" class="creator-article-card is-empty-card">
+                <div>
+                  <div class="row-meta">
+                    <span>{{ keyword ? '当前搜索' : activeGroupTitle }}</span>
+                  </div>
+                  <h3>暂时没有匹配的文章</h3>
+                  <p>可以调整搜索、状态、可见性或分组筛选，也可以直接写一篇新的。</p>
+                </div>
+                <div class="row-actions">
+                  <el-button class="primary-button" type="primary" @click="$router.push('/creator/articles/create')">写文章</el-button>
+                </div>
+              </article>
+            </div>
+          </section>
+
           <el-pagination
             v-if="total > size"
             v-model:current-page="page"
@@ -176,7 +197,7 @@
             @current-change="load"
           />
         </section>
-      </div>
+      </section>
 
       <el-dialog v-model="groupAssignDialog.visible" title="调整文章分组" width="420px" @closed="closeGroupAssign">
         <p class="group-assign-intro">
@@ -218,7 +239,6 @@ import { getCreatorPreviewRoute } from '../../utils/creatorPreview'
 import {
   ARTICLE_VISIBILITY_PUBLIC,
   articleVisibilityText,
-  articleVisibilityType,
   normalizeArticleVisibility,
   nextArticleVisibility
 } from '../../utils/articleVisibility'
@@ -238,6 +258,7 @@ const articles = ref([])
 const articleGroups = ref([])
 const loading = ref(false)
 const groupsLoading = ref(false)
+const keyword = ref('')
 const status = ref('')
 const visibility = ref('')
 const selectedGroup = ref(GROUP_FILTER_ALL)
@@ -259,6 +280,13 @@ const statusMap = {
   published: { text: '已发布', type: 'success' },
   rejected: { text: '已驳回', type: 'danger' }
 }
+const statusOptions = [
+  { label: '全部', value: '' },
+  { label: '草稿', value: 'draft' },
+  { label: '待审核', value: 'pending' },
+  { label: '已发布', value: 'published' },
+  { label: '已驳回', value: 'rejected' }
+]
 
 const activeGroupTitle = computed(() => {
   const parsed = parseGroupFilterKey(selectedGroup.value)
@@ -268,6 +296,25 @@ const activeGroupTitle = computed(() => {
   }
   return '全部文章'
 })
+const attentionCount = computed(() =>
+  articles.value.filter(article => article.status === 'pending' || article.status === 'rejected').length
+)
+const attentionText = computed(() => (attentionCount.value ? `${attentionCount.value} 篇待处理` : '暂无待处理'))
+const latestUpdateText = computed(() => {
+  const newest = articles.value
+    .map(article => article.updatedAt || article.createdAt)
+    .map(value => new Date(value))
+    .filter(date => !Number.isNaN(date.getTime()))
+    .sort((left, right) => right.getTime() - left.getTime())[0]
+
+  return newest ? formatCreatorDate(newest) : '暂无更新'
+})
+const displayedArticles = computed(() => {
+  const query = keyword.value.trim().toLowerCase()
+  if (!query) return articles.value
+
+  return articles.value.filter(article => articleSearchText(article).includes(query))
+})
 
 onMounted(() => {
   loadGroups()
@@ -276,10 +323,6 @@ onMounted(() => {
 
 function statusText(value) {
   return statusMap[value]?.text || value
-}
-
-function statusType(value) {
-  return statusMap[value]?.type || 'info'
 }
 
 async function load() {
@@ -312,6 +355,12 @@ function handleStatusChange() {
   load()
 }
 
+function selectStatus(value) {
+  if (status.value === value) return
+  status.value = value
+  handleStatusChange()
+}
+
 function handleVisibilityChange() {
   page.value = 1
   load()
@@ -327,16 +376,6 @@ function isRowBusy(id) {
   return !!rowAction.value[id]
 }
 
-function primaryAction(row) {
-  if (row.status === 'pending') {
-    return { text: '撤回', tone: 'withdraw', loading: 'withdraw', command: 'withdraw' }
-  }
-  if (canOpenPublicArticle(row)) {
-    return { text: '查看', tone: 'view', loading: '', command: 'view' }
-  }
-  return { text: '编辑', tone: 'edit', loading: '', command: 'edit' }
-}
-
 function canOpenPublicArticle(row) {
   return row.status === 'published' && normalizeArticleVisibility(row.visibility) === ARTICLE_VISIBILITY_PUBLIC
 }
@@ -346,8 +385,51 @@ function openPreview(row) {
   if (target) router.push(target)
 }
 
-async function handlePrimaryAction(row) {
-  await handleArticleCommand(row, primaryAction(row).command)
+function primaryGroupName(row) {
+  return formatArticleGroupNames(row.groups || []) || '未分组'
+}
+
+function rowSummary(row) {
+  if (row.status === 'published') {
+    return row.reviewReason || '已发布，可从预览或公开页检查展示'
+  }
+  if (row.status === 'pending') {
+    return row.reviewReason || '待审核，等待管理员确认'
+  }
+  if (row.status === 'rejected') {
+    return row.reviewReason || '已驳回，需要调整后重新提交'
+  }
+  return row.summary || '草稿，继续补齐内容后提交审核'
+}
+
+function articleSearchText(article) {
+  return [
+    article.title,
+    article.summary,
+    article.reviewReason,
+    primaryGroupName(article),
+    statusText(article.status),
+    articleVisibilityText(article.visibility),
+    rowSummary(article)
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+}
+
+function formatCreatorDate(value) {
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const timeText = date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })
+  const diffDays = Math.round((today.getTime() - target.getTime()) / 86400000)
+
+  if (diffDays === 0) return `今天 ${timeText}`
+  if (diffDays === 1) return `昨天 ${timeText}`
+  return formatDate(date)
 }
 
 async function handleArticleCommand(row, command) {
@@ -537,97 +619,226 @@ async function remove(id) {
 
 <style scoped>
 .main {
-  width: min(100%, var(--content-width));
+  width: min(1180px, calc(100% - 36px));
   margin: 0 auto;
-  padding: 32px 24px 64px;
+  padding: 22px 0 72px;
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: center;
-  margin-bottom: 18px;
+.creator-shell {
+  position: relative;
+  isolation: isolate;
 }
 
-.page-kicker {
+.creator-shell::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, var(--theme-grid-x) 1px, transparent 1px),
+    linear-gradient(180deg, var(--theme-grid-y) 1px, transparent 1px);
+  background-size: 44px 44px;
+  content: '';
+  opacity: 0.52;
+  pointer-events: none;
+}
+
+.page-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: 30px;
+  align-items: end;
+  margin-bottom: 26px;
+  padding-top: 22px;
+}
+
+.head-copy {
+  min-width: 0;
+}
+
+.eyebrow {
+  display: inline-flex;
+  margin: 0 0 12px;
+  color: var(--primary-color);
+  font-size: 12px;
+  font-weight: 760;
+  letter-spacing: 0;
+}
+
+.page-head h1 {
+  max-width: 820px;
+  margin: 0 0 18px;
+  color: var(--text-color);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(42px, 7vw, 76px);
+  font-weight: 500;
+  line-height: 0.98;
+}
+
+.head-copy p {
+  max-width: 660px;
+  margin: 0;
+  color: var(--muted-text-color);
+  font-size: 17px;
+  line-height: 1.85;
+}
+
+.head-meta {
+  border-left: 1px solid var(--border-color);
+  padding-left: 18px;
+}
+
+.meta-line {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--soft-border-color);
+}
+
+.meta-line:last-child {
+  border-bottom: 0;
+}
+
+.meta-label {
   color: var(--accent-color);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 760;
 }
 
-.page-header h1 {
-  margin: 4px 0 0;
+.meta-value {
+  min-width: 0;
+  overflow: hidden;
   color: var(--text-color);
-  font-size: 30px;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.filters {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.filters .el-select {
-  width: 180px;
-}
-
-.workspace {
+.creator-toolbar {
   display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 14px 0;
+  border-top: 1px solid var(--soft-border-color);
+  border-bottom: 1px solid var(--soft-border-color);
+}
+
+.toolbar-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+.toolbar-title strong {
+  color: var(--text-color);
+  font-size: 16px;
+}
+
+.toolbar-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.toolbar-controls .el-select {
+  width: 174px;
+}
+
+.toolbar-controls :deep(.el-select__wrapper) {
+  min-height: 40px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
+}
+
+.article-count {
+  color: var(--muted-text-color);
+  font-size: 13px;
+}
+
+.creator-workspace {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 24px;
   align-items: start;
 }
 
-.group-panel {
+.group-rail {
   position: sticky;
-  top: calc(var(--app-header-height) + 16px);
-  padding: 14px;
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-md);
-  background: var(--panel-bg);
+  top: calc(var(--app-header-height) + 20px);
+  min-width: 0;
+  padding-right: 18px;
+  border-right: 1px solid var(--border-color);
 }
 
-.group-panel-head {
+.rail-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   color: var(--text-color);
   font-weight: 800;
 }
 
 .group-list {
   display: grid;
-  gap: 4px;
+  gap: 6px;
   margin-top: 6px;
 }
 
 .group-item {
+  position: relative;
   display: flex;
+  overflow: hidden;
   width: 100%;
   min-height: 38px;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: var(--radius-sm);
+  padding: 8px 10px 8px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--muted-text-color);
   text-align: left;
   cursor: pointer;
+  transition:
+    transform 0.22s ease,
+    border-color 0.22s ease,
+    background-color 0.22s ease,
+    color 0.22s ease;
+}
+
+.group-item::before {
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  left: 0;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--primary-color), var(--accent-color));
+  content: '';
+  opacity: 0;
+  pointer-events: none;
+  transform: scaleY(0.55);
+  transition: opacity 0.22s ease, transform 0.22s ease;
 }
 
 .group-item:hover,
 .group-item.is-active {
-  background: color-mix(in srgb, var(--primary-color) 10%, var(--panel-bg));
+  transform: translateX(2px);
+  border-color: color-mix(in srgb, var(--primary-color) 30%, transparent);
+  background: var(--surface-wash-color);
   color: var(--text-color);
 }
 
-.group-item.is-active {
-  box-shadow: inset 3px 0 0 var(--accent-color);
+.group-item:hover::before,
+.group-item.is-active::before {
+  opacity: 1;
+  transform: scaleY(1);
 }
 
 .group-item-with-actions {
@@ -660,29 +871,89 @@ async function remove(id) {
   min-width: 0;
 }
 
-.article-count {
-  margin-left: 8px;
-  color: var(--muted-text-color);
-  font-size: 13px;
+.table-wrap {
+  min-width: 0;
+  border-top: 1px solid var(--border-color);
 }
 
-.article-table {
-  margin-top: 12px;
+.article-row {
+  position: relative;
+  display: grid;
+  grid-template-columns:
+    minmax(230px, 1.45fr)
+    minmax(90px, 0.7fr)
+    92px
+    106px
+    minmax(130px, 0.9fr)
+    122px
+    112px;
+  gap: 14px;
+  align-items: center;
+  min-height: 82px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--soft-border-color);
+  color: var(--muted-text-color);
+  transition:
+    transform 0.22s ease,
+    border-color 0.22s ease,
+    background-color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.article-row::before {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: -1px;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--primary-color), var(--accent-color));
+  content: '';
+  opacity: 0;
+  transform: scaleY(0.55);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.article-row:not(.table-head):hover {
+  transform: translateX(3px);
+  border-bottom-color: color-mix(in srgb, var(--primary-color) 62%, var(--border-color));
+  background: color-mix(in srgb, var(--panel-bg) 84%, transparent);
+  box-shadow: 0 18px 42px -34px var(--theme-glow-color);
+}
+
+.article-row:not(.table-head):hover::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+.table-head {
+  min-height: 42px;
+  color: var(--accent-color);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.table-head::before {
+  display: none;
+}
+
+.row-title {
+  min-width: 0;
 }
 
 .article-title-button {
   max-width: 100%;
   padding: 0;
+  overflow: hidden;
   border: 0;
   background: transparent;
   color: var(--text-color);
   font: inherit;
-  font-weight: 750;
+  font-weight: 780;
   text-align: left;
-  cursor: pointer;
-  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
 }
 
 .article-title-button:hover,
@@ -692,35 +963,77 @@ async function remove(id) {
   text-underline-offset: 3px;
 }
 
-.article-title-button:focus-visible {
+.article-title-button:focus-visible,
+.article-more-button:focus-visible,
+.group-item:focus-visible {
   outline: 2px solid var(--primary-color);
   outline-offset: 2px;
 }
 
-.article-table :deep(th.el-table__cell) {
-  text-align: center;
+.row-title p {
+  display: -webkit-box;
+  margin: 5px 0 0;
+  overflow: hidden;
+  color: var(--muted-text-color);
+  font-size: 12px;
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
 }
 
-.article-table :deep(.article-action-header.el-table-fixed-column--right) {
-  background-color: color-mix(in srgb, var(--primary-color) 6%, var(--panel-bg)) !important;
-  box-shadow: -12px 0 22px -20px rgba(15, 23, 42, 0.5);
-  z-index: 2;
+.group-cell,
+.visibility-cell,
+.review-cell,
+.time-cell {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted-text-color);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.article-table :deep(.article-action-column.el-table-fixed-column--right) {
-  background-color: var(--el-table-tr-bg-color) !important;
-  box-shadow: -12px 0 22px -20px rgba(15, 23, 42, 0.5);
-  z-index: 2;
+.group-cell {
+  color: var(--text-color);
 }
 
-.article-table :deep(.el-table__body tr.hover-row > .article-action-column.el-table-fixed-column--right),
-.article-table :deep(.el-table__body tr:hover > .article-action-column.el-table-fixed-column--right) {
-  background-color: color-mix(in srgb, var(--primary-color) 10%, var(--panel-bg)) !important;
+.group-cell.is-empty {
+  color: var(--muted-text-color);
 }
 
-.article-table :deep(.article-action-header),
-.article-table :deep(.article-action-column) {
-  border-left: 1px solid var(--soft-border-color);
+.status-pill {
+  display: inline-flex;
+  width: max-content;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted-text-color) 12%, transparent);
+  color: var(--muted-text-color);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.status-pill[data-status="draft"] {
+  background: color-mix(in srgb, var(--muted-text-color) 12%, transparent);
+  color: var(--muted-text-color);
+}
+
+.status-pill[data-status="pending"] {
+  background: color-mix(in srgb, var(--warning-color) 18%, transparent);
+  color: var(--warning-color);
+}
+
+.status-pill[data-status="published"] {
+  background: color-mix(in srgb, var(--primary-color) 14%, transparent);
+  color: var(--primary-color);
+}
+
+.status-pill[data-status="rejected"] {
+  background: color-mix(in srgb, var(--danger-color) 14%, transparent);
+  color: var(--danger-color);
 }
 
 .article-actions {
@@ -731,7 +1044,7 @@ async function remove(id) {
   justify-content: center;
   gap: 6px;
   width: 92px;
-  margin: 0 auto;
+  margin-left: auto;
   padding: 3px;
   border: 1px solid color-mix(in srgb, var(--primary-color) 12%, var(--soft-border-color));
   border-radius: 999px;
@@ -757,25 +1070,25 @@ async function remove(id) {
 .article-primary-action.article-primary-action--edit,
 .article-primary-action.article-primary-action--edit:hover,
 .article-primary-action.article-primary-action--edit:focus {
-  --action-border-color: color-mix(in srgb, #7c5cff 54%, transparent);
-  --action-bg-color: color-mix(in srgb, #7c5cff 13%, var(--panel-bg));
-  --action-text-color: #5d42d6;
+  --action-border-color: color-mix(in srgb, var(--accent-color) 54%, transparent);
+  --action-bg-color: color-mix(in srgb, var(--accent-color) 13%, var(--panel-bg));
+  --action-text-color: color-mix(in srgb, var(--accent-color) 58%, var(--text-color));
 }
 
 .article-primary-action.article-primary-action--view,
 .article-primary-action.article-primary-action--view:hover,
 .article-primary-action.article-primary-action--view:focus {
-  --action-border-color: color-mix(in srgb, #2f80ed 52%, transparent);
-  --action-bg-color: color-mix(in srgb, #2f80ed 12%, var(--panel-bg));
-  --action-text-color: #1f6fd8;
+  --action-border-color: color-mix(in srgb, var(--primary-color) 52%, transparent);
+  --action-bg-color: color-mix(in srgb, var(--primary-color) 12%, var(--panel-bg));
+  --action-text-color: color-mix(in srgb, var(--primary-color) 60%, var(--text-color));
 }
 
 .article-primary-action.article-primary-action--withdraw,
 .article-primary-action.article-primary-action--withdraw:hover,
 .article-primary-action.article-primary-action--withdraw:focus {
-  --action-border-color: color-mix(in srgb, #d97706 52%, transparent);
-  --action-bg-color: color-mix(in srgb, #f59e0b 14%, var(--panel-bg));
-  --action-text-color: #a85f00;
+  --action-border-color: color-mix(in srgb, var(--warning-color) 52%, transparent);
+  --action-bg-color: color-mix(in srgb, var(--warning-color) 14%, var(--panel-bg));
+  --action-text-color: color-mix(in srgb, var(--warning-color) 55%, var(--text-color));
 }
 
 .article-primary-action:not(.is-disabled):hover {
@@ -785,26 +1098,14 @@ async function remove(id) {
 
 [data-theme="dark"] .article-primary-action.article-primary-action--edit,
 [data-theme="dark"] .article-primary-action.article-primary-action--edit:hover,
-[data-theme="dark"] .article-primary-action.article-primary-action--edit:focus {
-  --action-border-color: color-mix(in srgb, #8b7cf6 58%, transparent);
-  --action-bg-color: color-mix(in srgb, #8b7cf6 22%, var(--panel-bg));
-  --action-text-color: #d9d5ff;
-}
-
+[data-theme="dark"] .article-primary-action.article-primary-action--edit:focus,
 [data-theme="dark"] .article-primary-action.article-primary-action--view,
 [data-theme="dark"] .article-primary-action.article-primary-action--view:hover,
-[data-theme="dark"] .article-primary-action.article-primary-action--view:focus {
-  --action-border-color: color-mix(in srgb, #4ea2ff 58%, transparent);
-  --action-bg-color: color-mix(in srgb, #4ea2ff 22%, var(--panel-bg));
-  --action-text-color: #d7ebff;
-}
-
+[data-theme="dark"] .article-primary-action.article-primary-action--view:focus,
 [data-theme="dark"] .article-primary-action.article-primary-action--withdraw,
 [data-theme="dark"] .article-primary-action.article-primary-action--withdraw:hover,
 [data-theme="dark"] .article-primary-action.article-primary-action--withdraw:focus {
-  --action-border-color: color-mix(in srgb, #f2a64a 58%, transparent);
-  --action-bg-color: color-mix(in srgb, #f2a64a 22%, var(--panel-bg));
-  --action-text-color: #ffe6ba;
+  --action-bg-color: color-mix(in srgb, currentColor 18%, var(--panel-bg));
 }
 
 .article-more-button {
@@ -819,7 +1120,7 @@ async function remove(id) {
   background: color-mix(in srgb, var(--muted-text-color) 10%, transparent);
   color: var(--muted-text-color);
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
 
 .article-more-button:hover,
@@ -867,16 +1168,8 @@ async function remove(id) {
   color: #f56c6c;
 }
 
-.group-cell {
-  color: var(--text-color);
-}
-
-.group-cell.is-empty {
-  color: var(--muted-text-color);
-}
-
 .article-pagination {
-  margin-top: 16px;
+  margin-top: 18px;
 }
 
 .group-assign-intro {
@@ -890,31 +1183,529 @@ async function remove(id) {
   width: 100%;
 }
 
-@media (max-width: 760px) {
-  .main {
-    padding: 24px 14px 48px;
-  }
-
-  .page-header {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .workspace {
+@media (max-width: 1060px) {
+  .creator-toolbar,
+  .creator-workspace,
+  .page-head {
     grid-template-columns: 1fr;
   }
 
-  .group-panel {
-    position: static;
+  .head-meta {
+    border-left: 0;
+    border-top: 1px solid var(--border-color);
+    padding-top: 12px;
+    padding-left: 0;
   }
 
-  .filters {
+  .group-rail {
+    position: static;
+    padding-right: 0;
+    padding-bottom: 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .toolbar-controls {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 900px) {
+  .article-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .table-head {
+    display: none;
+  }
+
+  .article-actions {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .main {
+    width: min(100% - 28px, var(--content-width));
+    padding: 16px 0 48px;
+  }
+
+  .page-head h1 {
+    font-size: 42px;
+  }
+
+  .toolbar-controls,
+  .toolbar-controls .el-select {
+    width: 100%;
+  }
+
+  .toolbar-controls {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .article-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 16px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .group-item,
+  .group-item::before,
+  .article-row,
+  .article-row::before,
+  .article-primary-action,
+  .article-more-button {
+    transition: none;
+  }
+
+  .group-item:hover,
+  .article-row:not(.table-head):hover,
+  .article-primary-action:not(.is-disabled):hover,
+  .article-more-button:hover,
+  .article-more-button:focus-visible {
+    transform: none;
+  }
+}
+
+/* Prototype-aligned creator console */
+.page-head {
+  gap: 42px;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-top: 30px;
+}
+
+.page-head h1 {
+  max-width: 760px;
+  font-size: clamp(54px, 6.2vw, 88px);
+  line-height: 0.94;
+}
+
+.head-copy p {
+  max-width: 760px;
+}
+
+.head-meta {
+  align-self: end;
+  width: min(100%, 360px);
+  margin-bottom: 4px;
+  padding: 14px 18px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
+  box-shadow: var(--shadow-soft);
+}
+
+.meta-line {
+  grid-template-columns: minmax(72px, 1fr) auto;
+  gap: 20px;
+  padding: 8px 0;
+  border-bottom: 0;
+}
+
+.meta-label {
+  color: var(--muted-text-color);
+  font-size: 13px;
+  font-weight: 520;
+}
+
+.meta-value {
+  color: var(--text-color);
+  font-size: 16px;
+  font-weight: 760;
+  text-align: right;
+}
+
+.creator-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 22px;
+  padding: 0;
+  border: 0;
+}
+
+.searchbox {
+  position: relative;
+  flex: 1;
+  min-width: 240px;
+}
+
+.searchbox input {
+  width: 100%;
+  height: 42px;
+  padding: 0 18px 0 42px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
+  color: var(--text-color);
+  font-size: 15px;
+  outline: none;
+  transition:
+    border-color 0.22s ease,
+    background-color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.searchbox input:focus {
+  border-color: color-mix(in srgb, var(--primary-color) 62%, var(--border-color));
+  background: var(--panel-bg);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-color) 13%, transparent);
+}
+
+.searchbox::before {
+  position: absolute;
+  top: 50%;
+  left: 17px;
+  z-index: 1;
+  color: var(--muted-text-color);
+  content: '⌕';
+  transform: translateY(-50%);
+}
+
+.searchbox::after {
+  position: absolute;
+  right: 18px;
+  bottom: 7px;
+  left: 42px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
+  content: '';
+  opacity: 0;
+  transform: scaleX(0.35);
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease;
+}
+
+.searchbox:focus-within::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.status-filters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.chip {
+  min-height: 34px;
+  padding: 0 15px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-bg) 88%, transparent);
+  color: var(--muted-text-color);
+  font-size: 14px;
+  cursor: pointer;
+  transition:
+    border-color 0.22s ease,
+    background-color 0.22s ease,
+    color 0.22s ease,
+    transform 0.22s ease;
+}
+
+.chip:hover,
+.chip:focus-visible,
+.chip.is-active {
+  border-color: color-mix(in srgb, var(--primary-color) 58%, var(--border-color));
+  background: color-mix(in srgb, var(--primary-color) 10%, var(--panel-bg));
+  color: var(--primary-color);
+  outline: none;
+}
+
+.chip.is-active {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary-color) 12%, transparent);
+}
+
+.visibility-filter {
+  width: 148px;
+}
+
+.visibility-filter :deep(.el-select__wrapper) {
+  min-height: 34px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-bg) 90%, transparent);
+  box-shadow: 0 0 0 1px var(--border-color) inset;
+}
+
+.primary-button {
+  min-height: 34px;
+  border-radius: 999px;
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: var(--button-text-color);
+  font-weight: 760;
+}
+
+.creator-workspace {
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 20px;
+}
+
+.group-rail,
+.article-flow-panel {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
+  box-shadow: var(--shadow-soft);
+}
+
+.group-rail {
+  padding: 16px;
+  border-right: 1px solid var(--border-color);
+}
+
+.rail-head {
+  margin-bottom: 14px;
+}
+
+.mini-button {
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  color: var(--muted-text-color);
+}
+
+.group-list {
+  gap: 9px;
+  margin-top: 0;
+}
+
+.group-item {
+  min-height: 38px;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-color: var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-bg) 84%, transparent);
+}
+
+.group-item::before {
+  top: 8px;
+  bottom: 8px;
+  left: -1px;
+  background: linear-gradient(180deg, var(--primary-color), var(--accent-color));
+}
+
+.group-item:hover,
+.group-item.is-active {
+  transform: none;
+  border-color: color-mix(in srgb, var(--primary-color) 58%, var(--border-color));
+  background: color-mix(in srgb, var(--primary-color) 8%, var(--panel-bg));
+}
+
+.group-item-with-actions {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.group-meta {
+  background: color-mix(in srgb, var(--muted-text-color) 11%, transparent);
+}
+
+.article-flow-panel {
+  min-width: 0;
+  padding: 10px 12px;
+}
+
+.creator-list {
+  display: grid;
+  gap: 12px;
+}
+
+.creator-article-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  min-height: 106px;
+  padding: 17px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-bg) 96%, transparent);
+  transition:
+    transform 0.22s ease,
+    border-color 0.22s ease,
+    background-color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.creator-article-card::before {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: -1px;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--primary-color), var(--accent-color));
+  content: '';
+  opacity: 0;
+  transform: scaleY(0.55);
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease;
+}
+
+.creator-article-card:not(.is-empty-card):hover,
+.creator-article-card.is-selected {
+  border-color: color-mix(in srgb, var(--primary-color) 58%, var(--border-color));
+  background: var(--panel-bg);
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-2px);
+}
+
+.creator-article-card:not(.is-empty-card):hover::before,
+.creator-article-card.is-selected::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+.row-copy {
+  min-width: 0;
+}
+
+.row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  color: var(--muted-text-color);
+  font-size: 13px;
+}
+
+.creator-article-card h3 {
+  margin: 6px 0 4px;
+  color: var(--text-color);
+  font-size: 20px;
+  line-height: 1.35;
+}
+
+.creator-article-card p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--muted-text-color);
+  font-size: 14px;
+  line-height: 1.7;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.article-title-button {
+  white-space: normal;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.status-pill {
+  min-height: 28px;
+  border-radius: 999px;
+}
+
+.ghost-button,
+.preview-action {
+  min-height: 32px;
+  padding: 0 13px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-bg) 90%, transparent);
+  color: var(--muted-text-color);
+  font-weight: 650;
+}
+
+.ghost-button:hover,
+.ghost-button:focus {
+  border-color: color-mix(in srgb, var(--primary-color) 42%, var(--border-color));
+  background: color-mix(in srgb, var(--primary-color) 9%, var(--panel-bg));
+  color: var(--primary-color);
+}
+
+.article-more-button {
+  border: 1px solid color-mix(in srgb, var(--primary-color) 24%, var(--border-color));
+  background: color-mix(in srgb, var(--panel-bg) 92%, transparent);
+}
+
+.article-more-button:hover,
+.article-more-button:focus-visible {
+  background: color-mix(in srgb, var(--primary-color) 12%, var(--panel-bg));
+}
+
+.article-pagination {
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+@media (max-width: 1060px) {
+  .page-head,
+  .creator-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .head-meta {
+    width: 100%;
+    border-left: 1px solid var(--border-color);
+    border-top: 1px solid var(--border-color);
+    padding: 14px 18px;
+  }
+
+  .group-rail {
+    position: static;
+    padding: 16px;
+    border-right: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+  }
+}
+
+@media (max-width: 780px) {
+  .creator-toolbar {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .filters .el-select {
+  .status-filters {
+    justify-content: flex-start;
+  }
+
+  .visibility-filter {
     width: 100%;
+  }
+
+  .creator-article-card {
+    grid-template-columns: 1fr;
+  }
+
+  .row-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .page-head h1 {
+    font-size: 42px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .searchbox input,
+  .searchbox::after,
+  .chip,
+  .creator-article-card,
+  .creator-article-card::before {
+    transition: none;
+  }
+
+  .creator-article-card:not(.is-empty-card):hover,
+  .creator-article-card.is-selected {
+    transform: none;
   }
 }
 </style>

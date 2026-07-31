@@ -2,15 +2,30 @@
   <div class="layout">
     <AppHeader />
     <main class="reading-main" :aria-busy="loading">
-      <header class="page-heading">
-        <div class="heading-copy">
-          <span class="page-kicker">个人阅读</span>
-          <h1>我的阅读</h1>
+      <header class="page-head">
+        <div class="head-copy">
+          <span class="eyebrow">Reading desk</span>
+          <h1>我的阅读更像一个安静的续接台。</h1>
+          <p>
+            这里不负责发现热门内容，只负责把读者和自己的阅读轨迹接起来。轻微动态集中在继续阅读和历史焦点上。
+          </p>
         </div>
-        <RouterLink class="discover-link" to="/">
-          <span>发现更多文章</span>
-          <el-icon><ArrowRight /></el-icon>
-        </RouterLink>
+        <aside class="head-meta" aria-label="阅读摘要">
+          <div class="meta-line">
+            <span class="meta-label">最近阅读</span>
+            <span class="meta-value">
+              {{ overview.lastRead ? formatReadingOverviewTime(overview.lastRead.lastReadAt) : '暂无记录' }}
+            </span>
+          </div>
+          <div class="meta-line">
+            <span class="meta-label">历史文章</span>
+            <span class="meta-value">{{ overview.historyTotal }} 篇</span>
+          </div>
+          <div class="meta-line">
+            <span class="meta-label">收藏</span>
+            <span class="meta-value">{{ overview.favoriteTotal }} 篇可继续</span>
+          </div>
+        </aside>
       </header>
 
       <div v-if="loadError" class="error-row">
@@ -24,22 +39,12 @@
       </div>
 
       <template v-else>
-        <section class="reading-section last-read-section">
-          <div class="section-heading">
-            <div>
-              <span class="section-label">继续阅读</span>
-              <h2>上次阅读</h2>
-            </div>
-          </div>
-
-          <article
-            v-if="overview.lastRead"
-            class="last-read"
-            :class="{
-              'has-cover': overview.lastRead.available && overview.lastRead.coverImage,
-              'is-unavailable': !overview.lastRead.available
-            }"
-          >
+        <section class="reading-layout">
+            <article
+              v-if="overview.lastRead"
+              class="continue-panel"
+              :class="{ 'is-unavailable': !overview.lastRead.available }"
+            >
             <RouterLink
               v-if="overview.lastRead.available"
               class="card-open-link"
@@ -48,195 +53,252 @@
             />
 
             <template v-if="overview.lastRead.available">
-              <img
-                v-if="overview.lastRead.coverImage"
-                class="last-read-cover"
-                :src="overview.lastRead.coverImage"
-                alt=""
-              />
-              <div class="last-read-copy">
-                <h3 class="last-read-title">{{ overview.lastRead.title }}</h3>
-                <p v-if="overview.lastRead.summary" class="last-read-summary">
-                  {{ overview.lastRead.summary }}
+              <div class="continue-copy">
+                <span class="status-pill">{{ continueStatusText(overview.lastRead) }}</span>
+                <h2 class="continue-title">{{ overview.lastRead.title }}</h2>
+                <p class="continue-summary">
+                  {{ continueSummary(overview.lastRead) }}
                 </p>
-                <span class="last-read-time">
-                  上次阅读 {{ formatReadingTime(overview.lastRead.lastReadAt) }}
-                </span>
-                <span
-                  v-if="formatReadingProgress(overview.lastRead.progressPercent)"
-                  class="reading-progress"
-                >
-                  {{ formatReadingProgress(overview.lastRead.progressPercent) }}
-                </span>
+                <div class="progress-block">
+                  <div class="progress-label">
+                    <span>当前进度</span>
+                    <strong>{{ safeProgressPercent(overview.lastRead.progressPercent) }}%</strong>
+                  </div>
+                  <div
+                    class="progress-track"
+                    aria-hidden="true"
+                    :style="{ '--progress': `${safeProgressPercent(overview.lastRead.progressPercent)}%` }"
+                  >
+                    <span />
+                  </div>
+                </div>
+                <div class="continue-actions">
+                  <RouterLink class="primary-button" :to="`/article/${overview.lastRead.articleId}`">
+                    继续阅读
+                  </RouterLink>
+                </div>
               </div>
             </template>
 
             <template v-else>
-              <div class="last-read-copy unavailable-copy">
+              <div class="continue-copy unavailable-copy">
+                <span class="status-pill muted">暂不可读</span>
                 <el-tooltip
                   content="该文章暂未公开"
                   placement="top"
                   :trigger="['hover', 'focus']"
                 >
-                  <h3 class="title-snapshot" tabindex="0">{{ overview.lastRead.title }}</h3>
+                  <h2 class="title-snapshot" tabindex="0">{{ overview.lastRead.title }}</h2>
                 </el-tooltip>
-                <span class="last-read-time">
-                  上次阅读 {{ formatReadingTime(overview.lastRead.lastReadAt) }}
-                </span>
-                <span
-                  v-if="formatReadingProgress(overview.lastRead.progressPercent)"
-                  class="reading-progress"
-                >
-                  {{ formatReadingProgress(overview.lastRead.progressPercent) }}
-                </span>
+                <p class="continue-summary">
+                  这篇文章暂时无法继续打开，但阅读轨迹仍会保留。上次阅读 {{ formatReadingTime(overview.lastRead.lastReadAt) }}。
+                </p>
+                <div class="progress-block">
+                  <div class="progress-label">
+                    <span>保留进度</span>
+                    <strong>{{ safeProgressPercent(overview.lastRead.progressPercent) }}%</strong>
+                  </div>
+                  <div
+                    class="progress-track"
+                    aria-hidden="true"
+                    :style="{ '--progress': `${safeProgressPercent(overview.lastRead.progressPercent)}%` }"
+                  >
+                    <span />
+                  </div>
+                </div>
                 <span class="unavailable-note">该文章暂未公开</span>
+                <div class="continue-actions">
+                  <RouterLink class="ghost-button" to="/">
+                    发现更多文章
+                  </RouterLink>
+                </div>
               </div>
             </template>
+
+            <div
+              class="signal-wave"
+              aria-hidden="true"
+            >
+              <canvas
+                ref="signalCanvas"
+                class="signal-canvas"
+                @pointerenter.stop="enterSignalCanvas"
+                @pointermove.stop="moveSignalCanvas"
+                @pointerleave.stop="leaveSignalCanvas"
+              />
+            </div>
           </article>
 
-          <div v-else class="empty-status" role="status" aria-live="polite">
-            <el-empty description="还没有可继续阅读的文章">
-              <el-button type="primary" :icon="ArrowRight" @click="goDiscover">
-                去发现文章
-              </el-button>
-            </el-empty>
-          </div>
-        </section>
-
-        <section class="reading-section recent-section">
-          <div class="section-heading">
-            <div>
-              <span class="section-label">回看轨迹</span>
-              <h2>最近阅读</h2>
-            </div>
-            <RouterLink class="section-link" to="/reading/history">
-              查看全部 {{ overview.historyTotal }}
-            </RouterLink>
-          </div>
-
           <div
-            v-if="overview.recentHistory.length"
-            class="history-timeline"
-            aria-label="最近阅读记录"
+            v-else
+            class="continue-panel empty-status"
+            role="status"
+            aria-live="polite"
           >
-            <article
-              v-for="item in overview.recentHistory"
-              :key="item.articleId"
-              class="history-preview"
-              :class="{ 'is-unavailable': !item.available }"
-            >
-              <span class="timeline-dot" aria-hidden="true" />
-              <RouterLink
-                v-if="item.available"
-                class="card-open-link"
-                :to="`/article/${item.articleId}`"
-                :aria-label="`打开文章：${item.title}`"
-              />
-
-              <template v-if="item.available">
-                <div class="preview-copy">
-                  <h3 class="preview-title">{{ item.title }}</h3>
-                  <div class="preview-meta">
-                    <span>{{ formatReadingTime(item.lastReadAt) }}</span>
-                    <span v-if="formatReadingProgress(item.progressPercent)">
-                      {{ formatReadingProgress(item.progressPercent) }}
-                    </span>
-                    <span v-if="item.authorName">{{ item.authorName }}</span>
-                  </div>
-                </div>
-              </template>
-
-              <template v-else>
-                <div class="preview-copy">
-                  <el-tooltip
-                    content="该文章暂未公开"
-                    placement="top"
-                    :trigger="['hover', 'focus']"
-                  >
-                    <h3 class="preview-title title-snapshot" tabindex="0">{{ item.title }}</h3>
-                  </el-tooltip>
-                  <div class="preview-meta">
-                    <span>{{ formatReadingTime(item.lastReadAt) }}</span>
-                    <span v-if="formatReadingProgress(item.progressPercent)">
-                      {{ formatReadingProgress(item.progressPercent) }}
-                    </span>
-                    <span class="unavailable-note">该文章暂未公开</span>
-                  </div>
-                </div>
-              </template>
-            </article>
-          </div>
-
-          <el-empty v-else description="暂无阅读历史" />
-        </section>
-
-        <section class="reading-section favorite-section">
-          <div class="section-heading">
-            <div>
-              <span class="section-label">稍后再看</span>
-              <h2>最近收藏</h2>
+            <div class="continue-copy">
+              <span class="status-pill muted">暂无轨迹</span>
+              <h2 class="continue-title">还没有可继续阅读的文章</h2>
+              <p class="continue-summary">先从公开首页打开一篇文章，下一次这里会直接接上你的阅读现场。</p>
+              <div class="continue-actions">
+                <RouterLink class="primary-button" to="/">
+                  发现更多文章
+                </RouterLink>
+              </div>
             </div>
-            <RouterLink class="section-link" to="/favorites">
-              查看全部 {{ overview.favoriteTotal }}
-            </RouterLink>
+            <div
+              class="signal-wave"
+              aria-hidden="true"
+            >
+              <canvas
+                ref="signalCanvas"
+                class="signal-canvas"
+                @pointerenter.stop="enterSignalCanvas"
+                @pointermove.stop="moveSignalCanvas"
+                @pointerleave.stop="leaveSignalCanvas"
+              />
+            </div>
           </div>
 
-          <div
-            v-if="overview.recentFavorites.length"
-            class="favorite-grid"
-            aria-label="最近收藏文章"
-          >
-            <article
-              v-for="item in overview.recentFavorites"
-              :key="item.articleId"
-              class="favorite-preview"
-              :class="{
-                'has-cover': item.available && item.coverImage,
-                'is-unavailable': !item.available
-              }"
-            >
-              <RouterLink
-                v-if="item.available"
-                class="card-open-link"
-                :to="`/article/${item.articleId}`"
-                :aria-label="`打开收藏文章：${item.title}`"
-              />
+          <aside class="reading-side">
+            <section class="section-title side-title">
+              <div>
+                <span class="eyebrow">最近历史</span>
+                <h3>时间线</h3>
+              </div>
+              <RouterLink class="section-link" to="/reading/history">
+                全部 {{ overview.historyTotal }}
+              </RouterLink>
+            </section>
 
-              <template v-if="item.available">
-                <img
-                  v-if="item.coverImage"
-                  class="favorite-cover"
-                  :src="item.coverImage"
-                  alt=""
+            <div
+              v-if="overview.recentHistory.length"
+              class="timeline"
+              aria-label="最近阅读记录"
+            >
+              <article
+                v-for="(item, index) in overview.recentHistory"
+                :key="item.articleId"
+                class="timeline-item"
+                :class="{ 'is-active': index === 0, 'is-unavailable': !item.available }"
+              >
+                <RouterLink
+                  v-if="item.available"
+                  class="card-open-link"
+                  :to="`/article/${item.articleId}`"
+                  :aria-label="`打开文章：${item.title}`"
                 />
-                <div class="preview-copy">
-                  <h3 class="preview-title">{{ item.title }}</h3>
-                  <div class="preview-meta">
-                    <span v-if="item.authorName">{{ item.authorName }}</span>
-                    <span>收藏于 {{ formatReadingTime(item.favoritedAt) }}</span>
-                  </div>
-                </div>
-              </template>
 
-              <template v-else>
-                <div class="preview-copy">
-                  <el-tooltip
-                    content="该文章暂未公开"
-                    placement="top"
-                    :trigger="['hover', 'focus']"
-                  >
-                    <h3 class="preview-title title-snapshot" tabindex="0">{{ item.title }}</h3>
-                  </el-tooltip>
-                  <div class="preview-meta">
-                    <span>收藏于 {{ formatReadingTime(item.favoritedAt) }}</span>
-                    <span class="unavailable-note">该文章暂未公开</span>
+                <template v-if="item.available">
+                  <div class="preview-copy">
+                    <h3 class="preview-title">{{ item.title }}</h3>
+                    <p class="preview-meta">
+                      <span>{{ formatReadingTime(item.lastReadAt) }}</span>
+                      <span v-if="formatReadingProgress(item.progressPercent)">
+                        {{ formatReadingProgress(item.progressPercent) }}
+                      </span>
+                      <span v-if="item.authorName">{{ item.authorName }}</span>
+                    </p>
                   </div>
-                </div>
-              </template>
-            </article>
+                </template>
+
+                <template v-else>
+                  <div class="preview-copy">
+                    <el-tooltip
+                      content="该文章暂未公开"
+                      placement="top"
+                      :trigger="['hover', 'focus']"
+                    >
+                      <h3 class="preview-title title-snapshot" tabindex="0">{{ item.title }}</h3>
+                    </el-tooltip>
+                    <p class="preview-meta">
+                      <span>{{ formatReadingTime(item.lastReadAt) }}</span>
+                      <span v-if="formatReadingProgress(item.progressPercent)">
+                        {{ formatReadingProgress(item.progressPercent) }}
+                      </span>
+                      <span class="unavailable-note">该文章暂未公开</span>
+                    </p>
+                  </div>
+                </template>
+              </article>
+            </div>
+
+            <div v-else class="timeline empty-timeline" role="status">
+              <article class="timeline-item is-empty">
+                <h3 class="preview-title">暂无阅读历史</h3>
+                <p class="preview-meta">阅读公开文章后，这里会出现最近轨迹。</p>
+              </article>
+            </div>
+          </aside>
+        </section>
+
+        <section class="section-title favorite-title">
+          <div>
+            <span class="eyebrow">最近收藏</span>
+            <h3>最近收藏索引</h3>
           </div>
+          <RouterLink class="section-link" to="/favorites">
+            全部 {{ overview.favoriteTotal }}
+          </RouterLink>
+        </section>
 
-          <el-empty v-else description="暂无收藏文章" />
+        <section
+          v-if="overview.recentFavorites.length"
+          class="favorite-index"
+          aria-label="最近收藏文章"
+        >
+          <article
+            v-for="item in overview.recentFavorites"
+            :key="item.articleId"
+            class="favorite-line"
+            :class="{ 'is-unavailable': !item.available }"
+          >
+            <RouterLink
+              v-if="item.available"
+              class="card-open-link"
+              :to="`/article/${item.articleId}`"
+              :aria-label="`打开收藏文章：${item.title}`"
+            />
+
+            <template v-if="item.available">
+              <div class="preview-copy">
+                <strong class="favorite-title-text">{{ item.title }}</strong>
+                <p class="preview-meta">
+                  <span v-if="item.authorName">{{ item.authorName }}</span>
+                  <span>收藏于 {{ formatReadingTime(item.favoritedAt) }}</span>
+                </p>
+              </div>
+              <span class="status-pill">公开</span>
+            </template>
+
+            <template v-else>
+              <div class="preview-copy">
+                <el-tooltip
+                  content="该文章暂未公开"
+                  placement="top"
+                  :trigger="['hover', 'focus']"
+                >
+                  <strong class="favorite-title-text title-snapshot" tabindex="0">{{ item.title }}</strong>
+                </el-tooltip>
+                <p class="preview-meta">
+                  <span>收藏于 {{ formatReadingTime(item.favoritedAt) }}</span>
+                  <span class="unavailable-note">该文章暂未公开</span>
+                </p>
+              </div>
+              <span class="status-pill muted">不可读</span>
+            </template>
+          </article>
+        </section>
+
+        <section v-else class="favorite-index empty-favorites" aria-label="最近收藏">
+          <article class="favorite-line is-empty">
+            <div class="preview-copy">
+              <strong class="favorite-title-text">暂无收藏文章</strong>
+              <p class="preview-meta">收藏文章后，会在这里形成轻量索引。</p>
+            </div>
+            <RouterLink class="ghost-button" to="/">
+              去发现文章
+            </RouterLink>
+          </article>
         </section>
       </template>
     </main>
@@ -245,11 +307,10 @@
 
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { ArrowRight, Refresh } from '@element-plus/icons-vue'
+import { Refresh } from '@element-plus/icons-vue'
 import AppHeader from '../components/AppHeader.vue'
 import { getReadingOverview } from '../api/reading'
-import { formatReadingProgress, formatReadingTime } from '../utils/readingHistory'
+import { formatReadingOverviewTime, formatReadingProgress, formatReadingTime } from '../utils/readingHistory'
 
 const overview = ref({
   lastRead: null,
@@ -260,17 +321,41 @@ const overview = ref({
 })
 const loading = ref(false)
 const loadError = ref('')
-const router = useRouter()
+const signalCanvas = ref(null)
 let componentActive = true
 let requestVersion = 0
+let signalAnimationFrame = 0
+
+const WAVE_FREQUENCY = 0.036
+const WAVE_AMPLITUDE = 34
+const WAVE_TOP_PADDING = 14
+const CURSOR_RADIUS = 150
+const CURSOR_LIFT = 40
+const PARTICLE_MAX = 18
+const PARTICLE_LIFETIME = 2200
+const PARTICLE_MIN_PER_BURST = 1
+const PARTICLE_MAX_PER_BURST = 2
+const PARTICLE_SPAWN_INTERVAL = 180
+const WAVE_STEP = 8
+const NOISE_AMPLITUDE = 2.2
+const particles = []
+let lastParticleSpawn = 0
+const cursor = {
+  active: false,
+  x: 0,
+  y: 0
+}
 
 onMounted(() => {
   void load()
+  signalAnimationFrame = window.requestAnimationFrame(drawSignalCanvas)
 })
 
 onBeforeUnmount(() => {
   componentActive = false
   requestVersion += 1
+  if (signalAnimationFrame) window.cancelAnimationFrame(signalAnimationFrame)
+  particles.splice(0)
 })
 
 async function load() {
@@ -311,64 +396,382 @@ function retryLoad() {
   void load()
 }
 
-function goDiscover() {
-  router.push('/')
+function safeProgressPercent(value) {
+  const number = Number(value)
+  if (!Number.isFinite(number)) return 0
+  return Math.min(100, Math.max(0, Math.round(number)))
+}
+
+function enterSignalCanvas(event) {
+  cursor.active = true
+  moveSignalCanvas(event)
+}
+
+function moveSignalCanvas(event) {
+  if (!(event.currentTarget instanceof HTMLCanvasElement)) return
+
+  const rect = event.currentTarget.getBoundingClientRect()
+  cursor.active = true
+  cursor.x = rect.width ? event.clientX - rect.left : 0
+  cursor.y = rect.height ? event.clientY - rect.top : 0
+}
+
+function leaveSignalCanvas() {
+  cursor.active = false
+}
+
+function drawSignalCanvas(timestamp = 0) {
+  if (!componentActive) return
+
+  const canvas = signalCanvas.value
+  if (canvas instanceof HTMLCanvasElement && !prefersReducedSignalMotion()) {
+    const ctx = canvas.getContext('2d')
+    if (ctx) {
+      const size = syncSignalCanvasSize(canvas, ctx)
+      if (size.width > 0 && size.height > 0) {
+        renderSignalCanvas(ctx, size.width, size.height, timestamp, canvas)
+      }
+    }
+  }
+
+  signalAnimationFrame = window.requestAnimationFrame(drawSignalCanvas)
+}
+
+function syncSignalCanvasSize(canvas, ctx) {
+  const rect = canvas.getBoundingClientRect()
+  const width = Math.max(0, Math.round(rect.width))
+  const height = Math.max(0, Math.round(rect.height))
+  const pixelRatio = Math.max(1, Math.min(2, window.devicePixelRatio || 1))
+  const nextWidth = Math.max(1, Math.round(width * pixelRatio))
+  const nextHeight = Math.max(1, Math.round(height * pixelRatio))
+
+  if (canvas.width !== nextWidth || canvas.height !== nextHeight) {
+    canvas.width = nextWidth
+    canvas.height = nextHeight
+  }
+
+  ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
+  return { width, height }
+}
+
+function renderSignalCanvas(ctx, width, height, timestamp, canvas) {
+  ctx.clearRect(0, 0, width, height)
+
+  const gradient = ctx.createLinearGradient(0, 0, width, 0)
+  const waveColors = getSignalWaveColors(canvas)
+  gradient.addColorStop(0, waveColors.start)
+  gradient.addColorStop(1, waveColors.end)
+
+  const { points, peaks } = buildSignalWavePoints(width, height, timestamp)
+  ctx.save()
+  ctx.globalCompositeOperation = 'lighter'
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.strokeStyle = gradient
+  ctx.lineWidth = 1.25
+  ctx.globalAlpha = cursor.active ? 0.82 : 0.68
+  ctx.shadowBlur = cursor.active ? 8 : 4
+  ctx.shadowColor = cursor.active ? waveColors.start : waveColors.glow
+  ctx.beginPath()
+
+  points.forEach((point, index) => {
+    if (index === 0) {
+      ctx.moveTo(point.x, point.y)
+      return
+    }
+
+    const previous = points[index - 1]
+    const controlX = (previous.x + point.x) / 2
+    const controlY = (previous.y + point.y) / 2
+    ctx.quadraticCurveTo(previous.x, previous.y, controlX, controlY)
+  })
+
+  ctx.stroke()
+  ctx.globalAlpha = 1
+  spawnWaveParticles(peaks, gradient, timestamp, width)
+  drawWaveParticles(ctx, timestamp)
+  ctx.restore()
+}
+
+function buildSignalWavePoints(width, height, timestamp) {
+  const points = []
+  const peaks = []
+  const baseline = height * 0.62
+  const time = timestamp * 0.08
+  const sigma = CURSOR_RADIUS / 2
+
+  for (let x = 0; x <= width + WAVE_STEP; x += WAVE_STEP) {
+    let y = baseline + Math.sin((x + time) * WAVE_FREQUENCY) * WAVE_AMPLITUDE + randomNoise(x, time)
+    const distance = Math.abs(x - cursor.x)
+    if (cursor.active && distance <= CURSOR_RADIUS) {
+      const gaussian = Math.exp(-(distance * distance) / (2 * sigma * sigma))
+      y = applySignalCursorLift(y, CURSOR_LIFT * gaussian)
+    }
+    points.push({ x, y })
+  }
+
+  for (let index = 1; index < points.length - 1; index += 1) {
+    const previous = points[index - 1]
+    const current = points[index]
+    const next = points[index + 1]
+    if (current.y <= previous.y && current.y <= next.y) {
+      peaks.push(current)
+    }
+  }
+
+  return { points, peaks }
+}
+
+function applySignalCursorLift(y, desiredLift) {
+  const availableLift = Math.max(0, y - WAVE_TOP_PADDING)
+  if (desiredLift <= 0 || availableLift <= 0) return Math.max(y, WAVE_TOP_PADDING)
+  return WAVE_TOP_PADDING + availableLift * Math.exp(-desiredLift / availableLift)
+}
+
+function randomNoise(x, time) {
+  const first = Math.sin(x * 0.16 + time * 0.31) * 0.5
+  const second = Math.sin(x * 0.047 + time * 0.23 + 1.8) * 0.35
+  const third = Math.sin(x * 0.29 + time * 0.13 + 0.7) * 0.15
+  return (first + second + third) * NOISE_AMPLITUDE
+}
+
+function spawnWaveParticles(peaks, gradient, timestamp, width) {
+  if (!peaks.length || !gradient || width <= 0) return
+  if (timestamp - lastParticleSpawn < PARTICLE_SPAWN_INTERVAL) return
+
+  lastParticleSpawn = timestamp
+  const count = randomBetween(PARTICLE_MIN_PER_BURST, PARTICLE_MAX_PER_BURST)
+  for (let index = 0; index < count; index += 1) {
+    const peak = peaks[Math.floor(Math.random() * peaks.length)]
+    const angle = Math.random() * Math.PI * 2
+    const speed = 0.008 + Math.random() * 0.018
+    particles.push({
+      x: peak.x,
+      y: peak.y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 0.006,
+      size: 1 + Math.random() * 1.2,
+      color: gradientColorAt(peak.x / width, getSignalWaveColors(signalCanvas.value)),
+      bornAt: timestamp
+    })
+  }
+
+  if (particles.length > PARTICLE_MAX) {
+    particles.splice(0, particles.length - PARTICLE_MAX)
+  }
+}
+
+function drawWaveParticles(ctx, timestamp) {
+  for (let index = particles.length - 1; index >= 0; index -= 1) {
+    const particle = particles[index]
+    const age = timestamp - particle.bornAt
+    if (age >= PARTICLE_LIFETIME) {
+      particles.splice(index, 1)
+      continue
+    }
+
+    const progress = age / PARTICLE_LIFETIME
+    const alpha = 1 - progress
+    const x = particle.x + particle.vx * age
+    const y = particle.y + particle.vy * age
+    ctx.globalAlpha = alpha * 0.38
+    ctx.fillStyle = particle.color
+    ctx.beginPath()
+    ctx.arc(x, y, particle.size * (1 - progress * 0.35), 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  ctx.globalAlpha = 1
+}
+
+function gradientColorAt(ratio, waveColors = { start: '#496b59', end: '#526f8d' }) {
+  const safeRatio = Math.min(1, Math.max(0, Number(ratio) || 0))
+  const start = parseSignalColor(waveColors.start, { r: 0x49, g: 0x6b, b: 0x59 })
+  const end = parseSignalColor(waveColors.end, { r: 0x52, g: 0x6f, b: 0x8d })
+  const r = Math.round(start.r + (end.r - start.r) * safeRatio)
+  const g = Math.round(start.g + (end.g - start.g) * safeRatio)
+  const b = Math.round(start.b + (end.b - start.b) * safeRatio)
+  return `rgb(${r} ${g} ${b})`
+}
+
+function getSignalWaveColors(canvas) {
+  const styles = canvas instanceof HTMLElement ? window.getComputedStyle(canvas) : null
+  return {
+    start: readSignalColor(styles, '--signal-wave-start', '--primary-color', '#496b59'),
+    end: readSignalColor(styles, '--signal-wave-end', '--accent-color', '#526f8d'),
+    glow: readSignalColor(styles, '--signal-wave-glow', '--theme-glow-color', 'rgba(73, 107, 89, 0.28)')
+  }
+}
+
+function readSignalColor(styles, property, fallbackProperty, fallback) {
+  if (!styles) return fallback
+  const value = styles.getPropertyValue(property).trim()
+  if (value && !value.startsWith('var(')) return value
+  const fallbackValue = styles.getPropertyValue(fallbackProperty).trim()
+  return fallbackValue || fallback
+}
+
+function parseSignalColor(value, fallback) {
+  if (!value) return fallback
+  const hex = value.trim().match(/^#([0-9a-f]{6})$/i)
+  if (hex) {
+    const number = Number.parseInt(hex[1], 16)
+    return {
+      r: (number >> 16) & 255,
+      g: (number >> 8) & 255,
+      b: number & 255
+    }
+  }
+
+  const rgb = value.trim().match(/^rgba?\((\d+)[,\s]+(\d+)[,\s]+(\d+)/i)
+  if (rgb) {
+    return {
+      r: Number(rgb[1]),
+      g: Number(rgb[2]),
+      b: Number(rgb[3])
+    }
+  }
+
+  return fallback
+}
+
+function randomBetween(min, max) {
+  return Math.floor(min + Math.random() * (max - min + 1))
+}
+
+function prefersReducedSignalMotion() {
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true
+}
+
+function continueStatusText(item) {
+  const progressText = formatReadingProgress(item?.progressPercent)
+  return progressText || '上次阅读'
+}
+
+function continueSummary(item) {
+  if (item?.summary) return item.summary
+  const timeText = formatReadingTime(item?.lastReadAt)
+  return timeText ? `上次阅读停在 ${timeText}，可以从这里直接接上。` : '进入文章后，会提示是否继续上次阅读位置。'
 }
 </script>
 
 <style scoped>
 .reading-main {
-  width: min(100%, var(--content-width));
+  position: relative;
+  isolation: isolate;
+  width: min(1180px, calc(100% - 36px));
   margin: 0 auto;
-  padding: 30px 24px 64px;
+  padding: 22px 0 72px;
 }
 
-.page-heading,
-.section-heading {
-  display: flex;
+.reading-main::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, var(--theme-grid-x) 1px, transparent 1px),
+    linear-gradient(180deg, var(--theme-grid-y) 1px, transparent 1px);
+  background-size: 44px 44px;
+  content: '';
+  opacity: 0.62;
+  pointer-events: none;
+}
+
+.page-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: 30px;
   align-items: end;
-  justify-content: space-between;
-  gap: 18px;
+  margin-bottom: 28px;
+  padding-top: 22px;
 }
 
-.page-heading {
-  padding-bottom: 22px;
-  border-bottom: 1px solid var(--soft-border-color);
-}
-
-.heading-copy,
-.section-heading > div,
+.head-copy,
 .preview-copy,
-.last-read-copy {
+.continue-copy {
   min-width: 0;
 }
 
-.page-kicker,
-.section-label {
-  color: var(--accent-color);
+.eyebrow {
+  display: inline-flex;
+  margin: 0 0 12px;
+  color: var(--primary-color);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 760;
+  letter-spacing: 0;
 }
 
-.page-heading h1 {
-  margin: 3px 0 0;
+.page-head h1 {
+  max-width: 820px;
+  margin: 0 0 18px;
   color: var(--text-color);
-  font-size: 30px;
-  line-height: 1.25;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(42px, 7vw, 76px);
+  font-weight: 500;
+  line-height: 0.98;
 }
 
-.discover-link,
+.head-copy p {
+  max-width: 680px;
+  margin: 0;
+  color: var(--muted-text-color);
+  font-size: 17px;
+  line-height: 1.85;
+}
+
+.head-meta {
+  display: grid;
+  gap: 13px;
+  padding: 18px 20px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--panel-bg);
+  box-shadow: var(--shadow-soft);
+}
+
+.meta-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: center;
+  padding: 0;
+}
+
+.meta-label {
+  color: var(--muted-text-color);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.meta-value {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-color);
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .section-link {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   min-height: 36px;
+  color: var(--primary-color);
   font-size: 13px;
   font-weight: 750;
 }
 
-.discover-link:focus-visible,
-.section-link:focus-visible {
+.section-link:hover {
+  color: var(--primary-hover-color);
+}
+
+.section-link:focus-visible,
+.timeline-item:focus-within,
+.favorite-line:focus-within {
   border-radius: var(--radius-sm);
   outline: 2px solid var(--primary-color);
   outline-offset: 3px;
@@ -386,7 +789,8 @@ function goDiscover() {
   padding: 28px 2px;
 }
 
-.sr-only {
+.sr-only,
+.sr-only-heading {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -398,84 +802,156 @@ function goDiscover() {
   border: 0;
 }
 
-.reading-section {
-  padding: 34px 0 38px;
-  border-bottom: 1px solid var(--soft-border-color);
+.section-title {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
 }
 
-.reading-section:last-child {
-  border-bottom: 0;
+.section-title {
+  margin: 26px 0 16px;
 }
 
-.section-heading {
-  margin-bottom: 18px;
-}
-
-.section-heading h2 {
-  margin: 2px 0 0;
+.section-title h2 {
+  margin: 0;
   color: var(--text-color);
-  font-size: 22px;
-  line-height: 1.3;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(26px, 3.4vw, 42px);
+  font-weight: 500;
+  line-height: 1.08;
 }
 
-.last-read,
-.history-preview,
-.favorite-preview {
+.section-title p {
+  max-width: 420px;
+  margin: 0 0 4px;
+  color: var(--muted-text-color);
+  font-size: 14px;
+  line-height: 1.7;
+  text-align: right;
+}
+
+.reading-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.06fr) minmax(300px, 0.94fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.continue-panel,
+.timeline-item,
+.favorite-line {
   position: relative;
   min-width: 0;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-bg) 96%, transparent);
+  transition:
+    transform 0.22s ease,
+    border-color 0.22s ease,
+    background-color 0.22s ease,
+    box-shadow 0.22s ease;
 }
 
-.last-read {
+.continue-panel {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  min-height: 196px;
+  min-height: 286px;
   overflow: hidden;
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-md);
-  background: var(--panel-bg);
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  box-shadow: var(--shadow-md);
 }
 
-.last-read.has-cover {
-  grid-template-columns: minmax(220px, 36%) minmax(0, 1fr);
+.timeline-item::before {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: -1px;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--primary-color), var(--accent-color));
+  content: '';
+  opacity: 0;
+  pointer-events: none;
+  transform: scaleY(0.55);
+  transform-origin: center;
+  transition: opacity 0.22s ease, transform 0.22s ease;
 }
 
-.last-read:not(.is-unavailable):hover {
-  border-color: color-mix(in srgb, var(--primary-color) 36%, var(--soft-border-color));
-  box-shadow: var(--shadow-sm);
+.continue-panel::after {
+  position: absolute;
+  right: 28px;
+  bottom: 28px;
+  width: 154px;
+  height: 154px;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 24%, transparent);
+  border-radius: 999px;
+  content: '';
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.continue-panel:not(.is-unavailable):hover,
+.timeline-item:not(.is-unavailable):hover,
+.favorite-line:not(.is-unavailable):hover {
   transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--primary-color) 72%, var(--border-color));
+  background: var(--panel-bg);
+  box-shadow: var(--shadow-sm), 0 18px 42px var(--theme-glow-color);
 }
 
-.last-read-cover {
-  width: 100%;
-  height: 100%;
-  min-height: 196px;
-  object-fit: cover;
+.timeline-item:not(.is-unavailable):hover::before {
+  opacity: 1;
+  transform: scaleY(1);
 }
 
-.last-read-copy {
+.continue-copy {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 28px 30px;
+  padding: 30px;
 }
 
-.last-read-title,
+.status-pill {
+  display: inline-flex;
+  width: max-content;
+  min-height: 28px;
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 34%, var(--border-color));
+  border-radius: 999px;
+  color: var(--primary-color);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.status-pill.muted {
+  border-color: color-mix(in srgb, var(--muted-text-color) 30%, var(--border-color));
+  color: var(--muted-text-color);
+}
+
+.continue-title,
 .preview-title,
 .title-snapshot {
   overflow-wrap: anywhere;
 }
 
-.last-read-title {
+.continue-title {
+  max-width: 620px;
   margin: 0;
   color: var(--text-color);
-  font-size: 25px;
-  line-height: 1.35;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(30px, 4vw, 48px);
+  font-weight: 500;
+  line-height: 1.08;
 }
 
-.last-read-summary {
+.continue-summary {
   display: -webkit-box;
-  margin: 12px 0 18px;
+  max-width: 560px;
+  margin: 14px 0 18px;
   overflow: hidden;
   color: var(--muted-text-color);
   font-size: 14px;
@@ -484,21 +960,21 @@ function goDiscover() {
   -webkit-line-clamp: 3;
 }
 
-.last-read-time {
+.continue-time {
   margin-top: auto;
   color: var(--muted-text-color);
   font-size: 12px;
 }
 
-.last-read.is-unavailable,
-.history-preview.is-unavailable,
-.favorite-preview.is-unavailable {
+.continue-panel.is-unavailable,
+.timeline-item.is-unavailable,
+.favorite-line.is-unavailable {
+  border-color: color-mix(in srgb, var(--muted-text-color) 30%, var(--soft-border-color));
   background: color-mix(in srgb, var(--muted-text-color) 7%, var(--panel-bg));
 }
 
-.last-read.is-unavailable {
-  min-height: 150px;
-  border-color: color-mix(in srgb, var(--muted-text-color) 30%, var(--soft-border-color));
+.continue-panel.is-unavailable {
+  min-height: 170px;
 }
 
 .unavailable-copy {
@@ -506,7 +982,7 @@ function goDiscover() {
   gap: 10px;
 }
 
-.unavailable-copy .last-read-time {
+.unavailable-copy .continue-time {
   margin-top: 0;
 }
 
@@ -544,57 +1020,16 @@ function goDiscover() {
   outline-offset: 3px;
 }
 
-.last-read .card-open-link:focus-visible {
+.continue-panel .card-open-link:focus-visible {
   outline-offset: -3px;
 }
 
-.history-timeline {
-  position: relative;
-  display: grid;
-  gap: 0;
-  width: min(100%, 900px);
+.reading-side {
+  min-width: 0;
 }
 
-.history-timeline::before {
-  position: absolute;
-  top: 21px;
-  bottom: 21px;
-  left: 6px;
-  width: 1px;
-  background: var(--border-color);
-  content: '';
-}
-
-.history-preview {
-  padding: 14px 16px 15px 32px;
-  border-bottom: 1px solid var(--soft-border-color);
-  transition: background-color 0.18s ease;
-}
-
-.history-preview:last-child {
-  border-bottom: 0;
-}
-
-.history-preview:not(.is-unavailable):hover {
-  background: color-mix(in srgb, var(--primary-color) 6%, transparent);
-}
-
-.timeline-dot {
-  position: absolute;
-  top: 23px;
-  left: 0;
-  z-index: 2;
-  pointer-events: none;
-  width: 13px;
-  height: 13px;
-  border: 3px solid var(--panel-bg);
-  border-radius: 50%;
-  background: var(--accent-color);
-  box-shadow: 0 0 0 1px var(--border-color);
-}
-
-.history-preview.is-unavailable .timeline-dot {
-  background: var(--muted-text-color);
+.timeline-item {
+  padding: 16px 18px 16px 24px;
 }
 
 .preview-title {
@@ -613,66 +1048,53 @@ function goDiscover() {
   font-size: 12px;
 }
 
-.reading-progress {
-  color: var(--accent-color);
-  font-weight: 750;
-}
-
-.favorite-grid {
+.favorite-line {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.favorite-preview {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
   align-items: center;
-  min-height: 116px;
-  padding: 18px 20px;
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-md);
-  background: var(--panel-bg);
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  min-height: 104px;
+  padding: 18px 20px 18px 24px;
 }
 
-.favorite-preview.has-cover {
-  grid-template-columns: 112px minmax(0, 1fr);
-  gap: 18px;
-}
+@media (max-width: 980px) {
+  .page-head,
+  .reading-layout {
+    grid-template-columns: 1fr;
+  }
 
-.favorite-preview:not(.is-unavailable):hover {
-  border-color: color-mix(in srgb, var(--primary-color) 36%, var(--soft-border-color));
-  box-shadow: var(--shadow-sm);
-}
+  .head-meta {
+    padding: 16px;
+  }
 
-.favorite-preview.is-unavailable {
-  border-color: color-mix(in srgb, var(--muted-text-color) 30%, var(--soft-border-color));
-}
+  .section-title {
+    display: grid;
+    align-items: start;
+  }
 
-.favorite-cover {
-  width: 112px;
-  height: 80px;
-  border-radius: var(--radius-sm);
-  object-fit: cover;
+  .section-title p {
+    max-width: none;
+    text-align: left;
+  }
 }
 
 @media (max-width: 720px) {
   .reading-main {
-    padding: 22px 14px 44px;
+    width: min(100% - 28px, var(--content-width));
+    padding: 16px 0 44px;
   }
 
-  .page-heading {
-    align-items: flex-start;
+  .page-head {
+    gap: 22px;
+    padding-top: 14px;
   }
 
-  .page-heading h1 {
-    font-size: 26px;
+  .page-head h1 {
+    font-size: 42px;
   }
 
   .error-row,
-  .favorite-grid,
-  .last-read.has-cover {
+  .favorite-line {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -680,45 +1102,25 @@ function goDiscover() {
     justify-self: end;
   }
 
-  .last-read-cover {
-    height: auto;
-    min-height: 0;
-    aspect-ratio: 16 / 9;
+  .continue-copy,
+  .favorite-line {
+    padding: 18px;
   }
 
-  .last-read-copy {
-    padding: 22px;
+  .continue-title {
+    font-size: 30px;
   }
 
-  .last-read-title {
-    font-size: 22px;
-  }
 }
 
 @media (max-width: 480px) {
-  .page-heading,
-  .section-heading {
+  .meta-line {
+    grid-template-columns: 1fr;
+  }
+
+  .section-title {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .reading-section {
-    padding: 28px 0 32px;
-  }
-
-  .last-read-copy,
-  .favorite-preview {
-    padding: 16px;
-  }
-
-  .favorite-preview.has-cover {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .favorite-cover {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 16 / 9;
   }
 }
 
@@ -727,13 +1129,536 @@ function goDiscover() {
     animation: none;
   }
 
-  .last-read,
-  .history-preview,
-  .favorite-preview {
+  .continue-panel,
+  .timeline-item,
+  .timeline-item::before,
+  .favorite-line {
     transition: none;
   }
 
-  .last-read:not(.is-unavailable):hover {
+  .continue-panel:not(.is-unavailable):hover,
+  .timeline-item:not(.is-unavailable):hover,
+  .favorite-line:not(.is-unavailable):hover {
+    transform: none;
+  }
+}
+
+/* Prototype-aligned reading desk */
+.page-head {
+  gap: 42px;
+  align-items: end;
+  margin-bottom: 34px;
+  padding-top: 30px;
+}
+
+.page-head h1 {
+  max-width: 760px;
+  font-size: clamp(54px, 6.2vw, 88px);
+  line-height: 0.94;
+}
+
+.head-copy p {
+  max-width: 760px;
+}
+
+.reading-layout {
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+  gap: 22px;
+  align-items: stretch;
+  margin-bottom: 34px;
+}
+
+.continue-panel {
+  --signal-wave-start: var(--primary-color);
+  --signal-wave-end: var(--accent-color);
+  --signal-wave-glow: var(--theme-glow-color);
+  isolation: isolate;
+  display: block;
+  min-height: 340px;
+  padding: 26px 26px 142px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 10%, transparent), transparent 58%),
+    color-mix(in srgb, var(--panel-bg) 96%, transparent);
+  box-shadow: var(--shadow-md);
+}
+
+.continue-panel::after {
+  right: auto;
+  bottom: 0;
+  left: -20%;
+  width: 140%;
+  height: 1px;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(90deg, transparent, var(--primary-color), var(--accent-color), transparent);
+  opacity: 0.86;
+  transform: translateX(-36%);
+  transition: transform 0.6s ease;
+}
+
+.continue-panel:not(.is-unavailable):hover {
+  transform: none;
+  box-shadow: var(--shadow-md);
+}
+
+.continue-panel:not(.is-unavailable):hover::after {
+  transform: translateX(36%);
+}
+
+.continue-copy {
+  position: relative;
+  z-index: 2;
+  display: block;
+  padding: 0;
+}
+
+.continue-title,
+.title-snapshot {
+  max-width: 600px;
+  margin: 18px 0 14px;
+  color: var(--text-color);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(30px, 4vw, 48px);
+  font-weight: 500;
+  line-height: 1.08;
+}
+
+.continue-summary {
+  max-width: 540px;
+  margin: 0;
+  color: var(--muted-text-color);
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.progress-block {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 8px;
+  max-width: 520px;
+  margin-top: 22px;
+}
+
+.progress-label {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted-text-color);
+  font-size: 13px;
+}
+
+.progress-label strong {
+  color: var(--text-color);
+}
+
+.progress-track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border-color) 70%, transparent);
+}
+
+.progress-track span {
+  display: block;
+  width: var(--progress);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+  transition: width 0.24s ease;
+}
+
+.continue-actions {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.signal-wave {
+  position: absolute;
+  right: 26px;
+  bottom: 18px;
+  left: 26px;
+  z-index: 3;
+  height: 104px;
+  background: transparent;
+  color: var(--primary-color);
+  cursor: pointer;
+  opacity: 0.88;
+  pointer-events: auto;
+  touch-action: manipulation;
+  user-select: none;
+  transition: opacity 0.2s ease;
+}
+
+.signal-wave::before,
+.signal-wave::after {
+  position: absolute;
+  right: 0;
+  left: 0;
+  pointer-events: none;
+  content: '';
+}
+
+.signal-wave::before {
+  bottom: 18px;
+  height: 1px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--signal-wave-start) 22%, transparent),
+    color-mix(in srgb, var(--signal-wave-end) 20%, transparent),
+    transparent
+  );
+  opacity: 0.2;
+}
+
+.signal-wave::after {
+  top: 8px;
+  bottom: 2px;
+  background: radial-gradient(
+    ellipse at 50% 54%,
+    color-mix(in srgb, var(--signal-wave-start) 8%, transparent),
+    transparent 26%
+  );
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.signal-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--signal-wave-start) 28%, transparent))
+    drop-shadow(0 0 9px color-mix(in srgb, var(--signal-wave-end) 18%, transparent));
+  opacity: 0.72;
+  pointer-events: auto;
+  transition:
+    filter 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.continue-panel:not(.is-unavailable):hover .signal-wave,
+.empty-status:hover .signal-wave {
+  opacity: 1;
+}
+
+.continue-panel:not(.is-unavailable):hover .signal-wave::after,
+.empty-status:hover .signal-wave::after {
+  opacity: 1;
+}
+
+.continue-panel:not(.is-unavailable):hover .signal-canvas,
+.empty-status:hover .signal-canvas {
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--signal-wave-start) 34%, transparent))
+    drop-shadow(0 0 14px color-mix(in srgb, var(--signal-wave-end) 24%, transparent));
+  opacity: 0.9;
+}
+
+.empty-status .signal-wave {
+  opacity: 0.78;
+}
+
+.primary-button,
+.ghost-button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 760;
+  text-decoration: none;
+}
+
+.primary-button {
+  border: 1px solid var(--primary-color);
+  background: var(--primary-color);
+  color: var(--button-text-color);
+}
+
+.ghost-button {
+  border: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--panel-bg) 90%, transparent);
+  color: var(--muted-text-color);
+}
+
+.primary-button:hover,
+.primary-button:focus-visible,
+.ghost-button:hover,
+.ghost-button:focus-visible {
+  border-color: color-mix(in srgb, var(--primary-color) 60%, var(--border-color));
+  color: var(--primary-color);
+  outline: none;
+}
+
+.primary-button:hover,
+.primary-button:focus-visible {
+  color: var(--button-text-color);
+  box-shadow: 0 14px 28px -22px var(--theme-glow-color);
+}
+
+.reading-side {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
+  box-shadow: var(--shadow-soft);
+}
+
+.side-title {
+  margin: 0;
+}
+
+.section-title {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 28px 0 14px;
+}
+
+.section-title h3 {
+  margin: 0;
+  color: var(--text-color);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.18;
+}
+
+.section-title p,
+.section-title .section-link {
+  margin-bottom: 0;
+  color: var(--muted-text-color);
+  font-size: 14px;
+}
+
+.timeline {
+  position: relative;
+  display: grid;
+  gap: 0;
+  padding-left: 18px;
+  border-left: 1px solid var(--border-color);
+}
+
+.timeline-item {
+  position: relative;
+  min-height: 0;
+  padding: 14px 0;
+  border: 0;
+  border-bottom: 1px solid var(--soft-border-color);
+  border-radius: 0;
+  background: transparent;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.timeline-item:last-child {
+  border-bottom: 0;
+}
+
+.timeline-item::before {
+  top: 21px;
+  bottom: auto;
+  left: -23px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--panel-bg);
+  border-radius: 999px;
+  background: var(--primary-color);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary-color) 36%, transparent);
+  opacity: 1;
+  transform: none;
+}
+
+.timeline-item:not(.is-unavailable):hover,
+.timeline-item.is-active {
+  transform: translateX(4px);
+  border-bottom-color: color-mix(in srgb, var(--primary-color) 46%, var(--border-color));
+  background: transparent;
+  box-shadow: none;
+}
+
+.timeline-item:not(.is-unavailable):hover::before,
+.timeline-item.is-active::before {
+  opacity: 1;
+  transform: none;
+}
+
+.preview-title,
+.favorite-title-text {
+  margin: 0;
+  color: var(--text-color);
+  font-size: 17px;
+  line-height: 1.4;
+}
+
+.favorite-title-text {
+  display: block;
+  font-weight: 780;
+}
+
+.preview-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+  margin: 6px 0 0;
+  color: var(--muted-text-color);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.favorite-title {
+  margin-top: 0;
+}
+
+.favorite-index {
+  display: grid;
+  gap: 10px;
+  padding: 16px 0;
+  border-top: 1px solid var(--border-color);
+}
+
+.favorite-line {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  min-height: 0;
+  padding: 14px 0;
+  border: 0;
+  border-bottom: 1px solid var(--soft-border-color);
+  border-radius: 0;
+  background: transparent;
+}
+
+.favorite-line:last-child {
+  border-bottom: 0;
+}
+
+.favorite-line:not(.is-unavailable):hover {
+  transform: none;
+  border-bottom-color: color-mix(in srgb, var(--primary-color) 46%, var(--border-color));
+  background: transparent;
+  box-shadow: none;
+}
+
+.favorite-line .status-pill {
+  margin-bottom: 0;
+}
+
+.empty-timeline .timeline-item,
+.empty-favorites .favorite-line {
+  color: var(--muted-text-color);
+}
+
+@media (max-width: 980px) {
+  .page-head,
+  .reading-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .head-meta {
+    padding: 16px;
+  }
+
+  .section-title {
+    display: grid;
+    align-items: start;
+  }
+
+  .section-title p {
+    max-width: none;
+    text-align: left;
+  }
+
+  .reading-side {
+    padding: 18px;
+  }
+}
+
+@media (max-width: 720px) {
+  .reading-main {
+    width: min(100% - 28px, var(--content-width));
+    padding: 16px 0 44px;
+  }
+
+  .page-head {
+    gap: 22px;
+    padding-top: 14px;
+  }
+
+  .page-head h1 {
+    font-size: 42px;
+  }
+
+  .error-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .error-row .el-button {
+    justify-self: end;
+  }
+
+  .continue-panel {
+    min-height: 0;
+    padding: 20px 20px 130px;
+  }
+
+  .signal-wave {
+    right: 18px;
+    bottom: 14px;
+    left: 18px;
+    height: 96px;
+  }
+
+  .section-title,
+  .favorite-line {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .meta-line {
+    grid-template-columns: 1fr;
+  }
+
+  .section-title {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .continue-panel::after,
+  .signal-canvas,
+  .progress-track span,
+  .timeline-item,
+  .favorite-line,
+  .primary-button,
+  .ghost-button {
+    animation: none;
+    transition: none;
+  }
+
+  .signal-canvas {
+    display: none;
+  }
+
+  .timeline-item:not(.is-unavailable):hover,
+  .timeline-item.is-active {
     transform: none;
   }
 }

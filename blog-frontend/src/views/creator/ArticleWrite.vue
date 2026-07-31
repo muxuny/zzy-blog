@@ -1,132 +1,177 @@
 <template>
   <div class="layout">
     <AppHeader />
-    <el-main class="main">
-      <div class="page-header">
-        <div>
-          <span class="page-kicker">创作中心</span>
+    <el-main class="compose-shell">
+      <header class="page-head">
+        <div class="head-copy">
+          <span class="eyebrow">创作中心</span>
           <h1>{{ isEdit ? '编辑文章' : '写文章' }}</h1>
+          <p>把标题、摘要、分组和正文放在同一个工作流里，状态动作保持在明确的底部区域。</p>
         </div>
-      </div>
+      </header>
 
-      <el-alert
-        v-if="detailError"
-        :title="detailError"
-        type="error"
-        show-icon
-        class="form-alert"
-      />
-      <el-alert
-        v-if="tagError"
-        :title="tagError"
-        type="warning"
-        show-icon
-        :closable="false"
-        class="form-alert"
-      />
-      <el-alert
-        v-if="groupError"
-        :title="groupError"
-        type="warning"
-        show-icon
-        :closable="false"
-        class="form-alert"
-      />
-
-      <el-form
-        v-loading="pageLoading"
-        :model="form"
-        label-position="top"
-        class="article-form"
-      >
-        <el-form-item label="标题">
-          <el-input v-model="form.title" placeholder="文章标题" :disabled="formDisabled" />
-        </el-form-item>
-        <el-form-item label="摘要">
-          <el-input
-            v-model="form.summary"
-            type="textarea"
-            :rows="2"
-            placeholder="一句话概括文章内容"
-            :disabled="formDisabled"
+      <div class="compose-grid">
+        <section class="compose-panel">
+          <el-alert
+            v-if="detailError"
+            :title="detailError"
+            type="error"
+            show-icon
+            class="form-alert"
           />
-        </el-form-item>
-        <el-form-item label="封面图">
-          <div :class="{ 'disabled-control': formDisabled }">
-            <ImageUploader v-model="form.coverImage" />
-          </div>
-        </el-form-item>
-        <el-form-item label="标签">
-          <el-select
-            v-model="form.tagIds"
-            multiple
-            placeholder="选择标签"
-            class="tag-select"
-            :disabled="formDisabled || tagsLoading"
+          <el-alert
+            v-if="tagError"
+            :title="tagError"
+            type="warning"
+            show-icon
+            :closable="false"
+            class="form-alert"
+          />
+          <el-alert
+            v-if="groupError"
+            :title="groupError"
+            type="warning"
+            show-icon
+            :closable="false"
+            class="form-alert"
+          />
+
+          <el-form
+            v-loading="pageLoading"
+            :model="form"
+            label-position="top"
+            class="article-form"
           >
-            <el-option v-for="tag in tags" :key="tag.id" :label="tag.name" :value="tag.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="文章分组">
-          <div class="group-control">
-            <el-select
-              v-model="form.groupId"
-              clearable
-              placeholder="未分组"
-              class="group-select"
-              :disabled="formDisabled || groupsLoading"
-            >
-              <el-option
-                v-for="group in articleGroups"
-                :key="group.id"
-                :label="group.name"
-                :value="group.id"
-              />
-            </el-select>
-            <el-button :disabled="formDisabled || groupsLoading" @click="createGroupInline">
-              新建分组
-            </el-button>
-          </div>
-        </el-form-item>
-        <el-form-item label="可见性">
-          <el-radio-group v-model="form.visibility" :disabled="formDisabled" class="visibility-control">
-            <el-radio-button
-              v-for="option in visibilityOptions"
-              :key="option.value"
-              :label="option.value"
-            >
-              {{ option.label }}
-            </el-radio-button>
-          </el-radio-group>
-          <p class="visibility-help">
-            公开文章审核通过后会出现在首页；仅自己可见的文章只会保留在你的文章列表里。
-          </p>
-        </el-form-item>
-        <el-form-item label="内容">
-          <div :class="{ 'disabled-control': formDisabled }" class="editor-control">
-            <ArticleEditor v-model="form.content" />
-          </div>
-        </el-form-item>
-        <div class="actions">
-          <el-button
-            type="primary"
-            :loading="savingStatus === 'draft'"
-            :disabled="formDisabled || saving"
-            @click="save('draft')"
-          >
-            保存草稿
-          </el-button>
-          <el-button
-            type="success"
-            :loading="savingStatus === 'pending'"
-            :disabled="formDisabled || saving"
-            @click="save('pending')"
-          >
-            提交审核
-          </el-button>
-          <el-button :disabled="saving" @click="$router.push('/creator/articles')">取消</el-button>
-        </div>
-      </el-form>
+            <div class="field-grid">
+              <el-form-item label="标题" class="wide-field">
+                <el-input v-model="form.title" placeholder="文章标题" :disabled="formDisabled" />
+              </el-form-item>
+              <el-form-item label="摘要" class="wide-field">
+                <el-input
+                  v-model="form.summary"
+                  type="textarea"
+                  :rows="2"
+                  placeholder="一句话概括文章内容"
+                  :disabled="formDisabled"
+                />
+              </el-form-item>
+              <el-form-item label="标签">
+                <el-select
+                  v-model="form.tagIds"
+                  multiple
+                  placeholder="选择标签"
+                  class="tag-select"
+                  :disabled="formDisabled || tagsLoading"
+                >
+                  <el-option v-for="tag in tags" :key="tag.id" :label="tag.name" :value="tag.id" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="文章分组">
+                <div class="group-control">
+                  <el-select
+                    v-model="form.groupId"
+                    clearable
+                    placeholder="未分组"
+                    class="group-select"
+                    :disabled="formDisabled || groupsLoading"
+                  >
+                    <el-option
+                      v-for="group in articleGroups"
+                      :key="group.id"
+                      :label="group.name"
+                      :value="group.id"
+                    />
+                  </el-select>
+                  <el-button :disabled="formDisabled || groupsLoading" @click="createGroupInline">
+                    新建分组
+                  </el-button>
+                </div>
+              </el-form-item>
+              <el-form-item label="可见性" class="wide-field">
+                <el-radio-group v-model="form.visibility" :disabled="formDisabled" class="visibility-control">
+                  <el-radio-button
+                    v-for="option in visibilityOptions"
+                    :key="option.value"
+                    :label="option.value"
+                  >
+                    {{ option.label }}
+                  </el-radio-button>
+                </el-radio-group>
+                <p class="visibility-help">
+                  公开文章审核通过后会出现在首页；仅自己可见的文章只会保留在你的文章列表里。
+                </p>
+              </el-form-item>
+              <el-form-item label="封面图" class="wide-field">
+                <div :class="{ 'disabled-control': formDisabled }">
+                  <ImageUploader v-model="form.coverImage" />
+                </div>
+              </el-form-item>
+              <el-form-item label="内容" class="wide-field editor-field">
+                <div :class="{ 'disabled-control': formDisabled }" class="editor-control">
+                  <ArticleEditor v-model="form.content" />
+                </div>
+              </el-form-item>
+            </div>
+            <div class="compose-actions">
+              <el-button
+                type="primary"
+                :loading="savingStatus === 'draft'"
+                :disabled="formDisabled || saving"
+                @click="save('draft')"
+              >
+                保存草稿
+              </el-button>
+              <el-button
+                type="success"
+                :loading="savingStatus === 'pending'"
+                :disabled="formDisabled || saving"
+                @click="save('pending')"
+              >
+                提交审核
+              </el-button>
+              <el-button :disabled="saving" @click="$router.push('/creator/articles')">取消</el-button>
+            </div>
+          </el-form>
+        </section>
+
+        <aside class="compose-rail" aria-label="创作提示">
+          <section class="rail-panel preflight-panel" aria-label="发布前检查">
+            <div class="preflight-head">
+              <span class="rail-kicker">发布前检查</span>
+              <strong>{{ preflightReadyCount }}/{{ preflightChecks.length }}</strong>
+            </div>
+            <ul class="preflight-dots">
+              <li
+                v-for="item in preflightChecks"
+                :key="item.key"
+                class="preflight-token"
+                :class="{ 'is-done': item.done }"
+                :title="`${item.label}：${item.text}`"
+                :aria-label="`${item.label}：${item.text}`"
+              >
+                <span class="preflight-dot" aria-hidden="true" />
+                <span>{{ item.label }}</span>
+              </li>
+            </ul>
+            <div class="draft-stats" aria-label="文章统计">
+              <span>{{ writingStats.wordCount }} 字</span>
+              <span>{{ writingStats.readingTimeText }}</span>
+            </div>
+          </section>
+          <section class="rail-panel">
+            <span class="rail-kicker">状态边界</span>
+            <p>草稿可以继续保存或提交审核；待审核文章需要撤回后再编辑。</p>
+          </section>
+          <section class="rail-panel">
+            <span class="rail-kicker">可见性</span>
+            <p>仅自己可见的文章不会进入公开首页，但仍会保留在创作中心。</p>
+          </section>
+          <section class="rail-panel">
+            <span class="rail-kicker">分组</span>
+            <p>分组只服务创作管理，不影响公开阅读页的标签筛选。</p>
+          </section>
+        </aside>
+      </div>
     </el-main>
   </div>
 </template>
@@ -143,7 +188,7 @@ import { getTags } from '../../api/tag'
 import { createMyArticle, getMyArticle, updateMyArticle } from '../../api/myArticle'
 import { ARTICLE_VISIBILITY_PRIVATE, ARTICLE_VISIBILITY_PUBLIC, normalizeArticleVisibility } from '../../utils/articleVisibility'
 import { buildArticleGroupIdsForSave, getFirstArticleGroupId } from '../../utils/articleGroups'
-import { normalizeArticleMarkdown } from '../../utils/reading'
+import { getReadingStats, normalizeArticleMarkdown } from '../../utils/reading'
 
 const route = useRoute()
 const router = useRouter()
@@ -175,6 +220,34 @@ const visibilityOptions = [
   { label: '公开', value: ARTICLE_VISIBILITY_PUBLIC },
   { label: '仅自己可见', value: ARTICLE_VISIBILITY_PRIVATE }
 ]
+const writingStats = computed(() => getReadingStats(form.content || ''))
+const preflightChecks = computed(() => [
+  {
+    key: 'title',
+    label: '标题',
+    text: form.title.trim() ? '已填写' : '未填写',
+    done: !!form.title.trim()
+  },
+  {
+    key: 'content',
+    label: '正文',
+    text: writingStats.value.wordCount ? `${writingStats.value.wordCount} 字` : '未填写',
+    done: writingStats.value.wordCount > 0
+  },
+  {
+    key: 'summary',
+    label: '摘要',
+    text: form.summary.trim() ? '已填写' : '可补充',
+    done: !!form.summary.trim()
+  },
+  {
+    key: 'tags',
+    label: '标签',
+    text: form.tagIds.length ? `${form.tagIds.length} 个` : '建议选择',
+    done: form.tagIds.length > 0
+  }
+])
+const preflightReadyCount = computed(() => preflightChecks.value.filter(item => item.done).length)
 
 onMounted(() => {
   loadTags()
@@ -289,37 +362,188 @@ async function save(status) {
 </script>
 
 <style scoped>
-.main {
-  width: min(100%, var(--content-width));
+.compose-shell {
+  position: relative;
+  isolation: isolate;
+  width: min(1180px, calc(100% - 36px));
   margin: 0 auto;
-  padding: 32px 24px 64px;
+  padding: 22px 0 72px;
 }
 
-.page-header {
-  margin-bottom: 18px;
+.compose-shell::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, var(--theme-grid-x) 1px, transparent 1px),
+    linear-gradient(180deg, var(--theme-grid-y) 1px, transparent 1px);
+  background-size: 44px 44px;
+  content: '';
+  opacity: 0.52;
+  pointer-events: none;
 }
 
-.page-kicker {
-  color: var(--accent-color);
+.page-head {
+  margin-bottom: 26px;
+  padding-top: 22px;
+}
+
+.head-copy {
+  min-width: 0;
+}
+
+.eyebrow {
+  display: inline-flex;
+  margin: 0 0 12px;
+  color: var(--primary-color);
   font-size: 12px;
+  font-weight: 760;
+  letter-spacing: 0;
+}
+
+.page-head h1 {
+  max-width: 820px;
+  margin: 0 0 18px;
+  color: var(--text-color);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(42px, 7vw, 76px);
+  font-weight: 500;
+  line-height: 0.98;
+}
+
+.head-copy p {
+  max-width: 660px;
+  margin: 0;
+  color: var(--muted-text-color);
+  font-size: 17px;
+  line-height: 1.85;
+}
+
+.preflight-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.preflight-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.preflight-head strong {
+  color: var(--text-color);
+  font-size: 13px;
   font-weight: 800;
 }
 
-.page-header h1 {
-  margin: 4px 0 0;
+.preflight-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.preflight-token {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--border-color) 86%, transparent);
+  border-radius: 999px;
+  color: var(--muted-text-color);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.preflight-token.is-done {
+  border-color: color-mix(in srgb, var(--primary-color) 38%, var(--border-color));
+  background: color-mix(in srgb, var(--primary-color) 8%, var(--panel-bg));
   color: var(--text-color);
-  font-size: 30px;
+}
+
+.preflight-dot {
+  width: 7px;
+  height: 7px;
+  border: 1px solid color-mix(in srgb, var(--muted-text-color) 44%, transparent);
+  border-radius: 999px;
+  background: transparent;
+}
+
+.preflight-token.is-done .preflight-dot {
+  border-color: color-mix(in srgb, var(--primary-color) 76%, transparent);
+  background: var(--primary-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 10%, transparent);
+}
+
+.draft-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 10px;
+  color: var(--muted-text-color);
+  font-size: 12px;
+}
+
+.draft-stats span {
+  min-width: max-content;
+}
+
+.compose-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 28px;
+  align-items: start;
+}
+
+.compose-panel {
+  min-width: 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-color);
 }
 
 .article-form {
-  padding: 22px;
-  border: 1px solid var(--soft-border-color);
-  border-radius: var(--radius-md);
-  background: var(--panel-bg);
+  display: grid;
+  gap: 18px;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+}
+
+.wide-field {
+  grid-column: 1 / -1;
+}
+
+.article-form :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+
+.article-form :deep(.el-form-item__label) {
+  color: var(--accent-color);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.article-form :deep(.el-input__wrapper),
+.article-form :deep(.el-select__wrapper),
+.article-form :deep(.el-textarea__inner) {
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
+}
+
+.article-form :deep(.el-input__wrapper),
+.article-form :deep(.el-select__wrapper) {
+  min-height: 42px;
 }
 
 .form-alert {
   margin-bottom: 12px;
+  border-radius: var(--radius-md);
 }
 
 .tag-select {
@@ -338,7 +562,12 @@ async function save(status) {
 }
 
 .visibility-control {
-  width: min(100%, 280px);
+  width: min(100%, 360px);
+}
+
+.visibility-control :deep(.el-radio-button__inner) {
+  border-color: var(--border-color);
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
 }
 
 .visibility-help {
@@ -350,6 +579,10 @@ async function save(status) {
 
 .editor-control {
   width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
 }
 
 .disabled-control {
@@ -357,18 +590,90 @@ async function save(status) {
   opacity: 0.62;
 }
 
-.actions {
+.compose-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  justify-content: flex-end;
+  padding-top: 18px;
+  border-top: 1px solid var(--soft-border-color);
+}
+
+.compose-actions .el-button {
+  min-height: 40px;
+  border-radius: 999px;
+}
+
+.compose-rail {
+  position: sticky;
+  top: calc(var(--app-header-height) + 20px);
+  display: grid;
+  gap: 16px;
+  padding-left: 18px;
+  border-left: 1px solid var(--border-color);
+}
+
+.rail-panel {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--soft-border-color);
+}
+
+.rail-panel:last-child {
+  border-bottom: 0;
+}
+
+.rail-panel.preflight-panel {
+  padding: 14px;
+  border: 1px solid var(--soft-border-color);
+  background: color-mix(in srgb, var(--panel-bg) 94%, var(--primary-color));
+}
+
+.rail-kicker {
+  color: var(--primary-color);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.rail-panel p {
+  margin: 8px 0 0;
+  color: var(--muted-text-color);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+@media (max-width: 980px) {
+  .compose-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .compose-rail {
+    border-left: 0;
+    padding-left: 0;
+  }
+
+  .compose-rail {
+    position: static;
+    border-top: 1px solid var(--border-color);
+    padding-top: 16px;
+  }
 }
 
 @media (max-width: 760px) {
-  .main {
-    padding: 24px 14px 48px;
+  .compose-shell {
+    width: min(100% - 28px, var(--content-width));
+    padding: 16px 0 48px;
   }
 
-  .group-control {
+  .page-head h1 {
+    font-size: 42px;
+  }
+
+  .field-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .group-control,
+  .compose-actions {
     align-items: stretch;
     flex-direction: column;
   }

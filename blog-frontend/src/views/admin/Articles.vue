@@ -1,94 +1,137 @@
 <template>
-  <div>
-    <div class="page-header">
-      <h2>文章管理</h2>
+  <div class="articles-page">
+    <div class="page-head">
+      <div>
+        <span class="page-eyebrow">内容审核</span>
+        <h2>文章管理</h2>
+      </div>
+      <button class="tool-button is-primary" type="button" @click="$router.push('/admin/articles/create')">
+        新建文章
+      </button>
     </div>
 
-    <div class="admin-toolbar">
-      <label class="filter-field">
-        <span>筛选状态</span>
-        <el-select v-model="status" class="status-filter" placeholder="全部状态" clearable @change="handleStatusChange">
-          <el-option label="全部状态" value="" />
-          <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
-        </el-select>
-      </label>
-      <label class="filter-field">
-        <span>筛选可见性</span>
-        <el-select
-          v-model="visibility"
-          class="visibility-filter"
-          placeholder="全部可见性"
-          clearable
-          @change="handleVisibilityChange"
-        >
-          <el-option label="全部可见性" value="" />
-          <el-option label="公开" value="public" />
-          <el-option label="仅自己可见" value="private" />
-        </el-select>
-      </label>
-    </div>
+    <section class="surface article-board" v-loading="loading">
+      <div class="filter-bar">
+        <div>
+          <span class="section-eyebrow">文章管理</span>
+          <div class="help-heading">
+            <h3>内容审核台</h3>
+            <span class="help-popover" :class="{ 'is-open': helpOpen }">
+              <button
+                class="help-trigger"
+                type="button"
+                aria-label="查看审核规则"
+                :aria-expanded="helpOpen"
+                @click="helpOpen = !helpOpen"
+              >
+                ?
+              </button>
+              <span class="help-card" role="tooltip">
+                通过后进入对应可见范围。驳回时必须填写原因，原因会同步回创作者工作台。
+              </span>
+            </span>
+          </div>
+        </div>
 
-    <el-table :data="articles" stripe class="admin-table">
-      <el-table-column prop="title" label="标题" min-width="200" />
-      <el-table-column prop="createdBy" label="作者" width="120" />
-      <el-table-column prop="status" label="状态" width="100">
-        <template #default="{ row }">
-          <el-tag :type="statusType(row.status)">
-            {{ statusText(row.status) }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="visibility" label="可见性" width="130">
-        <template #default="{ row }">
-          <el-tag :type="articleVisibilityType(row.visibility)" effect="plain">
-            {{ articleVisibilityText(row.visibility) }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="reviewReason" label="驳回原因" min-width="160">
-        <template #default="{ row }">{{ row.reviewReason || '-' }}</template>
-      </el-table-column>
-      <el-table-column prop="viewCount" label="阅读" width="80" />
-      <el-table-column label="时间" width="180">
-        <template #default="{ row }">{{ formatDate(row.createdAt) }}</template>
-      </el-table-column>
-      <el-table-column label="操作" width="280" fixed="right">
-        <template #default="{ row }">
-          <el-button size="small" :disabled="isBusy(row.id)" @click="$router.push(`/admin/articles/edit/${row.id}`)">
-            编辑
-          </el-button>
-          <el-button
-            v-if="row.status === 'pending'"
-            size="small"
-            type="success"
-            :loading="isBusy(row.id)"
-            :disabled="isBusy(row.id)"
-            @click="handleApprove(row.id)"
-          >
-            通过
-          </el-button>
-          <el-button
-            v-if="row.status === 'pending'"
-            size="small"
-            type="warning"
-            :loading="isBusy(row.id)"
-            :disabled="isBusy(row.id)"
-            @click="handleReject(row.id)"
-          >
-            驳回
-          </el-button>
-          <el-button
-            size="small"
-            type="danger"
-            :loading="isBusy(row.id)"
-            :disabled="isBusy(row.id)"
-            @click="handleDelete(row.id)"
-          >
-            删除
-          </el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+        <div class="filter-group" aria-label="筛选条件">
+          <label class="filter-field">
+            状态
+            <select v-model="status" class="status-filter" aria-label="状态" @change="handleFilterChange">
+              <option value="">全部状态</option>
+              <option v-for="item in statusOptions" :key="item.value" :value="item.value">
+                {{ item.label }}
+              </option>
+            </select>
+          </label>
+          <label class="filter-field">
+            可见性
+            <select v-model="visibility" class="visibility-filter" aria-label="可见性" @change="handleFilterChange">
+              <option value="">全部</option>
+              <option value="public">公开</option>
+              <option value="private">仅自己</option>
+            </select>
+          </label>
+          <label class="filter-field">
+            搜索
+            <input
+              v-model.trim="keyword"
+              aria-label="搜索文章"
+              placeholder="标题或摘要"
+              @keyup.enter="handleFilterChange"
+            >
+          </label>
+          <button class="tool-button filter-action" type="button" @click="handleFilterChange">筛选</button>
+        </div>
+      </div>
+
+      <div class="article-table-head">
+        <span>文章</span>
+        <span>状态</span>
+        <span>可见性</span>
+        <span>操作</span>
+      </div>
+
+      <div v-if="articles.length" class="article-list">
+        <article v-for="article in articles" :key="article.id" class="article-row">
+          <div>
+            <div class="article-title">{{ article.title }}</div>
+            <div class="row-meta">{{ articleMeta(article) }}</div>
+          </div>
+          <span class="article-state" :class="articleStatusClass(article.status)">
+            <span class="state-dot" aria-hidden="true"></span>
+            {{ statusText(article.status) }}
+          </span>
+          <span class="visibility-mark" :class="visibilityClass(article.visibility)">
+            <svg v-if="isPublicArticle(article.visibility)" class="visibility-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <svg v-else class="visibility-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="5" y="11" width="14" height="10" rx="2" />
+              <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+            </svg>
+            {{ visibilityText(article.visibility) }}
+          </span>
+          <div class="row-actions">
+            <button
+              class="row-action-button"
+              type="button"
+              :disabled="isBusy(article.id)"
+              @click="$router.push(`/admin/articles/edit/${article.id}`)"
+            >
+              编辑
+            </button>
+            <button
+              v-if="article.status === 'pending'"
+              class="row-action-button is-success"
+              type="button"
+              :disabled="isBusy(article.id)"
+              @click="handleApprove(article.id)"
+            >
+              通过
+            </button>
+            <button
+              v-if="article.status === 'pending'"
+              class="row-action-button is-warning"
+              type="button"
+              :disabled="isBusy(article.id)"
+              @click="handleReject(article.id)"
+            >
+              驳回
+            </button>
+            <button
+              class="row-action-button is-danger"
+              type="button"
+              :disabled="isBusy(article.id)"
+              @click="handleDelete(article.id)"
+            >
+              删除
+            </button>
+          </div>
+        </article>
+      </div>
+      <div v-else class="empty-state">暂无符合条件的文章</div>
+    </section>
 
     <el-pagination
       v-if="total > size"
@@ -103,17 +146,17 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { approveArticle, deleteAdminArticle, getAdminArticles, rejectArticle } from '../../api/article'
+import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { articleVisibilityText, articleVisibilityType } from '../../utils/articleVisibility'
+import { approveArticle, deleteAdminArticle, getAdminArticles, rejectArticle } from '../../api/article'
+import { articleVisibilityText, normalizeArticleVisibility } from '../../utils/articleVisibility'
 import { formatDate } from '../../utils'
 
 const statusMap = {
-  draft: { text: '草稿', type: 'info' },
-  pending: { text: '待审核', type: 'warning' },
-  published: { text: '已发布', type: 'success' },
-  rejected: { text: '已驳回', type: 'danger' },
+  draft: { text: '草稿', tone: 'neutral' },
+  pending: { text: '待审核', tone: 'warning' },
+  published: { text: '已发布', tone: 'success' },
+  rejected: { text: '已驳回', tone: 'danger' },
 }
 
 const statusOptions = Object.entries(statusMap).map(([value, item]) => ({
@@ -127,7 +170,10 @@ const size = ref(10)
 const total = ref(0)
 const status = ref('')
 const visibility = ref('')
+const keyword = ref('')
+const loading = ref(false)
 const busyIds = ref(new Set())
+const helpOpen = ref(false)
 
 onMounted(() => load())
 
@@ -135,8 +181,28 @@ function statusText(value) {
   return statusMap[value]?.text || value || '-'
 }
 
-function statusType(value) {
-  return statusMap[value]?.type || 'info'
+function articleStatusClass(value) {
+  const tone = statusMap[value]?.tone
+  return tone ? `is-${tone}` : ''
+}
+
+function visibilityText(value) {
+  return normalizeArticleVisibility(value) === 'private' ? '仅自己' : articleVisibilityText(value)
+}
+
+function visibilityClass(value) {
+  return normalizeArticleVisibility(value) === 'private' ? 'is-private' : 'is-public'
+}
+
+function isPublicArticle(value) {
+  return normalizeArticleVisibility(value) === 'public'
+}
+
+function articleMeta(article) {
+  const author = article.createdBy || '未知作者'
+  const time = formatDate(article.updatedAt || article.createdAt) || '暂无时间'
+  if (article.reviewReason) return `${author} / ${time} / 驳回原因：${article.reviewReason}`
+  return `${author} / ${time} / 阅读 ${article.viewCount || 0}`
 }
 
 function isBusy(id) {
@@ -154,20 +220,21 @@ function setBusy(id, busy) {
 }
 
 async function load() {
-  const params = { page: page.value, size: size.value }
-  if (status.value) params.status = status.value
-  if (visibility.value) params.visibility = visibility.value
-  const r = await getAdminArticles(params)
-  articles.value = r.data || []
-  total.value = r.total || 0
+  loading.value = true
+  try {
+    const params = { page: page.value, size: size.value }
+    if (status.value) params.status = status.value
+    if (visibility.value) params.visibility = visibility.value
+    if (keyword.value) params.keyword = keyword.value
+    const result = await getAdminArticles(params)
+    articles.value = result.data || []
+    total.value = result.total || 0
+  } finally {
+    loading.value = false
+  }
 }
 
-function handleStatusChange() {
-  page.value = 1
-  load()
-}
-
-function handleVisibilityChange() {
+function handleFilterChange() {
   page.value = 1
   load()
 }
@@ -193,10 +260,7 @@ async function handleReject(id) {
       cancelButtonText: '取消',
       inputType: 'textarea',
       inputPlaceholder: '驳回原因',
-      inputValidator: value => {
-        if (!value || !value.trim()) return false
-        return true
-      },
+      inputValidator: value => !!value?.trim(),
       inputErrorMessage: '驳回原因不能为空',
     })
     await rejectArticle(id, reason.value.trim())
@@ -214,7 +278,7 @@ async function handleDelete(id) {
   if (isBusy(id)) return
   setBusy(id, true)
   try {
-    await ElMessageBox.confirm('确定删除？', '提示')
+    await ElMessageBox.confirm('确定删除这篇文章？', '提示')
     await deleteAdminArticle(id)
     ElMessage.success('删除成功')
     await load()
@@ -228,28 +292,56 @@ async function handleDelete(id) {
 </script>
 
 <style scoped>
-.admin-toolbar {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  margin-top: 12px;
-}
-
-.filter-field {
+.articles-page {
   display: grid;
-  gap: 6px;
-  color: var(--muted-text-color);
-  font-size: 12px;
-  font-weight: 700;
+  gap: 16px;
 }
 
-.status-filter,
-.visibility-filter {
-  width: 160px;
+.article-list {
+  display: grid;
 }
 
-.admin-table,
-.admin-pagination {
-  margin-top: 16px;
+.filter-group {
+  align-items: flex-end;
+}
+
+.filter-action {
+  height: 34px;
+  min-height: 34px;
+  padding: 0 13px;
+  border-radius: var(--radius-sm);
+}
+
+.article-table-head,
+.article-row {
+  grid-template-columns: minmax(0, 1.45fr) 96px 96px max-content;
+}
+
+.article-table-head span:last-child {
+  justify-self: end;
+}
+
+.article-row .row-actions {
+  width: max-content;
+  justify-self: end;
+}
+
+.article-row .row-action-button {
+  width: 44px;
+}
+
+@media (max-width: 980px) {
+  .filter-group {
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .filter-action {
+    width: 100%;
+  }
+
+  .article-row .row-actions {
+    justify-self: start;
+  }
 }
 </style>
