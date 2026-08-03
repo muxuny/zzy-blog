@@ -32,3 +32,20 @@ test('admin users page consumes backend pagination', () => {
   assert.match(source, /本页/)
   assert.doesNotMatch(source, /getUsers\(\{\s*size:\s*100\s*\}\)/)
 })
+
+test('admin resources page pages tags and images separately', () => {
+  const source = read('views/admin/Resources.vue')
+
+  assert.match(source, /getAdminTags\(\{\s*page:\s*tagPage\.value,\s*size:\s*tagSize\.value\s*\}\)/)
+  assert.match(source, /getImages\(\{\s*page:\s*imagePage\.value,\s*size:\s*imageSize\.value\s*\}\)/)
+  assert.match(source, /tagTotal/)
+  assert.match(source, /imageTotal/)
+  assert.match(source, /class="resource-pagination"/)
+  assert.doesNotMatch(source, /getTags\(\)/)
+  assert.doesNotMatch(source, /size:\s*100/)
+})
+
+test('legacy admin tag and image pages are not kept as fixed-size list sources', () => {
+  assert.equal(fs.existsSync(path.resolve(srcRoot, 'views/admin/Tags.vue')), false)
+  assert.equal(fs.existsSync(path.resolve(srcRoot, 'views/admin/Images.vue')), false)
+})
