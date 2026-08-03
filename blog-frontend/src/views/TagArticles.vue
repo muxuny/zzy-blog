@@ -24,33 +24,109 @@
         </aside>
       </header>
 
-      <section v-if="articles.length" class="article-stream" aria-label="标签文章列表">
-        <ArticleCard v-for="article in articles" :key="article.id" :article="article" />
-      </section>
-      <el-empty v-else description="该标签下暂无文章" />
+      <el-skeleton v-if="loading" :rows="8" animated />
+      <template v-else>
+        <section v-if="articles.length" class="article-stream" aria-label="标签文章列表">
+          <ArticleCard v-for="article in articles" :key="article.id" :article="article" />
+        </section>
+        <el-empty v-else description="该标签下暂无文章" />
+
+        <div v-if="showPagination" class="pagination">
+          <el-pagination
+            v-model:current-page="page"
+            :total="total"
+            :page-size="size"
+            layout="prev,pager,next"
+            @current-change="handlePageChange"
+          />
+        </div>
+      </template>
     </main>
   </div>
 </template>
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getArticles } from '../api/article'
 import { getTags } from '../api/tag'
 import AppHeader from '../components/AppHeader.vue'
 import ArticleCard from '../components/ArticleCard.vue'
+import { normalizePageResult, shouldShowPagination } from '../utils/pagination'
+
 const route = useRoute()
 const articles = ref([])
-const tagName = computed(() => String(route.params.name || ''))
-const articleCountText = computed(() => articles.value.length ? `${articles.value.length} 篇` : '暂无')
+const page = ref(1)
+const size = ref(10)
+const total = ref(0)
+const loading = ref(false)
+const resolvedTagId = ref(null)
+let requestVersion = 0
 
-onMounted(async () => {
-  const tr = await getTags()
-  const tag = (tr.data || []).find(t => t.name === tagName.value)
-  if (tag) {
-    const r = await getArticles({ tagId: tag.id, size: 100 })
-    articles.value = r.data || []
+const tagName = computed(() => String(route.params.name || ''))
+const articleCountText = computed(() => total.value ? `${total.value} 篇` : '暂无')
+const showPagination = computed(() => shouldShowPagination(total.value, size.value))
+
+watch(
+  () => tagName.value,
+  () => {
+    page.value = 1
+    void resolveTagAndLoad()
+  },
+  { immediate: true }
+)
+
+async function resolveTagAndLoad() {
+  const requestId = ++requestVersion
+  loading.value = true
+  try {
+    const tagResult = await getTags()
+    if (requestId !== requestVersion) return
+    const tag = (tagResult.data || []).find(item => item.name === tagName.value)
+    resolvedTagId.value = tag?.id || null
+    if (!resolvedTagId.value) {
+      articles.value = []
+      total.value = 0
+      return
+    }
+    await loadArticles(requestId)
+  } finally {
+    if (requestId === requestVersion) loading.value = false
   }
-})
+}
+
+async function loadArticles(activeRequestId = ++requestVersion) {
+  if (!resolvedTagId.value) {
+    articles.value = []
+    total.value = 0
+    return
+  }
+
+  loading.value = true
+  try {
+    const result = await getArticles({
+      tagId: resolvedTagId.value,
+      page: page.value,
+      size: size.value
+    })
+    if (activeRequestId !== requestVersion) return
+    const pageResult = normalizePageResult(result, size.value)
+    const maxPage = Math.max(1, Math.ceil(pageResult.total / size.value))
+    if (page.value > maxPage) {
+      page.value = maxPage
+      await loadArticles(activeRequestId)
+      return
+    }
+    articles.value = pageResult.records
+    total.value = pageResult.total
+  } finally {
+    if (activeRequestId === requestVersion) loading.value = false
+  }
+}
+
+function handlePageChange(nextPage) {
+  page.value = nextPage
+  void loadArticles()
+}
 </script>
 <style scoped>
 .tag-shell {
@@ -150,6 +226,12 @@ onMounted(async () => {
 .article-stream {
   display: grid;
   gap: 12px;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 26px;
 }
 
 @media (max-width: 900px) {
