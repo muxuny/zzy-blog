@@ -49,3 +49,14 @@ test('legacy admin tag and image pages are not kept as fixed-size list sources',
   assert.equal(fs.existsSync(path.resolve(srcRoot, 'views/admin/Tags.vue')), false)
   assert.equal(fs.existsSync(path.resolve(srcRoot, 'views/admin/Images.vue')), false)
 })
+
+test('admin dashboard uses aggregate overview endpoint', () => {
+  const source = read('views/admin/Dashboard.vue')
+
+  assert.match(source, /getAdminDashboardOverview/)
+  assert.doesNotMatch(source, /getAdminArticles/)
+  assert.doesNotMatch(source, /getUsers/)
+  assert.doesNotMatch(source, /getTags/)
+  assert.doesNotMatch(source, /size:\s*200/)
+  assert.doesNotMatch(source, /size:\s*100/)
+})

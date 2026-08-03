@@ -139,9 +139,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { getAdminArticles } from '../../api/article'
-import { getTags } from '../../api/tag'
-import { getUsers } from '../../api/user'
+import { getAdminDashboardOverview } from '../../api/dashboard'
 import { buildDashboardStats } from '../../utils/dashboardStats'
 
 const router = useRouter()
@@ -170,22 +168,8 @@ async function loadDashboard() {
   loading.value = true
   loadError.value = ''
 
-  const [allArticles, pendingArticles, tags, users] = await Promise.all([
-    safeRequest(() => getAdminArticles({ page: 1, size: 200 })),
-    safeRequest(() => getAdminArticles({ page: 1, size: 5, status: 'pending' })),
-    safeRequest(() => getTags()),
-    safeRequest(() => getUsers({ page: 1, size: 100 }))
-  ])
-
-  stats.value = buildDashboardStats({
-    allArticles: allArticles?.data || [],
-    tags: tags?.data || [],
-    users: users?.data || []
-  })
-
-  if (pendingArticles?.data?.length) {
-    stats.value.pendingArticles = pendingArticles.data
-  }
+  const overview = await safeRequest(() => getAdminDashboardOverview())
+  stats.value = buildDashboardStats(overview?.data || {})
 
   loading.value = false
 }
