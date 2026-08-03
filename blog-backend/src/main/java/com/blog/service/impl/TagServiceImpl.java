@@ -1,8 +1,11 @@
 package com.blog.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.blog.common.BusinessException;
+import com.blog.common.PageQueryValidator;
 import com.blog.entity.Tag;
 import com.blog.mapper.TagMapper;
 import com.blog.service.TagService;
@@ -19,6 +22,15 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements TagSe
     @Override
     public List<Tag> getAllTags() {
         return list(new LambdaQueryWrapper<Tag>().orderByAsc(Tag::getName));
+    }
+
+    @Override
+    public IPage<Tag> getAdminPage(long page, long size) {
+        PageQueryValidator.validate(page, size);
+        return page(new Page<>(page, size),
+                new LambdaQueryWrapper<Tag>()
+                        .orderByDesc(Tag::getCreatedAt)
+                        .orderByDesc(Tag::getId));
     }
 
     @Override
