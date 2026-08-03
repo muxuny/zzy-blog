@@ -30,7 +30,7 @@
           </div>
         </div>
         <span class="chip" :class="{ 'is-warning': pendingCount > 0, 'is-success': pendingCount === 0 }">
-          {{ pendingCount }} 个待审核
+          本页 {{ pendingCount }} 个待审核
         </span>
       </div>
 
@@ -66,6 +66,16 @@
       </div>
       <div v-else class="empty-state">暂无用户</div>
     </section>
+
+    <el-pagination
+      v-if="showPagination"
+      v-model:current-page="page"
+      :total="total"
+      :page-size="size"
+      layout="prev,pager,next"
+      class="admin-pagination"
+      @current-change="handlePageChange"
+    />
   </div>
 </template>
 
@@ -73,12 +83,17 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { approveUser, disableUser, getUsers } from '../../api/user'
+import { normalizePageResult, shouldShowPagination } from '../../utils/pagination'
 
 const users = ref([])
+const page = ref(1)
+const size = ref(10)
+const total = ref(0)
 const loading = ref(false)
 const helpOpen = ref(false)
 
 const pendingCount = computed(() => users.value.filter(user => user.status === 'pending').length)
+const showPagination = computed(() => shouldShowPagination(total.value, size.value))
 
 onMounted(loadUsers)
 
@@ -103,11 +118,24 @@ function userStatusClass(status) {
 async function loadUsers() {
   loading.value = true
   try {
-    const result = await getUsers({ size: 100 })
-    users.value = result.data || []
+    const result = await getUsers({ page: page.value, size: size.value })
+    const pageResult = normalizePageResult(result, size.value)
+    const maxPage = Math.max(1, Math.ceil(pageResult.total / size.value))
+    if (page.value > maxPage) {
+      page.value = maxPage
+      await loadUsers()
+      return
+    }
+    users.value = pageResult.records
+    total.value = pageResult.total
   } finally {
     loading.value = false
   }
+}
+
+function handlePageChange(nextPage) {
+  page.value = nextPage
+  void loadUsers()
 }
 
 async function handleApprove(id) {

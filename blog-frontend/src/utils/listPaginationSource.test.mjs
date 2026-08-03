@@ -22,3 +22,13 @@ test('tag article page uses paged article requests and total count', () => {
   assert.match(source, /size:\s*size\.value/)
   assert.doesNotMatch(source, /size:\s*100/)
 })
+
+test('admin users page consumes backend pagination', () => {
+  const source = read('views/admin/Users.vue')
+
+  assert.match(source, /getUsers\(\{\s*page:\s*page\.value,\s*size:\s*size\.value\s*\}\)/)
+  assert.match(source, /total\s*=\s*ref\(0\)/)
+  assert.match(source, /class="admin-pagination"/)
+  assert.match(source, /本页/)
+  assert.doesNotMatch(source, /getUsers\(\{\s*size:\s*100\s*\}\)/)
+})
