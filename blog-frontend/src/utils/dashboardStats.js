@@ -9,34 +9,30 @@ function list(value) {
   return Array.isArray(value) ? value : []
 }
 
+function number(value) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+}
+
 function percent(count, total) {
   if (!total) return 0
   return Math.round((count / total) * 100)
 }
 
-function isPrivateArticle(article) {
-  return article?.visibility === 'private'
-}
-
-function isPublicPublishedArticle(article) {
-  return article?.status === 'published' && !isPrivateArticle(article)
-}
-
-function isPrivatePublishedArticle(article) {
-  return article?.status === 'published' && isPrivateArticle(article)
+function metric(metrics, key, fallback = 0) {
+  if (Object.prototype.hasOwnProperty.call(metrics, key)) return number(metrics[key])
+  return fallback
 }
 
 export function buildDashboardStats(payload = {}) {
-  const allArticles = list(payload.allArticles)
-  const tags = list(payload.tags)
-  const users = list(payload.users)
-  const pendingUsers = users.filter(user => user.status === 'pending')
-  const totalArticles = allArticles.length
-  const publicPublishedArticles = allArticles.filter(isPublicPublishedArticle).length
-  const privateArticles = allArticles.filter(isPrivatePublishedArticle).length
+  const metricsSource = payload.metrics || {}
+  const statusItems = list(payload.articleStatus)
+  const statusByKey = new Map(statusItems.map(item => [item.key, item]))
+  const totalArticles = metric(metricsSource, 'totalArticles')
 
   const articleStatus = ARTICLE_STATUS.map(item => {
-    const count = allArticles.filter(article => article.status === item.key).length
+    const backendItem = statusByKey.get(item.key) || {}
+    const count = metric(metricsSource, `${item.key}Articles`, number(backendItem.count))
     return {
       ...item,
       count,
@@ -44,25 +40,34 @@ export function buildDashboardStats(payload = {}) {
     }
   })
 
-  const pendingArticles = allArticles
-    .filter(article => article.status === 'pending')
-    .slice(0, 5)
+  const publishedArticles = metric(
+    metricsSource,
+    'publishedArticles',
+    articleStatus.find(item => item.key === 'published')?.count || 0
+  )
+  const pendingArticles = metric(
+    metricsSource,
+    'pendingArticles',
+    articleStatus.find(item => item.key === 'pending')?.count || 0
+  )
+  const tagSummary = payload.tagSummary || {}
+  const tagItems = list(tagSummary.items).slice(0, 12)
 
   return {
     metrics: {
       totalArticles,
-      publishedArticles: articleStatus.find(item => item.key === 'published')?.count || 0,
-      publicPublishedArticles,
-      privateArticles,
-      pendingArticles: articleStatus.find(item => item.key === 'pending')?.count || 0,
-      pendingUsers: pendingUsers.length
+      publishedArticles,
+      publicPublishedArticles: metric(metricsSource, 'publicPublishedArticles'),
+      privateArticles: metric(metricsSource, 'privateArticles'),
+      pendingArticles,
+      pendingUsers: metric(metricsSource, 'pendingUsers')
     },
     articleStatus,
-    pendingArticles,
-    pendingUsers: pendingUsers.slice(0, 5),
+    pendingArticles: list(payload.pendingArticles).slice(0, 5),
+    pendingUsers: list(payload.pendingUsers).slice(0, 5),
     tagSummary: {
-      total: tags.length,
-      items: tags.slice(0, 12)
+      total: Object.prototype.hasOwnProperty.call(tagSummary, 'total') ? number(tagSummary.total) : tagItems.length,
+      items: tagItems
     }
   }
 }
