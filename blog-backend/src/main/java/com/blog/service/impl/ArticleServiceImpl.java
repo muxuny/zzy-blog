@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.blog.common.ArticleStatus;
 import com.blog.common.ArticleVisibility;
 import com.blog.common.BusinessException;
+import com.blog.common.PageQueryValidator;
 import com.blog.dto.ArticleNeighbors;
 import com.blog.dto.ArticlePageQuery;
 import com.blog.dto.ArticleRequest;
@@ -63,6 +64,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     // 公开阅读侧：只返回已发布且公开可见的文章。
     @Override
     public IPage<Article> getPublicPage(ArticlePageQuery query) {
+        PageQueryValidator.validate(query.getPage(), query.getSize());
         Page<Article> page = new Page<>(query.getPage(), query.getSize());
         LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<Article>()
                 .eq(Article::getStatus, ArticleStatus.PUBLISHED)
@@ -165,6 +167,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
     // 创作者侧：只允许作者操作自己的文章，同时保留草稿、审核和可见性状态。
     @Override
     public IPage<Article> getMyPage(ArticlePageQuery query, String username) {
+        PageQueryValidator.validate(query.getPage(), query.getSize());
         Page<Article> page = new Page<>(query.getPage(), query.getSize());
         Collection<Long> includeArticleIds = null;
         Collection<Long> excludeArticleIds = null;
@@ -376,6 +379,7 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
 
     @Override
     public IPage<Article> getAdminPage(ArticlePageQuery query) {
+        PageQueryValidator.validate(query.getPage(), query.getSize());
         Page<Article> page = new Page<>(query.getPage(), query.getSize());
         LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<Article>()
                 .orderByDesc(Article::getCreatedAt);

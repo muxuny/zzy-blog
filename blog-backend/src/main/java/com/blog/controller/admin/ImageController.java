@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.blog.common.PageResult;
+import com.blog.common.PageQueryValidator;
 import com.blog.common.Result;
 import com.blog.entity.Image;
 import com.blog.service.ImageService;
@@ -44,6 +45,7 @@ public class ImageController {
     @PreAuthorize("hasRole('ADMIN')")
     public PageResult<Image> list(@RequestParam(defaultValue = "1") long page,
                                    @RequestParam(defaultValue = "20") long size) {
+        PageQueryValidator.validate(page, size);
         IPage<Image> result = imageService.page(new Page<>(page, size),
                 new LambdaQueryWrapper<Image>().orderByDesc(Image::getCreatedAt));
         return PageResult.success(result);

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.blog.common.PageResult;
+import com.blog.common.PageQueryValidator;
 import com.blog.common.Result;
 import com.blog.entity.User;
 import com.blog.service.UserService;
@@ -27,6 +28,7 @@ public class AdminUserController {
     @GetMapping
     public PageResult<User> list(@RequestParam(defaultValue = "1") long page,
                                   @RequestParam(defaultValue = "10") long size) {
+        PageQueryValidator.validate(page, size);
         IPage<User> result = userService.page(new Page<>(page, size),
                 new LambdaQueryWrapper<User>().orderByDesc(User::getCreatedAt));
         result.getRecords().forEach(u -> u.setPassword(null));
