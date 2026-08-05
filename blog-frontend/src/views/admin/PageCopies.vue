@@ -271,6 +271,7 @@ async function resetAll() {
 
 .page-copy-grid {
   display: grid;
+  align-items: start;
   grid-template-columns: minmax(240px, 0.82fr) minmax(340px, 1.12fr) minmax(280px, 0.92fr);
   gap: 14px;
   min-width: 0;
@@ -282,7 +283,31 @@ async function resetAll() {
   min-width: 0;
 }
 
-.copy-groups,
+.copy-list-panel {
+  position: sticky;
+  top: 24px;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 220px);
+  overflow: hidden;
+}
+
+.copy-editor-panel,
+.copy-preview-panel {
+  position: sticky;
+  top: 24px;
+}
+
+.copy-groups {
+  display: grid;
+  gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+  scrollbar-gutter: stable;
+}
+
 .copy-group {
   display: grid;
   gap: 8px;
@@ -376,6 +401,18 @@ async function resetAll() {
   .page-copy-summary,
   .page-copy-grid {
     grid-template-columns: 1fr;
+  }
+
+  .copy-list-panel,
+  .copy-editor-panel,
+  .copy-preview-panel {
+    position: static;
+    max-height: none;
+  }
+
+  .copy-groups {
+    overflow: visible;
+    padding-right: 0;
   }
 }
 

@@ -48,6 +48,17 @@ test('admin page copy view follows the prototype editing structure', () => {
   assert.match(source, /保存这一页/)
 })
 
+test('admin page copy view keeps long page list scrollable beside editor and preview', () => {
+  const source = read('../views/admin/PageCopies.vue')
+
+  assert.match(source, /\.page-copy-grid\s*\{[\s\S]*align-items:\s*start;/)
+  assert.match(source, /\.copy-list-panel\s*\{[\s\S]*position:\s*sticky;[\s\S]*max-height:\s*calc\(100vh/)
+  assert.match(source, /\.copy-groups\s*\{[\s\S]*overflow-y:\s*auto;/)
+  assert.match(source, /\.copy-editor-panel,\s*\n\.copy-preview-panel\s*\{[\s\S]*position:\s*sticky;/)
+  assert.match(source, /@media \(max-width:\s*1180px\)\s*\{[\s\S]*\.copy-list-panel,[\s\S]*\.copy-preview-panel\s*\{[\s\S]*position:\s*static;/)
+  assert.match(source, /@media \(max-width:\s*1180px\)\s*\{[\s\S]*\.copy-groups\s*\{[\s\S]*overflow:\s*visible;/)
+})
+
 test('page copy store falls back quietly while admin config page can surface load errors', () => {
   const store = read('../stores/pageCopy.js')
   const view = read('../views/admin/PageCopies.vue')
