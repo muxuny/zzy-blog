@@ -1,8 +1,8 @@
 -- ============================================================
 -- 博客系统数据库初始化脚本（当前项目版）
 --
--- 当前后端代码使用以下 9 张表：
--- user、article、article_favorite、article_reading_history、article_group、tag、article_tag、article_group_relation、image
+-- 当前后端代码使用以下 10 张表：
+-- user、article、article_favorite、article_reading_history、article_group、tag、article_tag、article_group_relation、image、page_copy
 --
 -- 历史表 comment、category 当前没有后端实体、Mapper、接口或前端入口，
 -- 本脚本不再创建，后续开发评论/分类功能时再新增。
@@ -186,6 +186,30 @@ CREATE TABLE `image` (
     UNIQUE KEY `uk_image_filename` (`filename`),
     KEY `idx_image_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='图片表';
+
+-- ============================================================
+-- 页面文案配置表
+-- 页面级 eyebrow/title/description 配置，前端保留本地默认文案作为失败回退。
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `page_copy` (
+    `id` BIGINT NOT NULL COMMENT '雪花ID',
+    `copy_key` VARCHAR(80) NOT NULL COMMENT '页面文案标识',
+    `page_name` VARCHAR(80) NOT NULL COMMENT '页面名称',
+    `page_group` VARCHAR(50) NOT NULL COMMENT '页面分区',
+    `eyebrow` VARCHAR(80) NOT NULL DEFAULT '' COMMENT '页面眉标',
+    `title` VARCHAR(160) NOT NULL COMMENT '页面主标题',
+    `description` VARCHAR(500) NOT NULL DEFAULT '' COMMENT '页面描述',
+    `sort_order` INT NOT NULL DEFAULT 0 COMMENT '排序值',
+    `created_by` VARCHAR(50) DEFAULT NULL COMMENT '创建人',
+    `created_at` DATETIME DEFAULT NULL COMMENT '创建时间',
+    `updated_by` VARCHAR(50) DEFAULT NULL COMMENT '更新人',
+    `updated_at` DATETIME DEFAULT NULL COMMENT '更新时间',
+    `deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删除，1已删除',
+    `version` INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_page_copy_key` (`copy_key`),
+    KEY `idx_page_copy_deleted_sort` (`deleted`, `sort_order`, `id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='页面文案配置表';
 
 CREATE TABLE IF NOT EXISTS `article_favorite` (
     `id` BIGINT NOT NULL COMMENT '雪花ID',

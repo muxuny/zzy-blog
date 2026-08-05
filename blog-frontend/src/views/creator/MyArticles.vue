@@ -4,9 +4,9 @@
     <el-main class="main creator-shell">
       <header class="page-head">
         <div class="head-copy">
-          <span class="eyebrow">Creator console</span>
-          <h1>创作空间保留控制台感，但触感更轻。</h1>
-          <p>创作者最需要效率，所以动态只用于聚焦当前行、状态筛选和预览反馈。它应该让后台工作更顺手，而不是更花。</p>
+          <span class="eyebrow">{{ pageCopy.eyebrow }}</span>
+          <h1>{{ pageCopy.title }}</h1>
+          <p v-if="pageCopy.description">{{ pageCopy.description }}</p>
         </div>
         <aside class="head-meta" aria-label="创作摘要">
           <div class="meta-line">
@@ -253,7 +253,9 @@ import {
   parseGroupFilterKey
 } from '../../utils/articleGroups'
 import { formatDate } from '../../utils'
+import { usePageCopyStore } from '../../stores/pageCopy'
 
+const pageCopyStore = usePageCopyStore()
 const articles = ref([])
 const articleGroups = ref([])
 const loading = ref(false)
@@ -315,8 +317,10 @@ const displayedArticles = computed(() => {
 
   return articles.value.filter(article => articleSearchText(article).includes(query))
 })
+const pageCopy = computed(() => pageCopyStore.resolveCopy('creator.articles'))
 
 onMounted(() => {
+  void pageCopyStore.loadPublicCopies()
   loadGroups()
   load()
 })

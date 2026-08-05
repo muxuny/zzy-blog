@@ -4,11 +4,9 @@
     <main class="reading-main" :aria-busy="loading">
       <header class="page-head">
         <div class="head-copy">
-          <span class="eyebrow">Reading desk</span>
-          <h1>我的阅读更像一个安静的续接台。</h1>
-          <p>
-            这里不负责发现热门内容，只负责把读者和自己的阅读轨迹接起来。轻微动态集中在继续阅读和历史焦点上。
-          </p>
+          <span class="eyebrow">{{ pageCopy.eyebrow }}</span>
+          <h1>{{ pageCopy.title }}</h1>
+          <p v-if="pageCopy.description">{{ pageCopy.description }}</p>
         </div>
         <aside class="head-meta" aria-label="阅读摘要">
           <div class="meta-line">
@@ -306,12 +304,14 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
 import AppHeader from '../components/AppHeader.vue'
 import { getReadingOverview } from '../api/reading'
 import { formatReadingOverviewTime, formatReadingProgress, formatReadingTime } from '../utils/readingHistory'
+import { usePageCopyStore } from '../stores/pageCopy'
 
+const pageCopyStore = usePageCopyStore()
 const overview = ref({
   lastRead: null,
   recentHistory: [],
@@ -345,8 +345,10 @@ const cursor = {
   x: 0,
   y: 0
 }
+const pageCopy = computed(() => pageCopyStore.resolveCopy('reading.overview'))
 
 onMounted(() => {
+  void pageCopyStore.loadPublicCopies()
   void load()
   signalAnimationFrame = window.requestAnimationFrame(drawSignalCanvas)
 })

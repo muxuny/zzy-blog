@@ -280,6 +280,51 @@ class DatabaseConfigTest {
     }
 
     @Test
+    void pageCopySchemaIncludesConfigAndCommonFields() throws IOException {
+        String migration = readString(Paths.get(
+                "src/main/resources/db/migration/2026-08-05-新增页面文案配置.sql"));
+        String initSql = readString(Paths.get("src/main/resources/db/init.sql"));
+        String migrationDefinition = normalizeSql(extractPageCopyTableDefinition(migration, "migration"));
+        String initDefinition = normalizeSql(extractPageCopyTableDefinition(initSql, "init.sql"));
+
+        for (String columnDefinition : Arrays.asList(
+                "`id` bigint not null comment '雪花id',",
+                "`copy_key` varchar(80) not null comment '页面文案标识',",
+                "`page_name` varchar(80) not null comment '页面名称',",
+                "`page_group` varchar(50) not null comment '页面分区',",
+                "`eyebrow` varchar(80) not null default '' comment '页面眉标',",
+                "`title` varchar(160) not null comment '页面主标题',",
+                "`description` varchar(500) not null default '' comment '页面描述',",
+                "`sort_order` int not null default 0 comment '排序值',",
+                "`created_by` varchar(50) default null comment '创建人',",
+                "`created_at` datetime default null comment '创建时间',",
+                "`updated_by` varchar(50) default null comment '更新人',",
+                "`updated_at` datetime default null comment '更新时间',",
+                "`deleted` tinyint(1) not null default 0 comment '逻辑删除：0未删除，1已删除',",
+                "`version` int not null default 0 comment '乐观锁版本号',")) {
+            assertTrue(migrationDefinition.contains(columnDefinition),
+                    "Missing page_copy migration column definition " + columnDefinition);
+            assertTrue(initDefinition.contains(columnDefinition),
+                    "Missing page_copy init column definition " + columnDefinition);
+        }
+        assertTrue(migrationDefinition.contains("primary key (`id`)"));
+        assertTrue(initDefinition.contains("primary key (`id`)"));
+        assertTrue(migrationDefinition.contains("unique key `uk_page_copy_key` (`copy_key`)"));
+        assertTrue(initDefinition.contains("unique key `uk_page_copy_key` (`copy_key`)"));
+        assertTrue(migrationDefinition.contains(
+                "key `idx_page_copy_deleted_sort` (`deleted`, `sort_order`, `id`)"));
+        assertTrue(initDefinition.contains(
+                "key `idx_page_copy_deleted_sort` (`deleted`, `sort_order`, `id`)"));
+
+        String normalizedMigration = normalizeSql(migration);
+        assertEquals(migrationDefinition, normalizedMigration,
+                "Page copy migration must contain only its CREATE TABLE statement");
+        assertTrue(!normalizedMigration.contains("drop "));
+        assertTrue(!normalizedMigration.contains("delete from"));
+        assertTrue(!normalizedMigration.contains("truncate "));
+    }
+
+    @Test
     void readingHistoryInitSchemaIncludesPositionFieldsWithoutAuditReuse() throws IOException {
         String initSql = readString(Paths.get("src/main/resources/db/init.sql"));
         String initDefinition = normalizeSql(extractReadingHistoryTableDefinition(initSql, "init.sql"));
@@ -435,6 +480,17 @@ class DatabaseConfigTest {
         Matcher matcher = pattern.matcher(sql);
         assertTrue(matcher.find(),
                 "Expected to find complete article_reading_history CREATE TABLE block in " + source);
+        return matcher.group();
+    }
+
+    private static String extractPageCopyTableDefinition(String sql, String source) {
+        Pattern pattern = Pattern.compile(
+                "CREATE\\s+TABLE\\s+IF\\s+NOT\\s+EXISTS\\s+`page_copy`\\s*"
+                        + "\\(.*?\\)\\s*ENGINE\\s*=\\s*InnoDB\\s+DEFAULT\\s+CHARSET\\s*=\\s*utf8mb4\\s+"
+                        + "COLLATE\\s*=\\s*utf8mb4_unicode_ci\\s+COMMENT\\s*=\\s*'页面文案配置表'\\s*;",
+                Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+        Matcher matcher = pattern.matcher(sql);
+        assertTrue(matcher.find(), "Expected to find complete page_copy CREATE TABLE block in " + source);
         return matcher.group();
     }
 

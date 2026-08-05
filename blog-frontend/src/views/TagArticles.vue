@@ -4,9 +4,9 @@
     <main class="tag-shell">
       <header class="page-head">
         <div class="head-copy">
-          <span class="eyebrow">话题索引</span>
-          <h1>{{ tagName }}</h1>
-          <p>按标签收束后的文章流，只保留同一话题下的公开记录。</p>
+          <span class="eyebrow">{{ pageCopy.eyebrow }}</span>
+          <h1>{{ pageCopy.title }}</h1>
+          <p v-if="pageCopy.description">{{ pageCopy.description }}</p>
         </div>
         <aside class="head-meta" aria-label="标签文章摘要">
           <div class="meta-line">
@@ -52,8 +52,10 @@ import { getTags } from '../api/tag'
 import AppHeader from '../components/AppHeader.vue'
 import ArticleCard from '../components/ArticleCard.vue'
 import { normalizePageResult, shouldShowPagination } from '../utils/pagination'
+import { usePageCopyStore } from '../stores/pageCopy'
 
 const route = useRoute()
+const pageCopyStore = usePageCopyStore()
 const articles = ref([])
 const page = ref(1)
 const size = ref(10)
@@ -63,8 +65,11 @@ const resolvedTagId = ref(null)
 let requestVersion = 0
 
 const tagName = computed(() => String(route.params.name || ''))
+const pageCopy = computed(() => pageCopyStore.resolveCopy('tag.index', { tagName: tagName.value }))
 const articleCountText = computed(() => total.value ? `${total.value} 篇` : '暂无')
 const showPagination = computed(() => shouldShowPagination(total.value, size.value))
+
+void pageCopyStore.loadPublicCopies()
 
 watch(
   () => tagName.value,

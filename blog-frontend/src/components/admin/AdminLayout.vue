@@ -38,6 +38,15 @@
           </RouterLink>
           <RouterLink
             class="nav-item"
+            :class="{ 'is-active': isPathActive('/admin/page-copies') }"
+            to="/admin/page-copies"
+          >
+            <span class="nav-icon">T</span>
+            <span>页面文案</span>
+            <span class="nav-badge">配置</span>
+          </RouterLink>
+          <RouterLink
+            class="nav-item"
             :class="{ 'is-active': isPathActive('/admin/users') }"
             to="/admin/users"
           >

@@ -2,8 +2,9 @@
   <div class="users-page">
     <div class="page-head">
       <div>
-        <span class="page-eyebrow">账号审核</span>
-        <h2>用户管理</h2>
+        <span class="page-eyebrow">{{ pageCopy.eyebrow }}</span>
+        <h2>{{ pageCopy.title }}</h2>
+        <p v-if="pageCopy.description" class="page-description">{{ pageCopy.description }}</p>
       </div>
     </div>
 
@@ -84,7 +85,9 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { approveUser, disableUser, getUsers } from '../../api/user'
 import { normalizePageResult, shouldShowPagination } from '../../utils/pagination'
+import { usePageCopyStore } from '../../stores/pageCopy'
 
+const pageCopyStore = usePageCopyStore()
 const users = ref([])
 const page = ref(1)
 const size = ref(10)
@@ -94,8 +97,12 @@ const helpOpen = ref(false)
 
 const pendingCount = computed(() => users.value.filter(user => user.status === 'pending').length)
 const showPagination = computed(() => shouldShowPagination(total.value, size.value))
+const pageCopy = computed(() => pageCopyStore.resolveCopy('admin.users'))
 
-onMounted(loadUsers)
+onMounted(() => {
+  void pageCopyStore.loadAdminCopies()
+  loadUsers()
+})
 
 function isAdminUser(user) {
   return user.role?.toLowerCase() === 'admin'

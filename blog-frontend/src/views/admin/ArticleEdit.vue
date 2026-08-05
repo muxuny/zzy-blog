@@ -2,8 +2,9 @@
   <div class="article-editor-page">
     <div class="page-head">
       <div>
-        <span class="page-eyebrow">{{ pageEyebrow }}</span>
-        <h2>{{ pageTitle }}</h2>
+        <span class="page-eyebrow">{{ pageCopy.eyebrow }}</span>
+        <h2>{{ pageCopy.title }}</h2>
+        <p v-if="pageCopy.description" class="page-description">{{ pageCopy.description }}</p>
       </div>
       <button class="tool-button" type="button" :disabled="!!savingStatus" @click="$router.back()">返回</button>
     </div>
@@ -103,9 +104,11 @@ import ArticleEditor from '../../components/admin/ArticleEditor.vue'
 import ImageUploader from '../../components/admin/ImageUploader.vue'
 import { articleVisibilityText, normalizeArticleVisibility } from '../../utils/articleVisibility'
 import { normalizeArticleMarkdown } from '../../utils/reading'
+import { usePageCopyStore } from '../../stores/pageCopy'
 
 const route = useRoute()
 const router = useRouter()
+const pageCopyStore = usePageCopyStore()
 const isEdit = computed(() => !!route.params.id)
 const tags = ref([])
 const savingStatus = ref('')
@@ -119,11 +122,13 @@ const form = reactive({
   tagIds: []
 })
 
-const pageEyebrow = computed(() => (isEdit.value ? '内容编辑' : '内容创建'))
-const pageTitle = computed(() => (isEdit.value ? '编辑文章' : '写文章'))
+const pageCopy = computed(() => pageCopyStore.resolveCopy(
+  isEdit.value ? 'admin.article.edit' : 'admin.article.create'
+))
 const visibilityLabel = computed(() => articleVisibilityText(form.visibility))
 
 onMounted(async () => {
+  void pageCopyStore.loadAdminCopies()
   const tagResult = await getTags()
   tags.value = tagResult.data || []
   if (isEdit.value) {

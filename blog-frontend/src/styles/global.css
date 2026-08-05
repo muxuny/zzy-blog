@@ -292,6 +292,14 @@ select {
   line-height: 1.05;
 }
 
+.admin-page-body .page-description {
+  max-width: 620px;
+  margin: 8px 0 0;
+  color: var(--muted-text-color);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
 .admin-page-body .surface,
 .admin-page-body .signal-primary,
 .admin-page-body .signal-stat,

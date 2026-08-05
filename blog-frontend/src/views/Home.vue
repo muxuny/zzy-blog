@@ -4,11 +4,9 @@
     <main class="home-shell">
       <section class="index-hero">
         <div class="hero-copy-block">
-          <span class="eyebrow">个人写作库</span>
-          <h1>把项目经验写成可以回看的路标。</h1>
-          <p class="hero-description">
-            这里记录开发实践、阅读笔记和阶段性思考。文章不追求热闹，更关心一个问题从出现到解决的过程。
-          </p>
+          <span class="eyebrow">{{ pageCopy.eyebrow }}</span>
+          <h1>{{ pageCopy.title }}</h1>
+          <p v-if="pageCopy.description" class="hero-description">{{ pageCopy.description }}</p>
         </div>
 
         <aside class="signal-panel" aria-label="近 7 天更新">
@@ -196,9 +194,11 @@ import { getArticles } from '../api/article'
 import { getTags } from '../api/tag'
 import { formatDate, truncate } from '../utils'
 import { buildContentSignal } from '../utils/contentSignal'
+import { usePageCopyStore } from '../stores/pageCopy'
 import AppHeader from '../components/AppHeader.vue'
 
 const router = useRouter()
+const pageCopyStore = usePageCopyStore()
 const articles = ref([])
 const tags = ref([])
 const page = ref(1)
@@ -219,6 +219,7 @@ const contentSignal = computed(() => buildContentSignal({
   articles: articles.value,
   topTags: topTags.value
 }))
+const pageCopy = computed(() => pageCopyStore.resolveCopy('home.hero'))
 const articleSectionTitle = computed(() => (activeTagName.value || keyword.value ? '筛选结果' : '最近记录'))
 const articleSectionSubtitle = computed(() => {
   if (keyword.value) return `正在查找与“${keyword.value}”有关的文章`
@@ -230,6 +231,8 @@ const emptyDescription = computed(() => {
   if (activeTagName.value) return '这个话题下还没有公开文章'
   return '还没有公开文章'
 })
+
+void pageCopyStore.loadPublicCopies()
 
 onMounted(async () => {
   const r = await getTags()

@@ -2,8 +2,9 @@
   <div class="dashboard-page">
     <div class="page-head">
       <div>
-        <span class="page-eyebrow">概览</span>
-        <h2>仪表盘</h2>
+        <span class="page-eyebrow">{{ pageCopy.eyebrow }}</span>
+        <h2>{{ pageCopy.title }}</h2>
+        <p v-if="pageCopy.description" class="page-description">{{ pageCopy.description }}</p>
       </div>
       <button class="tool-button" type="button" :disabled="loading" @click="loadDashboard">
         {{ loading ? '刷新中' : '刷新' }}
@@ -141,8 +142,10 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getAdminDashboardOverview } from '../../api/dashboard'
 import { buildDashboardStats } from '../../utils/dashboardStats'
+import { usePageCopyStore } from '../../stores/pageCopy'
 
 const router = useRouter()
+const pageCopyStore = usePageCopyStore()
 const loading = ref(true)
 const loadError = ref('')
 const stats = ref(buildDashboardStats())
@@ -154,6 +157,7 @@ const quickStats = computed(() => [
 ])
 
 const hasWork = computed(() => stats.value.pendingArticles.length > 0 || stats.value.pendingUsers.length > 0)
+const pageCopy = computed(() => pageCopyStore.resolveCopy('admin.dashboard'))
 
 async function safeRequest(task) {
   try {
@@ -188,7 +192,10 @@ function goUsers() {
   router.push('/admin/users')
 }
 
-onMounted(loadDashboard)
+onMounted(() => {
+  void pageCopyStore.loadAdminCopies()
+  loadDashboard()
+})
 </script>
 
 <style scoped>

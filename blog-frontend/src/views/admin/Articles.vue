@@ -2,8 +2,9 @@
   <div class="articles-page">
     <div class="page-head">
       <div>
-        <span class="page-eyebrow">内容审核</span>
-        <h2>文章管理</h2>
+        <span class="page-eyebrow">{{ pageCopy.eyebrow }}</span>
+        <h2>{{ pageCopy.title }}</h2>
+        <p v-if="pageCopy.description" class="page-description">{{ pageCopy.description }}</p>
       </div>
       <button class="tool-button is-primary" type="button" @click="$router.push('/admin/articles/create')">
         新建文章
@@ -146,11 +147,12 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { approveArticle, deleteAdminArticle, getAdminArticles, rejectArticle } from '../../api/article'
 import { articleVisibilityText, normalizeArticleVisibility } from '../../utils/articleVisibility'
 import { formatDate } from '../../utils'
+import { usePageCopyStore } from '../../stores/pageCopy'
 
 const statusMap = {
   draft: { text: '草稿', tone: 'neutral' },
@@ -164,6 +166,7 @@ const statusOptions = Object.entries(statusMap).map(([value, item]) => ({
   label: item.text,
 }))
 
+const pageCopyStore = usePageCopyStore()
 const articles = ref([])
 const page = ref(1)
 const size = ref(10)
@@ -174,8 +177,12 @@ const keyword = ref('')
 const loading = ref(false)
 const busyIds = ref(new Set())
 const helpOpen = ref(false)
+const pageCopy = computed(() => pageCopyStore.resolveCopy('admin.articles'))
 
-onMounted(() => load())
+onMounted(() => {
+  void pageCopyStore.loadAdminCopies()
+  load()
+})
 
 function statusText(value) {
   return statusMap[value]?.text || value || '-'

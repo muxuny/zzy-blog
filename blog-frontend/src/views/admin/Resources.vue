@@ -2,8 +2,9 @@
   <div class="resources-page">
     <div class="page-head">
       <div>
-        <span class="page-eyebrow">内容资源</span>
-        <h2>资源管理</h2>
+        <span class="page-eyebrow">{{ pageCopy.eyebrow }}</span>
+        <h2>{{ pageCopy.title }}</h2>
+        <p v-if="pageCopy.description" class="page-description">{{ pageCopy.description }}</p>
       </div>
     </div>
 
@@ -121,7 +122,9 @@ import {
   normalizePageResult,
   shouldShowPagination
 } from '../../utils/pagination'
+import { usePageCopyStore } from '../../stores/pageCopy'
 
+const pageCopyStore = usePageCopyStore()
 const tags = ref([])
 const images = ref([])
 const tagPage = ref(1)
@@ -144,8 +147,12 @@ const recentUploadCount = computed(() => {
     return Number.isFinite(time) && time >= sevenDaysAgo
   }).length
 })
+const pageCopy = computed(() => pageCopyStore.resolveCopy('admin.resources'))
 
-onMounted(loadResources)
+onMounted(() => {
+  void pageCopyStore.loadAdminCopies()
+  loadResources()
+})
 
 async function loadResources() {
   await Promise.all([loadTags(), loadImages()])

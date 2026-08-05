@@ -60,6 +60,7 @@ const routes = [
       { path: 'articles/create', component: () => import('../views/admin/ArticleEdit.vue') },
       { path: 'articles/edit/:id', component: () => import('../views/admin/ArticleEdit.vue') },
       { path: 'resources', component: () => import('../views/admin/Resources.vue') },
+      { path: 'page-copies', component: () => import('../views/admin/PageCopies.vue') },
       { path: 'tags', redirect: '/admin/resources' },
       { path: 'images', redirect: '/admin/resources' },
       { path: 'users', component: () => import('../views/admin/Users.vue') },
