@@ -49,11 +49,12 @@
             v-model="groupFilter"
             class="copy-group-filter"
             size="small"
+            placeholder="全部页面"
             aria-label="页面分区筛选"
           >
             <el-option
               v-for="option in groupFilterOptions"
-              :key="option.value || 'all'"
+              :key="option.value"
               :label="option.label"
               :value="option.value"
             />
@@ -143,7 +144,8 @@ import { PAGE_COPY_GROUPS, resolvePageCopy } from '../../utils/pageCopy'
 
 const pageCopyStore = usePageCopyStore()
 const selectedKey = ref('home.hero')
-const groupFilter = ref('')
+const ALL_PAGE_COPY_GROUP = 'all'
+const groupFilter = ref(ALL_PAGE_COPY_GROUP)
 const saving = ref(false)
 const resetting = ref(false)
 const loadError = ref('')
@@ -155,14 +157,14 @@ const form = reactive({
 
 const groupedAdminCopies = computed(() => pageCopyStore.groupedAdminCopies)
 const groupFilterOptions = computed(() => [
-  { label: '全部页面', value: '' },
+  { label: '全部页面', value: ALL_PAGE_COPY_GROUP },
   ...PAGE_COPY_GROUPS.map(group => ({ label: group, value: group }))
 ])
 const filteredGroupedAdminCopies = computed(() => {
-  if (!groupFilter.value) return groupedAdminCopies.value
+  if (groupFilter.value === ALL_PAGE_COPY_GROUP) return groupedAdminCopies.value
   return groupedAdminCopies.value.filter(group => group.group === groupFilter.value)
 })
-const showGroupLabels = computed(() => !groupFilter.value)
+const showGroupLabels = computed(() => groupFilter.value === ALL_PAGE_COPY_GROUP)
 const selectedCopy = computed(() => (
   pageCopyStore.adminCopies.find(item => item.copyKey === selectedKey.value)
     || pageCopyStore.adminCopies[0]
@@ -201,7 +203,7 @@ watch(selectedCopy, copy => {
 }, { immediate: true })
 
 watch(groupFilter, () => {
-  if (!groupFilter.value || selectedCopy.value?.pageGroup === groupFilter.value) return
+  if (groupFilter.value === ALL_PAGE_COPY_GROUP || selectedCopy.value?.pageGroup === groupFilter.value) return
   selectedKey.value = filteredGroupedAdminCopies.value[0]?.items[0]?.copyKey || selectedKey.value
 })
 
