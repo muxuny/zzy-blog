@@ -91,15 +91,18 @@
           </span>
         </div>
 
-        <el-form label-position="top" class="copy-form">
-          <div class="field-grid">
-            <el-form-item label="页面标识">
-              <el-input :model-value="selectedCopy?.copyKey || ''" readonly />
-            </el-form-item>
-            <el-form-item label="页面分区">
-              <el-input :model-value="selectedCopy?.pageGroup || ''" readonly />
-            </el-form-item>
+        <div class="copy-meta-grid" aria-label="当前页面只读信息">
+          <div class="copy-meta-item">
+            <span class="tiny-label">页面标识</span>
+            <strong>{{ selectedCopy?.copyKey || '-' }}</strong>
           </div>
+          <div class="copy-meta-item">
+            <span class="tiny-label">页面分区</span>
+            <strong>{{ selectedCopy?.pageGroup || '-' }}</strong>
+          </div>
+        </div>
+
+        <el-form label-position="top" class="copy-form">
           <el-form-item label="眉标">
             <el-input v-model="form.eyebrow" maxlength="80" show-word-limit />
           </el-form-item>
@@ -390,10 +393,28 @@ async function resetAll() {
   font-size: 12px;
 }
 
-.field-grid {
+.copy-meta-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  margin-bottom: 14px;
+}
+
+.copy-meta-item {
+  display: grid;
+  gap: 6px;
+  min-height: 66px;
+  padding: 12px;
+  border: 1px solid var(--soft-border-color);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--panel-bg) 72%, transparent);
+}
+
+.copy-meta-item strong {
+  overflow-wrap: anywhere;
+  color: var(--text-color);
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 .copy-form :deep(.el-form-item) {
@@ -459,7 +480,7 @@ async function resetAll() {
 
 @media (max-width: 720px) {
   .page-actions,
-  .field-grid {
+  .copy-meta-grid {
     grid-template-columns: 1fr;
   }
 

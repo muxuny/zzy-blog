@@ -77,6 +77,16 @@ test('admin page copy view filters the page list by configuration group', () => 
   assert.match(source, /selectedKey\.value = filteredGroupedAdminCopies\.value\[0\]\?\.items\[0\]\?\.copyKey/)
 })
 
+test('admin page copy readonly identity values render as static metadata', () => {
+  const source = read('../views/admin/PageCopies.vue')
+
+  assert.match(source, /class="copy-meta-grid"/)
+  assert.match(source, /class="copy-meta-item"[\s\S]*页面标识[\s\S]*selectedCopy\?\.copyKey/)
+  assert.match(source, /class="copy-meta-item"[\s\S]*页面分区[\s\S]*selectedCopy\?\.pageGroup/)
+  assert.doesNotMatch(source, /<el-form-item label="页面标识">[\s\S]*?<el-input/)
+  assert.doesNotMatch(source, /<el-form-item label="页面分区">[\s\S]*?<el-input/)
+})
+
 test('page copy store falls back quietly while admin config page can surface load errors', () => {
   const store = read('../stores/pageCopy.js')
   const view = read('../views/admin/PageCopies.vue')
