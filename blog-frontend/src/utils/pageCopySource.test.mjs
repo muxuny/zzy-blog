@@ -59,6 +59,21 @@ test('admin page copy view keeps long page list scrollable beside editor and pre
   assert.match(source, /@media \(max-width:\s*1180px\)\s*\{[\s\S]*\.copy-groups\s*\{[\s\S]*overflow:\s*visible;/)
 })
 
+test('admin page copy view filters the page list by configuration group', () => {
+  const source = read('../views/admin/PageCopies.vue')
+
+  assert.match(source, /PAGE_COPY_GROUPS/)
+  assert.match(source, /const groupFilter = ref\(''\)/)
+  assert.match(source, /const groupFilterOptions = computed/)
+  assert.match(source, /const filteredGroupedAdminCopies = computed/)
+  assert.match(source, /v-model="groupFilter"/)
+  assert.match(source, /v-for="option in groupFilterOptions"/)
+  assert.match(source, /v-for="group in filteredGroupedAdminCopies"/)
+  assert.match(source, /const showGroupLabels = computed\(\(\) => !groupFilter\.value\)/)
+  assert.match(source, /selectedCopy\.value\?\.pageGroup === groupFilter\.value/)
+  assert.match(source, /selectedKey\.value = filteredGroupedAdminCopies\.value\[0\]\?\.items\[0\]\?\.copyKey/)
+})
+
 test('page copy store falls back quietly while admin config page can surface load errors', () => {
   const store = read('../stores/pageCopy.js')
   const view = read('../views/admin/PageCopies.vue')

@@ -45,12 +45,24 @@
             <span class="section-eyebrow">页面列表</span>
             <h3>选择导语</h3>
           </div>
-          <span class="chip">{{ selectedCopy?.pageGroup || '未选择' }}</span>
+          <el-select
+            v-model="groupFilter"
+            class="copy-group-filter"
+            size="small"
+            aria-label="页面分区筛选"
+          >
+            <el-option
+              v-for="option in groupFilterOptions"
+              :key="option.value || 'all'"
+              :label="option.label"
+              :value="option.value"
+            />
+          </el-select>
         </div>
 
         <div class="copy-groups">
-          <section v-for="group in groupedAdminCopies" :key="group.group" class="copy-group">
-            <span class="tiny-label">{{ group.group }}</span>
+          <section v-for="group in filteredGroupedAdminCopies" :key="group.group" class="copy-group">
+            <span v-if="showGroupLabels" class="tiny-label">{{ group.group }}</span>
             <button
               v-for="copy in group.items"
               :key="copy.copyKey"
@@ -127,10 +139,11 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { usePageCopyStore } from '../../stores/pageCopy'
-import { resolvePageCopy } from '../../utils/pageCopy'
+import { PAGE_COPY_GROUPS, resolvePageCopy } from '../../utils/pageCopy'
 
 const pageCopyStore = usePageCopyStore()
 const selectedKey = ref('home.hero')
+const groupFilter = ref('')
 const saving = ref(false)
 const resetting = ref(false)
 const loadError = ref('')
@@ -141,6 +154,15 @@ const form = reactive({
 })
 
 const groupedAdminCopies = computed(() => pageCopyStore.groupedAdminCopies)
+const groupFilterOptions = computed(() => [
+  { label: '全部页面', value: '' },
+  ...PAGE_COPY_GROUPS.map(group => ({ label: group, value: group }))
+])
+const filteredGroupedAdminCopies = computed(() => {
+  if (!groupFilter.value) return groupedAdminCopies.value
+  return groupedAdminCopies.value.filter(group => group.group === groupFilter.value)
+})
+const showGroupLabels = computed(() => !groupFilter.value)
 const selectedCopy = computed(() => (
   pageCopyStore.adminCopies.find(item => item.copyKey === selectedKey.value)
     || pageCopyStore.adminCopies[0]
@@ -177,6 +199,11 @@ watch(selectedCopy, copy => {
   form.title = copy.title || ''
   form.description = copy.description || ''
 }, { immediate: true })
+
+watch(groupFilter, () => {
+  if (!groupFilter.value || selectedCopy.value?.pageGroup === groupFilter.value) return
+  selectedKey.value = filteredGroupedAdminCopies.value[0]?.items[0]?.copyKey || selectedKey.value
+})
 
 function selectCopy(copy) {
   selectedKey.value = copy.copyKey
@@ -308,6 +335,18 @@ async function resetAll() {
   scrollbar-gutter: stable;
 }
 
+.copy-group-filter {
+  width: min(148px, 48%);
+  flex-shrink: 0;
+}
+
+.copy-group-filter :deep(.el-select__wrapper) {
+  min-height: 34px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-bg) 72%, var(--bg-color));
+  box-shadow: 0 0 0 1px var(--soft-border-color) inset;
+}
+
 .copy-group {
   display: grid;
   gap: 8px;
@@ -432,6 +471,10 @@ async function resetAll() {
 
   .copy-preview h2 {
     font-size: 31px;
+  }
+
+  .copy-group-filter {
+    width: 100%;
   }
 }
 </style>
