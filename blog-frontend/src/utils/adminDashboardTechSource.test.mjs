@@ -27,3 +27,31 @@ test('admin dashboard exposes the tech control monitoring panels', () => {
   assert.doesNotMatch(source, /getUsers/)
   assert.doesNotMatch(source, /getTags/)
 })
+
+test('admin dashboard palette derives from theme tokens instead of fixed light colors', () => {
+  const source = read('views/admin/Dashboard.vue')
+
+  assert.match(source, /--dash-steel:\s*var\(--accent-color\);/)
+  assert.match(source, /--dash-teal:\s*color-mix\(in srgb,\s*var\(--primary-color\)/)
+  assert.match(source, /--dash-leaf:\s*var\(--primary-color\);/)
+  assert.match(source, /--dash-amber:\s*var\(--warning-color\);/)
+  assert.match(source, /--dash-rose:\s*var\(--danger-color\);/)
+  assert.match(source, /--dash-plum:\s*color-mix\(in srgb,\s*var\(--accent-color\)/)
+  assert.doesNotMatch(source, /--dash-steel:\s*#/)
+  assert.doesNotMatch(source, /--dash-teal:\s*#/)
+  assert.doesNotMatch(source, /--dash-amber:\s*#/)
+  assert.doesNotMatch(source, /--dash-rose:\s*#/)
+  assert.doesNotMatch(source, /--dash-plum:\s*#/)
+  assert.doesNotMatch(source, /linear-gradient\(180deg,\s*#f8fafc/)
+  assert.doesNotMatch(source, /rgba\(255,\s*255,\s*255/)
+  assert.doesNotMatch(source, /rgba\(47,\s*65,\s*88/)
+})
+
+test('admin dashboard grids adapt to the admin container width', () => {
+  const source = read('views/admin/Dashboard.vue')
+
+  assert.match(source, /\.tech-board\s*\{[^}]*container-type:\s*inline-size;/)
+  assert.match(source, /\.dashboard-core\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1\.0[0-9]fr\)/)
+  assert.doesNotMatch(source, /grid-template-columns:\s*minmax\(230px/)
+  assert.match(source, /@container\s*\(max-width:\s*1180px\)/)
+})

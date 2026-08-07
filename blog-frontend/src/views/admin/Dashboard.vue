@@ -351,12 +351,12 @@ const articleRingStyle = computed(() => {
   if (!cursor) {
     return {
       background:
-        'radial-gradient(circle at center, #f7fafc 0 53%, transparent 54%), conic-gradient(var(--dash-steel) 0 100%)'
+        'radial-gradient(circle at center, var(--panel-bg) 0 53%, transparent 54%), conic-gradient(var(--dash-steel) 0 100%)'
     }
   }
   return {
     background:
-      `radial-gradient(circle at center, #f7fafc 0 53%, transparent 54%), conic-gradient(${segments.join(', ')})`
+      `radial-gradient(circle at center, var(--panel-bg) 0 53%, transparent 54%), conic-gradient(${segments.join(', ')})`
   }
 })
 
@@ -367,13 +367,13 @@ const visibilityRingStyle = computed(() => {
   if (!total) {
     return {
       background:
-        'radial-gradient(circle at center, #f7fafc 0 53%, transparent 54%), conic-gradient(var(--dash-teal) 0 100%)'
+        'radial-gradient(circle at center, var(--panel-bg) 0 53%, transparent 54%), conic-gradient(var(--dash-teal) 0 100%)'
     }
   }
   const publicPercent = percent(publicCount, total)
   return {
     background:
-      `radial-gradient(circle at center, #f7fafc 0 53%, transparent 54%), conic-gradient(var(--dash-teal) 0 ${publicPercent}%, var(--dash-plum) ${publicPercent}% 100%)`
+      `radial-gradient(circle at center, var(--panel-bg) 0 53%, transparent 54%), conic-gradient(var(--dash-teal) 0 ${publicPercent}%, var(--dash-plum) ${publicPercent}% 100%)`
   }
 })
 
@@ -383,7 +383,7 @@ const favoriteRingStyle = computed(() => {
   const recentPercent = percent(recent, total)
   return {
     background:
-      `radial-gradient(circle at center, #f7fafc 0 54%, transparent 55%), conic-gradient(#6e6aa8 0 ${recentPercent}%, #16a0a0 ${recentPercent}% 100%)`
+      `radial-gradient(circle at center, var(--panel-bg) 0 54%, transparent 55%), conic-gradient(var(--dash-plum) 0 ${recentPercent}%, var(--dash-teal) ${recentPercent}% 100%)`
   }
 })
 
@@ -502,12 +502,16 @@ onMounted(() => {
 
 <style scoped>
 .dashboard-page {
-  --dash-steel: #426a86;
-  --dash-teal: #16a0a0;
-  --dash-leaf: #668f70;
-  --dash-amber: #c8943f;
-  --dash-rose: #bf6270;
-  --dash-plum: #6e6aa8;
+  --dash-steel: var(--accent-color);
+  --dash-teal: color-mix(in srgb, var(--primary-color) 58%, var(--accent-color));
+  --dash-leaf: var(--primary-color);
+  --dash-amber: var(--warning-color);
+  --dash-rose: var(--danger-color);
+  --dash-plum: color-mix(in srgb, var(--accent-color) 62%, var(--primary-color));
+  --dash-border: color-mix(in srgb, var(--text-color) 10%, transparent);
+  --dash-border-soft: color-mix(in srgb, var(--text-color) 8%, transparent);
+  --dash-fill: color-mix(in srgb, var(--panel-bg) 64%, transparent);
+  --dash-fill-soft: color-mix(in srgb, var(--panel-bg) 86%, transparent);
   display: grid;
   gap: 16px;
 }
@@ -519,12 +523,14 @@ onMounted(() => {
 .tech-board {
   display: grid;
   gap: 14px;
+  min-width: 0;
   padding: 18px;
+  container-type: inline-size;
   border: 1px solid var(--border-color);
   border-radius: 14px;
   background:
-    linear-gradient(135deg, rgba(22, 160, 160, 0.08), transparent 28%),
-    linear-gradient(180deg, #f8fafc, #eef3f6);
+    linear-gradient(135deg, color-mix(in srgb, var(--dash-teal) 8%, transparent), transparent 28%),
+    linear-gradient(180deg, color-mix(in srgb, var(--panel-bg) 96%, var(--bg-color)), color-mix(in srgb, var(--panel-bg) 80%, var(--bg-color)));
 }
 
 .signal-row {
@@ -540,7 +546,7 @@ onMounted(() => {
   border: 1px solid var(--border-color);
   border-radius: 10px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(247, 250, 252, 0.86)),
+    linear-gradient(180deg, color-mix(in srgb, var(--panel-bg) 94%, transparent), color-mix(in srgb, var(--panel-bg) 86%, transparent)),
     var(--panel-bg);
   box-shadow: var(--shadow-md);
 }
@@ -560,8 +566,8 @@ onMounted(() => {
 .dash-panel::before {
   left: -1px;
   top: -1px;
-  border-left: 2px solid rgba(22, 160, 160, 0.62);
-  border-top: 2px solid rgba(22, 160, 160, 0.62);
+  border-left: 2px solid color-mix(in srgb, var(--dash-teal) 62%, transparent);
+  border-top: 2px solid color-mix(in srgb, var(--dash-teal) 62%, transparent);
   border-radius: 10px 0 0 0;
 }
 
@@ -569,8 +575,8 @@ onMounted(() => {
 .dash-panel::after {
   right: -1px;
   bottom: -1px;
-  border-right: 2px solid rgba(66, 106, 134, 0.5);
-  border-bottom: 2px solid rgba(66, 106, 134, 0.5);
+  border-right: 2px solid color-mix(in srgb, var(--dash-steel) 50%, transparent);
+  border-bottom: 2px solid color-mix(in srgb, var(--dash-steel) 50%, transparent);
   border-radius: 0 0 10px 0;
 }
 
@@ -592,9 +598,9 @@ onMounted(() => {
   width: 38px;
   aspect-ratio: 1;
   border-radius: 999px;
-  color: #fff;
+  color: var(--panel-bg);
   background:
-    radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.42), transparent 32%),
+    radial-gradient(circle at 34% 28%, color-mix(in srgb, var(--panel-bg) 42%, transparent), transparent 32%),
     linear-gradient(135deg, var(--dash-steel), var(--dash-teal));
   font-size: 13px;
   font-weight: 900;
@@ -602,30 +608,30 @@ onMounted(() => {
 
 .signal-card:nth-child(2) .signal-icon {
   background:
-    radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.42), transparent 32%),
-    linear-gradient(135deg, var(--dash-amber), #d7af62);
+    radial-gradient(circle at 34% 28%, color-mix(in srgb, var(--panel-bg) 42%, transparent), transparent 32%),
+    linear-gradient(135deg, var(--dash-amber), color-mix(in srgb, var(--dash-amber) 76%, var(--panel-bg)));
 }
 
 .signal-card:nth-child(3) .signal-icon {
   background:
-    radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.42), transparent 32%),
-    linear-gradient(135deg, var(--dash-teal), #6fbab1);
+    radial-gradient(circle at 34% 28%, color-mix(in srgb, var(--panel-bg) 42%, transparent), transparent 32%),
+    linear-gradient(135deg, var(--dash-teal), color-mix(in srgb, var(--dash-teal) 76%, var(--panel-bg)));
 }
 
 .signal-card:nth-child(4) .signal-icon {
   background:
-    radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.42), transparent 32%),
-    linear-gradient(135deg, var(--dash-plum), #8e84c6);
+    radial-gradient(circle at 34% 28%, color-mix(in srgb, var(--panel-bg) 42%, transparent), transparent 32%),
+    linear-gradient(135deg, var(--dash-plum), color-mix(in srgb, var(--dash-plum) 76%, var(--panel-bg)));
 }
 
 .signal-card:nth-child(5) .signal-icon {
   background:
-    radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.42), transparent 32%),
-    linear-gradient(135deg, var(--dash-leaf), #82a989);
+    radial-gradient(circle at 34% 28%, color-mix(in srgb, var(--panel-bg) 42%, transparent), transparent 32%),
+    linear-gradient(135deg, var(--dash-leaf), color-mix(in srgb, var(--dash-leaf) 76%, var(--panel-bg)));
 }
 
 .signal-code {
-  color: rgba(35, 40, 44, 0.22);
+  color: color-mix(in srgb, var(--text-color) 22%, transparent);
   font-family: Consolas, "SFMono-Regular", monospace;
   font-size: 12px;
   font-weight: 800;
@@ -659,7 +665,7 @@ onMounted(() => {
 
 .dashboard-core {
   display: grid;
-  grid-template-columns: minmax(230px, 0.9fr) minmax(380px, 1.55fr) minmax(250px, 0.95fr);
+  grid-template-columns: minmax(0, 1.02fr) minmax(0, 1.5fr) minmax(0, 0.98fr);
   gap: 12px;
 }
 
@@ -689,10 +695,10 @@ onMounted(() => {
   min-width: 56px;
   height: 28px;
   padding: 0 10px;
-  border: 1px solid rgba(79, 105, 121, 0.2);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 20%, transparent);
   border-radius: 999px;
   color: var(--dash-steel);
-  background: rgba(255, 255, 255, 0.7);
+  background: color-mix(in srgb, var(--panel-bg) 70%, transparent);
   font-size: 12px;
   font-weight: 760;
   white-space: nowrap;
@@ -710,9 +716,9 @@ onMounted(() => {
   gap: 13px;
   min-height: 134px;
   padding: 12px;
-  border: 1px solid rgba(47, 65, 88, 0.1);
+  border: 1px solid var(--dash-border);
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.62);
+  background: color-mix(in srgb, var(--panel-bg) 62%, transparent);
 }
 
 .ring {
@@ -721,8 +727,8 @@ onMounted(() => {
   aspect-ratio: 1;
   border-radius: 50%;
   box-shadow:
-    inset 0 0 0 1px rgba(47, 65, 88, 0.1),
-    0 12px 24px rgba(34, 48, 70, 0.1);
+    inset 0 0 0 1px var(--dash-border),
+    0 12px 24px color-mix(in srgb, var(--text-color) 10%, transparent);
 }
 
 .ring::after {
@@ -768,11 +774,11 @@ onMounted(() => {
   gap: 9px;
   margin-top: 10px;
   padding: 11px;
-  border: 1px solid rgba(47, 65, 88, 0.1);
+  border: 1px solid var(--dash-border);
   border-radius: 8px;
   background:
-    linear-gradient(135deg, rgba(200, 148, 63, 0.09), transparent 72%),
-    rgba(255, 255, 255, 0.62);
+    linear-gradient(135deg, color-mix(in srgb, var(--dash-amber) 9%, transparent), transparent 72%),
+    color-mix(in srgb, var(--panel-bg) 62%, transparent);
 }
 
 .maintenance-summary p {
@@ -792,9 +798,9 @@ onMounted(() => {
 .summary-cell {
   min-height: 58px;
   padding: 8px;
-  border: 1px solid rgba(47, 65, 88, 0.09);
+  border: 1px solid var(--dash-border-soft);
   border-radius: 7px;
-  background: rgba(255, 255, 255, 0.68);
+  background: color-mix(in srgb, var(--panel-bg) 68%, transparent);
 }
 
 .summary-cell strong {
@@ -820,12 +826,12 @@ onMounted(() => {
   position: relative;
   min-height: 258px;
   overflow: hidden;
-  border: 1px solid rgba(47, 65, 88, 0.1);
+  border: 1px solid var(--dash-border);
   border-radius: 10px;
   background:
-    linear-gradient(180deg, transparent 24%, rgba(47, 65, 88, 0.06) 24% 25%, transparent 25% 49%, rgba(47, 65, 88, 0.06) 49% 50%, transparent 50% 74%, rgba(47, 65, 88, 0.06) 74% 75%, transparent 75%),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.52), rgba(22, 160, 160, 0.07)),
-    rgba(255, 255, 255, 0.62);
+    linear-gradient(180deg, transparent 24%, color-mix(in srgb, var(--text-color) 6%, transparent) 24% 25%, transparent 25% 49%, color-mix(in srgb, var(--text-color) 6%, transparent) 49% 50%, transparent 50% 74%, color-mix(in srgb, var(--text-color) 6%, transparent) 74% 75%, transparent 75%),
+    linear-gradient(90deg, color-mix(in srgb, var(--panel-bg) 52%, transparent), color-mix(in srgb, var(--dash-teal) 7%, transparent)),
+    color-mix(in srgb, var(--panel-bg) 62%, transparent);
 }
 
 .chart-bars {
@@ -841,7 +847,7 @@ onMounted(() => {
   min-height: 6px;
   border-radius: 999px 999px 4px 4px;
   background: linear-gradient(180deg, var(--dash-teal), var(--dash-steel));
-  box-shadow: 0 8px 18px rgba(22, 160, 160, 0.18);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--dash-teal) 18%, transparent);
 }
 
 .chart-bars span:nth-child(4n) {
@@ -878,10 +884,10 @@ onMounted(() => {
   left: 132px;
   top: 22px;
   padding: 5px 8px;
-  border: 1px solid rgba(22, 160, 160, 0.2);
+  border: 1px solid color-mix(in srgb, var(--dash-teal) 20%, transparent);
   border-radius: 7px;
-  color: #168c8c;
-  background: rgba(255, 255, 255, 0.86);
+  color: color-mix(in srgb, var(--dash-teal) 82%, var(--text-color));
+  background: color-mix(in srgb, var(--panel-bg) 86%, transparent);
   font-size: 12px;
   font-weight: 780;
 }
@@ -893,7 +899,7 @@ onMounted(() => {
   bottom: 12px;
   display: flex;
   justify-content: space-between;
-  color: rgba(104, 117, 134, 0.8);
+  color: color-mix(in srgb, var(--muted-text-color) 80%, transparent);
   font-family: Consolas, "SFMono-Regular", monospace;
   font-size: 11px;
 }
@@ -906,9 +912,9 @@ onMounted(() => {
 .small-stat {
   min-height: 78px;
   padding: 11px;
-  border: 1px solid rgba(47, 65, 88, 0.1);
+  border: 1px solid var(--dash-border);
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.66);
+  background: color-mix(in srgb, var(--panel-bg) 66%, transparent);
 }
 
 .small-stat strong {
@@ -943,7 +949,7 @@ onMounted(() => {
   height: 8px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(47, 65, 88, 0.09);
+  background: color-mix(in srgb, var(--text-color) 9%, transparent);
 }
 
 .lane-track span {
@@ -964,9 +970,9 @@ onMounted(() => {
   align-items: center;
   gap: 9px;
   padding: 9px;
-  border: 1px solid rgba(47, 65, 88, 0.1);
+  border: 1px solid var(--dash-border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.64);
+  background: color-mix(in srgb, var(--panel-bg) 64%, transparent);
 }
 
 .rank-no {
@@ -975,7 +981,7 @@ onMounted(() => {
   width: 24px;
   aspect-ratio: 1;
   border-radius: 7px;
-  color: #fff;
+  color: var(--panel-bg);
   background: var(--dash-steel);
   font-family: Consolas, "SFMono-Regular", monospace;
   font-size: 12px;
@@ -1019,17 +1025,17 @@ onMounted(() => {
   gap: 7px;
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px solid rgba(47, 65, 88, 0.09);
+  border-top: 1px solid var(--dash-border-soft);
 }
 
 .heat-cell {
   min-height: 64px;
   padding: 9px 8px;
-  border: 1px solid rgba(47, 65, 88, 0.1);
+  border: 1px solid var(--dash-border);
   border-radius: 8px;
   background:
-    linear-gradient(135deg, rgba(22, 160, 160, 0.08), transparent 72%),
-    rgba(255, 255, 255, 0.66);
+    linear-gradient(135deg, color-mix(in srgb, var(--dash-teal) 8%, transparent), transparent 72%),
+    color-mix(in srgb, var(--panel-bg) 66%, transparent);
 }
 
 .heat-cell strong {
@@ -1043,7 +1049,7 @@ onMounted(() => {
 
 .lower-grid {
   display: grid;
-  grid-template-columns: minmax(0, 0.98fr) minmax(0, 1fr) minmax(280px, 0.9fr);
+  grid-template-columns: minmax(0, 0.98fr) minmax(0, 1fr) minmax(0, 0.9fr);
   gap: 12px;
 }
 
@@ -1060,8 +1066,8 @@ onMounted(() => {
   aspect-ratio: 1;
   border-radius: 50%;
   box-shadow:
-    inset 0 0 0 1px rgba(47, 65, 88, 0.1),
-    0 12px 24px rgba(34, 48, 70, 0.1);
+    inset 0 0 0 1px var(--dash-border),
+    0 12px 24px color-mix(in srgb, var(--text-color) 10%, transparent);
 }
 
 .feedback-ring::after {
@@ -1099,11 +1105,11 @@ onMounted(() => {
 .resource-cell {
   min-height: 82px;
   padding: 10px;
-  border: 1px solid rgba(47, 65, 88, 0.1);
+  border: 1px solid var(--dash-border);
   border-radius: 8px;
   background:
-    linear-gradient(135deg, rgba(102, 143, 112, 0.1), transparent 70%),
-    rgba(255, 255, 255, 0.64);
+    linear-gradient(135deg, color-mix(in srgb, var(--dash-leaf) 10%, transparent), transparent 70%),
+    color-mix(in srgb, var(--panel-bg) 64%, transparent);
 }
 
 .resource-cell strong {
@@ -1122,10 +1128,10 @@ onMounted(() => {
 
 .tag-strip span {
   padding: 6px 9px;
-  border: 1px solid rgba(79, 105, 121, 0.14);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 14%, transparent);
   border-radius: 999px;
-  color: #425267;
-  background: rgba(255, 255, 255, 0.68);
+  color: var(--text-color);
+  background: color-mix(in srgb, var(--panel-bg) 68%, transparent);
   font-size: 12px;
   font-weight: 700;
 }
@@ -1142,15 +1148,15 @@ onMounted(() => {
   gap: 10px;
   width: 100%;
   padding: 9px 10px;
-  border: 1px solid rgba(47, 65, 88, 0.1);
+  border: 1px solid var(--dash-border);
   border-radius: 8px;
   color: var(--text-color);
-  background: rgba(255, 255, 255, 0.66);
+  background: color-mix(in srgb, var(--panel-bg) 66%, transparent);
   text-align: left;
 }
 
 .queue-item:hover {
-  border-color: rgba(66, 106, 134, 0.3);
+  border-color: color-mix(in srgb, var(--dash-steel) 30%, transparent);
 }
 
 .queue-item strong {
@@ -1173,7 +1179,7 @@ onMounted(() => {
   text-align: center;
 }
 
-@media (max-width: 1180px) {
+@container (max-width: 1180px) {
   .signal-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1184,7 +1190,7 @@ onMounted(() => {
   }
 }
 
-@media (max-width: 720px) {
+@container (max-width: 720px) {
   .tech-board {
     padding: 12px;
   }
