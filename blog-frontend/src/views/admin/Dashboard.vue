@@ -1179,7 +1179,7 @@ onMounted(() => {
   text-align: center;
 }
 
-@container (max-width: 1180px) {
+@container (max-width: 840px) {
   .signal-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

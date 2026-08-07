@@ -53,5 +53,6 @@ test('admin dashboard grids adapt to the admin container width', () => {
   assert.match(source, /\.tech-board\s*\{[^}]*container-type:\s*inline-size;/)
   assert.match(source, /\.dashboard-core\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1\.0[0-9]fr\)/)
   assert.doesNotMatch(source, /grid-template-columns:\s*minmax\(230px/)
-  assert.match(source, /@container\s*\(max-width:\s*1180px\)/)
+  assert.match(source, /@container\s*\(max-width:\s*840px\)/)
+  assert.doesNotMatch(source, /@container\s*\(max-width:\s*1180px\)/)
 })
