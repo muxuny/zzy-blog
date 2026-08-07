@@ -82,3 +82,11 @@ test('admin dashboard reading chart does not keep the decorative trend line', ()
 
   assert.doesNotMatch(source, /trend-line/)
 })
+
+test('admin dashboard favorite sparkline shows the empty state when every daily count is zero', () => {
+  const source = read('views/admin/Dashboard.vue')
+
+  assert.match(source, /hasFavoriteTrend/)
+  assert.match(source, /favoriteSpark\.value\.some\(item => item\.count > 0\)/)
+  assert.match(source, /v-if="hasFavoriteTrend"/)
+})

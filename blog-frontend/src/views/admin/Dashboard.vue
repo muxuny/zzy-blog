@@ -219,7 +219,7 @@
                 <strong>{{ stats.favoriteSummary.total }}</strong>
                 <small>近 7 天新增 {{ stats.favoriteSummary.recent7Days }}</small>
               </div>
-              <div v-if="favoriteSpark.length" class="sparkline">
+              <div v-if="hasFavoriteTrend" class="sparkline">
                 <span
                   v-for="(item, index) in favoriteSpark"
                   :key="item.date || index"
@@ -416,6 +416,8 @@ const favoriteSpark = computed(() => {
     height: item.count ? Math.max(6, Math.round((item.count / max) * 100)) : 0
   }))
 })
+
+const hasFavoriteTrend = computed(() => favoriteSpark.value.some(item => item.count > 0))
 
 function percent(count, total) {
   if (!total) return 0
