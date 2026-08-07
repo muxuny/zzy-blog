@@ -468,6 +468,46 @@ class DatabaseConfigTest {
                 "Migration must not delete rows");
     }
 
+    @Test
+    void dashboardMapperStatementsFilterDeletedRowsExplicitly() throws IOException {
+        String article = readString(Paths.get("src/main/resources/mapper/ArticleMapper.xml"));
+        String articleViews = extractMapperStatement(article, "select", "selectTotalViewCount");
+        assertTrue(articleViews.contains("WHERE a.deleted = 0"));
+
+        String articleLow = extractMapperStatement(article, "select", "selectLowViewArticleCount");
+        assertTrue(articleLow.contains("WHERE a.deleted = 0"));
+        assertTrue(articleLow.contains("a.status = 'published'"));
+        assertTrue(articleLow.contains("(a.visibility = 'public' OR a.visibility IS NULL)"));
+
+        String history = readString(Paths.get("src/main/resources/mapper/ArticleReadingHistoryMapper.xml"));
+        assertTrue(extractMapperStatement(history, "select", "selectRecentReadingCount")
+                .contains("h.deleted = 0"));
+        assertTrue(extractMapperStatement(history, "select", "selectActiveReaderCount")
+                .contains("COUNT(DISTINCT h.user_id)"));
+        assertTrue(extractMapperStatement(history, "select", "selectAverageProgress")
+                .contains("AVG(h.progress_percent)"));
+        assertTrue(extractMapperStatement(history, "select", "selectReadingDateBuckets")
+                .contains("GROUP BY DATE_FORMAT(h.last_read_at, '%Y-%m-%d')"));
+        assertTrue(extractMapperStatement(history, "select", "selectReadingProgressBuckets")
+                .contains("h.progress_percent"));
+
+        String favorite = readString(Paths.get("src/main/resources/mapper/ArticleFavoriteMapper.xml"));
+        assertTrue(extractMapperStatement(favorite, "select", "selectTotalFavoriteCount")
+                .contains("f.deleted = 0"));
+        assertTrue(extractMapperStatement(favorite, "select", "selectRecentFavoriteCount")
+                .contains("f.deleted = 0"));
+        assertTrue(extractMapperStatement(favorite, "select", "selectFavoriteTopArticles")
+                .contains("COUNT(1)"));
+        assertTrue(extractMapperStatement(favorite, "select", "selectFavoriteDateBuckets")
+                .contains("GROUP BY DATE_FORMAT(f.created_at, '%Y-%m-%d')"));
+
+        String image = readString(Paths.get("src/main/resources/mapper/ImageMapper.xml"));
+        assertTrue(extractMapperStatement(image, "select", "selectTotalImageSize")
+                .contains("SUM(i.size)"));
+        assertTrue(extractMapperStatement(image, "select", "selectRecentImageCount")
+                .contains("deleted = 0"));
+    }
+
     private static String extractMapperStatement(String xml, String element, String id) {
         String withoutComments = xml.replaceAll("(?s)<!--.*?-->", "");
         Pattern pattern = Pattern.compile(

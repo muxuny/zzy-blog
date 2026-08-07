@@ -3,11 +3,14 @@ package com.blog.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.blog.dto.DashboardDateBucket;
+import com.blog.dto.DashboardProgressBucket;
 import com.blog.dto.ReadingHistoryRelationRow;
 import com.blog.entity.ArticleReadingHistory;
 import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public interface ArticleReadingHistoryMapper extends BaseMapper<ArticleReadingHistory> {
 
@@ -44,4 +47,16 @@ public interface ArticleReadingHistoryMapper extends BaseMapper<ArticleReadingHi
     int clearHistory(@Param("userId") Long userId,
                      @Param("username") String username,
                      @Param("now") LocalDateTime now);
+
+    long selectRecentReadingCount(@Param("start") LocalDateTime start,
+                                  @Param("end") LocalDateTime end);
+
+    long selectActiveReaderCount(@Param("start") LocalDateTime start);
+
+    long selectAverageProgress(@Param("start") LocalDateTime start);
+
+    List<DashboardDateBucket> selectReadingDateBuckets(@Param("start") LocalDateTime start,
+                                                       @Param("end") LocalDateTime end);
+
+    List<DashboardProgressBucket> selectReadingProgressBuckets(@Param("start") LocalDateTime start);
 }
