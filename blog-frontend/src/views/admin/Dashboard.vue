@@ -126,10 +126,10 @@
 
           <div class="activity-grid">
             <div class="chart-box">
-              <div v-if="readingBars.length" class="peak-note">峰值：{{ readingPeak.date }} · {{ readingPeak.count }} 次</div>
-              <div v-if="readingBars.length" class="chart-bars">
+              <div v-if="sampleRows.length" class="peak-note">峰值：{{ readingPeak.date }} · {{ readingPeak.count }} 次</div>
+              <div v-if="sampleRows.length" class="chart-bars">
                 <span
-                  v-for="bar in readingBars"
+                  v-for="bar in sampleRows"
                   :key="bar.date"
                   :style="{ height: `${bar.height}%` }"
                   :title="`${bar.date}：${bar.count} 次`"
@@ -387,8 +387,8 @@ const favoriteRingStyle = computed(() => {
   }
 })
 
-const readingBars = computed(() => {
-  const rows = stats.value.readingSummary.dailyReads
+const sampleRows = computed(() => {
+  const rows = stats.value.readingSummary.dailyReads.slice(-14)
   const max = Math.max(1, ...rows.map(item => item.count))
   return rows.map(item => ({
     date: item.date,
@@ -406,9 +406,9 @@ const readingPeak = computed(() => {
 })
 
 const dailyAxis = computed(() => {
-  const rows = stats.value.readingSummary.dailyReads
-  if (!rows.length) return ['01', '07', '14', '21', '30']
-  return [0, 9, 19, 29, 30]
+  const rows = sampleRows.value
+  if (!rows.length) return ['01', '04', '07', '10', '14']
+  return [0, 3, 6, 10, 13]
     .map(index => rows[index]?.date?.slice(5) || '')
     .filter(Boolean)
 })
@@ -838,13 +838,13 @@ onMounted(() => {
   position: absolute;
   inset: 42px 18px 34px;
   display: grid;
-  grid-template-columns: repeat(30, minmax(0, 1fr));
+  grid-template-columns: repeat(14, minmax(0, 1fr));
   align-items: end;
-  gap: 4px;
+  gap: 8px;
 }
 
 .chart-bars span {
-  min-height: 6px;
+  min-height: 16px;
   border-radius: 999px 999px 4px 4px;
   background: linear-gradient(180deg, var(--dash-teal), var(--dash-steel));
   box-shadow: 0 8px 18px color-mix(in srgb, var(--dash-teal) 18%, transparent);

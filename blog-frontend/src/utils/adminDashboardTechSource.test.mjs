@@ -56,3 +56,12 @@ test('admin dashboard grids adapt to the admin container width', () => {
   assert.match(source, /@container\s*\(max-width:\s*840px\)/)
   assert.doesNotMatch(source, /@container\s*\(max-width:\s*1180px\)/)
 })
+
+test('admin dashboard reading chart follows the prototype bar rhythm', () => {
+  const source = read('views/admin/Dashboard.vue')
+
+  assert.match(source, /sampleRows/)
+  assert.match(source, /\.chart-bars\s*\{[^}]*grid-template-columns:\s*repeat\(14,\s*minmax\(0,\s*1fr\)\)/)
+  assert.match(source, /\.chart-bars span\s*\{[^}]*min-height:\s*16px;/)
+  assert.doesNotMatch(source, /\.chart-bars\s*\{[^}]*grid-template-columns:\s*repeat\(30/)
+})
