@@ -80,3 +80,87 @@ test('buildDashboardStats handles empty overview safely', () => {
   assert.equal(result.tagSummary.total, 0)
   assert.deepEqual(result.tagSummary.items, [])
 })
+
+test('buildDashboardStats normalizes monitoring summaries', () => {
+  const result = buildDashboardStats({
+    metrics: {
+      totalArticles: 100,
+      publishedArticles: 80,
+      pendingArticles: 9,
+      rejectedArticles: 4,
+      privateArticles: 19
+    },
+    trafficSummary: {
+      totalViews: 92416,
+      averageViews: 1100,
+      lowViewArticles: 18,
+      topArticles: [
+        { id: 1, title: 'Spring', viewCount: 12800 },
+        { id: 2, title: 'Vue', viewCount: 9600 }
+      ]
+    },
+    readingSummary: {
+      recent7Days: 96,
+      recent30Days: 384,
+      activeReaders30Days: 41,
+      averageProgress: 62,
+      progressBuckets: [
+        { label: '阅读中', count: 46 },
+        { label: '已读完', count: 11 }
+      ],
+      dailyReads: [
+        { date: '2026-08-06', count: 3 },
+        { date: '2026-08-07', count: 5 }
+      ]
+    },
+    favoriteSummary: {
+      total: 318,
+      recent7Days: 24,
+      topArticles: [{ articleId: 1, title: '收藏文章', favoriteCount: 12 }],
+      dailyFavorites: [{ date: '2026-08-07', count: 4 }]
+    },
+    resourceSummary: {
+      totalImages: 246,
+      totalImageSize: 2576980480,
+      recent7DaysImages: 18,
+      totalTags: 36
+    }
+  })
+
+  assert.equal(result.metrics.rejectedArticles, 4)
+  assert.equal(result.trafficSummary.totalViews, 92416)
+  assert.equal(result.trafficSummary.averageViews, 1100)
+  assert.equal(result.trafficSummary.lowViewArticles, 18)
+  assert.deepEqual(result.trafficSummary.topArticles.map(item => item.title), ['Spring', 'Vue'])
+  assert.equal(result.readingSummary.recent7Days, 96)
+  assert.equal(result.readingSummary.recent30Days, 384)
+  assert.equal(result.readingSummary.activeReaders30Days, 41)
+  assert.equal(result.readingSummary.averageProgress, 62)
+  assert.deepEqual(result.readingSummary.progressBuckets.map(item => item.label), [
+    '浅读',
+    '阅读中',
+    '接近读完',
+    '已读完'
+  ])
+  assert.equal(result.readingSummary.progressBuckets[1].count, 46)
+  assert.equal(result.favoriteSummary.total, 318)
+  assert.equal(result.favoriteSummary.recent7Days, 24)
+  assert.equal(result.favoriteSummary.dailyFavorites[0].count, 4)
+  assert.equal(result.resourceSummary.totalImages, 246)
+  assert.equal(result.resourceSummary.totalImageSize, 2576980480)
+  assert.equal(result.resourceSummary.recent7DaysImages, 18)
+  assert.equal(result.resourceSummary.totalTags, 36)
+})
+
+test('buildDashboardStats handles missing monitoring summaries safely', () => {
+  const result = buildDashboardStats()
+
+  assert.equal(result.trafficSummary.totalViews, 0)
+  assert.deepEqual(result.trafficSummary.topArticles, [])
+  assert.deepEqual(result.readingSummary.progressBuckets, [])
+  assert.deepEqual(result.readingSummary.dailyReads, [])
+  assert.equal(result.favoriteSummary.total, 0)
+  assert.deepEqual(result.favoriteSummary.topArticles, [])
+  assert.equal(result.resourceSummary.totalImages, 0)
+  assert.equal(result.resourceSummary.totalImageSize, 0)
+})
