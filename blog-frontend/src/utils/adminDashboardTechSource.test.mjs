@@ -62,6 +62,17 @@ test('admin dashboard reading chart follows the prototype bar rhythm', () => {
 
   assert.match(source, /sampleRows/)
   assert.match(source, /\.chart-bars\s*\{[^}]*grid-template-columns:\s*repeat\(14,\s*minmax\(0,\s*1fr\)\)/)
-  assert.match(source, /\.chart-bars span\s*\{[^}]*min-height:\s*16px;/)
+  assert.match(source, /\.chart-bars \.bar\s*\{[^}]*min-height:\s*16px;/)
   assert.doesNotMatch(source, /\.chart-bars\s*\{[^}]*grid-template-columns:\s*repeat\(30/)
+})
+
+test('admin dashboard reading chart uses per-bar hover tooltips instead of a fixed peak note', () => {
+  const source = read('views/admin/Dashboard.vue')
+
+  assert.doesNotMatch(source, /peak-note/)
+  assert.doesNotMatch(source, /readingPeak/)
+  assert.match(source, /bar-cell/)
+  assert.match(source, /bar-tip/)
+  assert.match(source, /\.bar:hover \.bar-tip/)
+  assert.match(source, /\.chart-box\s*\{[^}]*overflow:\s*visible;/)
 })

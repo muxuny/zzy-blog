@@ -126,14 +126,17 @@
 
           <div class="activity-grid">
             <div class="chart-box">
-              <div v-if="sampleRows.length" class="peak-note">峰值：{{ readingPeak.date }} · {{ readingPeak.count }} 次</div>
               <div v-if="sampleRows.length" class="chart-bars">
                 <span
                   v-for="bar in sampleRows"
                   :key="bar.date"
-                  :style="{ height: `${bar.height}%` }"
+                  class="bar-cell"
                   :title="`${bar.date}：${bar.count} 次`"
-                ></span>
+                >
+                  <span class="bar" :style="{ height: `${bar.height}%` }">
+                    <span class="bar-tip" aria-hidden="true">{{ bar.date }} · {{ bar.count }} 次</span>
+                  </span>
+                </span>
               </div>
               <div v-else class="chart-empty">暂无阅读记录</div>
               <div class="trend-line"></div>
@@ -395,14 +398,6 @@ const sampleRows = computed(() => {
     count: item.count,
     height: item.count ? Math.max(6, Math.round((item.count / max) * 100)) : 0
   }))
-})
-
-const readingPeak = computed(() => {
-  const rows = stats.value.readingSummary.dailyReads
-  return rows.reduce(
-    (best, item) => (item.count > best.count ? item : best),
-    { date: '暂无', count: 0 }
-  )
 })
 
 const dailyAxis = computed(() => {
@@ -825,7 +820,7 @@ onMounted(() => {
 .chart-box {
   position: relative;
   min-height: 258px;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid var(--dash-border);
   border-radius: 10px;
   background:
@@ -843,19 +838,59 @@ onMounted(() => {
   gap: 8px;
 }
 
-.chart-bars span {
+.chart-bars > .bar-cell {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-width: 0;
+  height: 100%;
+}
+
+.chart-bars .bar {
+  position: relative;
+  width: 100%;
   min-height: 16px;
   border-radius: 999px 999px 4px 4px;
   background: linear-gradient(180deg, var(--dash-teal), var(--dash-steel));
   box-shadow: 0 8px 18px color-mix(in srgb, var(--dash-teal) 18%, transparent);
 }
 
-.chart-bars span:nth-child(4n) {
+.chart-bars > .bar-cell:nth-child(4n) .bar {
   background: linear-gradient(180deg, var(--dash-amber), var(--dash-steel));
 }
 
-.chart-bars span:nth-child(5n) {
+.chart-bars > .bar-cell:nth-child(5n) .bar {
   background: linear-gradient(180deg, var(--dash-leaf), var(--dash-teal));
+}
+
+.bar-tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 5;
+  padding: 5px 8px;
+  border: 1px solid color-mix(in srgb, var(--dash-teal) 24%, transparent);
+  border-radius: 7px;
+  color: color-mix(in srgb, var(--dash-teal) 86%, var(--text-color));
+  background: color-mix(in srgb, var(--panel-bg) 96%, transparent);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--text-color) 14%, transparent);
+  font-size: 12px;
+  font-weight: 780;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-50%);
+  transition: opacity 0.15s ease, visibility 0.15s ease, transform 0.15s ease;
+}
+
+.bar:hover .bar-tip,
+.bar:focus-visible .bar-tip {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, -2px);
 }
 
 .chart-empty {
@@ -877,19 +912,6 @@ onMounted(() => {
   background: linear-gradient(90deg, var(--dash-steel), var(--dash-teal), var(--dash-leaf));
   transform: rotate(-3deg);
   opacity: 0.66;
-}
-
-.peak-note {
-  position: absolute;
-  left: 132px;
-  top: 22px;
-  padding: 5px 8px;
-  border: 1px solid color-mix(in srgb, var(--dash-teal) 20%, transparent);
-  border-radius: 7px;
-  color: color-mix(in srgb, var(--dash-teal) 82%, var(--text-color));
-  background: color-mix(in srgb, var(--panel-bg) 86%, transparent);
-  font-size: 12px;
-  font-weight: 780;
 }
 
 .axis-labels {
