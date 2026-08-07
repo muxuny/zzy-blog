@@ -407,6 +407,49 @@
       border-radius: 999px;
     }
 
+    .maintenance-summary {
+      display: grid;
+      gap: 9px;
+      margin-top: 10px;
+      padding: 11px;
+      border: 1px solid rgba(47, 65, 88, 0.1);
+      border-radius: var(--radius-md);
+      background:
+        linear-gradient(135deg, rgba(179, 146, 74, 0.09), transparent 72%),
+        rgba(255, 255, 255, 0.62);
+    }
+
+    .maintenance-summary p {
+      margin: 0;
+      color: var(--text-color);
+      font-size: 13px;
+      font-weight: 760;
+      line-height: 1.45;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .summary-cell {
+      min-height: 58px;
+      padding: 8px;
+      border: 1px solid rgba(47, 65, 88, 0.09);
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.68);
+    }
+
+    .summary-cell strong {
+      display: block;
+      margin-top: 5px;
+      color: var(--text-color);
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 16px;
+      line-height: 1;
+    }
+
     .activity-panel {
       min-height: 382px;
     }
@@ -603,6 +646,34 @@
       font-family: Consolas, "SFMono-Regular", monospace;
       font-size: 12px;
       font-weight: 850;
+    }
+
+    .heat-summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 7px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(47, 65, 88, 0.09);
+    }
+
+    .heat-cell {
+      min-height: 64px;
+      padding: 9px 8px;
+      border: 1px solid rgba(47, 65, 88, 0.1);
+      border-radius: var(--radius-md);
+      background:
+        linear-gradient(135deg, rgba(22, 160, 160, 0.08), transparent 72%),
+        rgba(255, 255, 255, 0.66);
+    }
+
+    .heat-cell strong {
+      display: block;
+      margin-top: 6px;
+      color: var(--text-color);
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 15px;
+      line-height: 1;
     }
 
     .lower-grid {
@@ -894,6 +965,15 @@
                 </div>
               </div>
             </div>
+
+            <div class="maintenance-summary">
+              <p>当前需关注：待审核积压较轻，驳回内容需要作者回看。</p>
+              <div class="summary-grid">
+                <div class="summary-cell"><span class="mini-label">待审核</span><strong>9 篇</strong></div>
+                <div class="summary-cell"><span class="mini-label">驳回</span><strong>4 篇</strong></div>
+                <div class="summary-cell"><span class="mini-label">私密</span><strong>19 篇</strong></div>
+              </div>
+            </div>
           </section>
 
           <section class="dash-panel activity-panel">
@@ -970,6 +1050,12 @@
               <div class="rank-item"><span class="rank-no">03</span><div><strong>MySQL 索引与阅读历史</strong><small>数据库</small></div><span class="rank-value">7.4k</span></div>
               <div class="rank-item"><span class="rank-no">04</span><div><strong>Markdown 目录定位方案</strong><small>阅读体验</small></div><span class="rank-value">6.1k</span></div>
               <div class="rank-item"><span class="rank-no">05</span><div><strong>后台资源管理改造</strong><small>管理后台</small></div><span class="rank-value">4.9k</span></div>
+            </div>
+
+            <div class="heat-summary">
+              <div class="heat-cell"><span class="mini-label">总浏览</span><strong>92.4k</strong></div>
+              <div class="heat-cell"><span class="mini-label">平均</span><strong>1.1k</strong></div>
+              <div class="heat-cell"><span class="mini-label">长尾</span><strong>18 篇</strong></div>
             </div>
           </section>
         </div>
