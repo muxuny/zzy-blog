@@ -461,6 +461,16 @@ test('reading history summary uses a solid action card', () => {
   assert.doesNotMatch(history, /\.meta-line\s*\{[^}]*border-bottom:/)
 })
 
+test('reading history back link sits on its own row before the eyebrow', () => {
+  const history = read('../views/ReadingHistory.vue')
+
+  assert.match(history, /<RouterLink class="back-link" to="\/reading">/)
+  assert.match(history, /\.back-link\s*\{[^}]*display:\s*flex;/)
+  assert.match(history, /\.back-link\s*\{[^}]*width:\s*fit-content;/)
+  assert.match(history, /\.back-link\s*\{[^}]*margin-bottom:\s*14px;/)
+  assert.doesNotMatch(history, /\.back-link\s*\{[^}]*display:\s*inline-flex;/)
+})
+
 test('reading space isolates its fixed continuation backdrop', () => {
   const source = read('../views/ReadingSpace.vue')
 

@@ -300,9 +300,10 @@ async function clearAllHistory() {
 }
 
 .back-link {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 5px;
+  width: fit-content;
   min-height: 36px;
   margin-bottom: 14px;
   color: var(--muted-text-color);
