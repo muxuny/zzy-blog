@@ -32,12 +32,12 @@ class AdminPageCopyControllerTest {
     @Test
     void listDelegatesToService() {
         PageCopyItem item = new PageCopyItem();
-        item.setCopyKey("admin.dashboard");
+        item.setCopyKey("admin.articles");
         when(pageCopyService.listAll()).thenReturn(Collections.singletonList(item));
 
         Result<List<PageCopyItem>> result = controller.list();
 
-        assertThat(result.getData()).extracting(PageCopyItem::getCopyKey).containsExactly("admin.dashboard");
+        assertThat(result.getData()).extracting(PageCopyItem::getCopyKey).containsExactly("admin.articles");
         verify(pageCopyService).listAll();
     }
 

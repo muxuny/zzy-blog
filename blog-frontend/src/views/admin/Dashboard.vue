@@ -1,16 +1,5 @@
 <template>
   <div class="dashboard-page">
-    <div class="page-head">
-      <div>
-        <span class="page-eyebrow">{{ pageCopy.eyebrow }}</span>
-        <h2>{{ pageCopy.title }}</h2>
-        <p v-if="pageCopy.description" class="page-description">{{ pageCopy.description }}</p>
-      </div>
-      <button class="tool-button" type="button" :disabled="loading" @click="loadDashboard">
-        {{ loading ? '刷新中' : '刷新' }}
-      </button>
-    </div>
-
     <el-alert
       v-if="loadError"
       class="dashboard-alert"
@@ -21,6 +10,11 @@
     />
 
     <div class="tech-board" v-loading="loading">
+      <div class="board-toolbar">
+        <button class="tool-button" type="button" :disabled="loading" @click="loadDashboard">
+          {{ loading ? '刷新中' : '刷新' }}
+        </button>
+      </div>
       <div class="signal-row">
         <section class="signal-card">
           <div class="signal-topline">
@@ -295,15 +289,12 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getAdminDashboardOverview } from '../../api/dashboard'
 import { buildDashboardStats } from '../../utils/dashboardStats'
-import { usePageCopyStore } from '../../stores/pageCopy'
 
 const router = useRouter()
-const pageCopyStore = usePageCopyStore()
 const loading = ref(true)
 const loadError = ref('')
 const stats = ref(buildDashboardStats())
 
-const pageCopy = computed(() => pageCopyStore.resolveCopy('admin.dashboard'))
 const pendingTotal = computed(
   () => stats.value.metrics.pendingArticles + stats.value.metrics.pendingUsers
 )
@@ -491,7 +482,6 @@ function goUsers() {
 }
 
 onMounted(() => {
-  void pageCopyStore.loadAdminCopies()
   loadDashboard()
 })
 </script>
@@ -527,6 +517,16 @@ onMounted(() => {
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--dash-teal) 8%, transparent), transparent 28%),
     linear-gradient(180deg, color-mix(in srgb, var(--panel-bg) 96%, var(--bg-color)), color-mix(in srgb, var(--panel-bg) 80%, var(--bg-color)));
+}
+
+.board-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.board-toolbar .tool-button {
+  min-height: 30px;
+  padding: 0 12px;
 }
 
 .signal-row {

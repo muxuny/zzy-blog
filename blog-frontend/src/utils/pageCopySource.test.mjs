@@ -121,7 +121,6 @@ test('functional pages consume page copy keys from the store', () => {
   }
 
   const adminPages = [
-    ['../views/admin/Dashboard.vue', 'admin.dashboard'],
     ['../views/admin/Articles.vue', 'admin.articles'],
     ['../views/admin/ArticleEdit.vue', 'admin.article.create'],
     ['../views/admin/ArticleEdit.vue', 'admin.article.edit'],
@@ -138,4 +137,16 @@ test('functional pages consume page copy keys from the store', () => {
     assert.match(source, /resolveCopy/)
     assert.match(source, /page-description/)
   }
+})
+
+test('dashboard stays standalone without page copy and keeps refresh action', () => {
+  const source = read('../views/admin/Dashboard.vue')
+
+  assert.doesNotMatch(source, /usePageCopyStore/)
+  assert.doesNotMatch(source, /pageCopyStore/)
+  assert.doesNotMatch(source, /resolveCopy/)
+  assert.doesNotMatch(source, /page-description/)
+  assert.doesNotMatch(source, /class="page-head"/)
+  assert.match(source, /class="board-toolbar"/)
+  assert.match(source, /@click="loadDashboard"/)
 })

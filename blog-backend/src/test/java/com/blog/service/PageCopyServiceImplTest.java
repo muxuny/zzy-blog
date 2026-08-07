@@ -35,7 +35,7 @@ class PageCopyServiceImplTest {
 
     @Test
     @SuppressWarnings({"rawtypes", "unchecked"})
-    void listAllEnsuresAndReturnsSeventeenDefaultCopies() {
+    void listAllEnsuresAndReturnsSixteenDefaultCopies() {
         initTableInfo();
         PageCopyMapper mapper = mock(PageCopyMapper.class);
         PageCopyServiceImpl service = newService(mapper);
@@ -43,13 +43,13 @@ class PageCopyServiceImplTest {
 
         List<PageCopyItem> result = service.listAll();
 
-        assertThat(result).hasSize(17);
+        assertThat(result).hasSize(16);
         assertThat(result).extracting(PageCopyItem::getCopyKey)
                 .contains("home.hero", "tag.index", "admin.profile");
         assertThat(result.get(0).getCopyKey()).isEqualTo("home.hero");
         assertThat(result.get(0).getTitle()).isNotBlank();
         ArgumentCaptor<PageCopy> captor = ArgumentCaptor.forClass(PageCopy.class);
-        verify(mapper, times(17)).insert(captor.capture());
+        verify(mapper, times(16)).insert(captor.capture());
         assertThat(captor.getAllValues()).extracting(PageCopy::getCopyKey)
                 .containsExactlyElementsOf(result.stream().map(PageCopyItem::getCopyKey).collect(java.util.stream.Collectors.toList()));
     }
@@ -94,7 +94,7 @@ class PageCopyServiceImplTest {
 
         List<PageCopyItem> result = service.listAll();
 
-        assertThat(result).hasSize(17);
+        assertThat(result).hasSize(16);
         PageCopyItem home = result.stream()
                 .filter(item -> "home.hero".equals(item.getCopyKey()))
                 .findFirst()
@@ -102,7 +102,7 @@ class PageCopyServiceImplTest {
         assertThat(home.getTitle()).isEqualTo("并发写入标题");
         assertThat(home.getPageName()).isEqualTo("首页");
         assertThat(home.getPageGroup()).isEqualTo("公开与用户页");
-        verify(mapper, times(17)).insert(any(PageCopy.class));
+        verify(mapper, times(16)).insert(any(PageCopy.class));
         verify(mapper, atLeastOnce()).selectOne(any(Wrapper.class));
     }
 
@@ -194,7 +194,7 @@ class PageCopyServiceImplTest {
 
         List<PageCopyItem> result = service.resetAll();
 
-        assertThat(result).hasSize(17);
+        assertThat(result).hasSize(16);
         ArgumentCaptor<PageCopy> updateCaptor = ArgumentCaptor.forClass(PageCopy.class);
         verify(mapper, atLeastOnce()).updateById(updateCaptor.capture());
         PageCopy restoredHome = updateCaptor.getAllValues().stream()
@@ -203,7 +203,7 @@ class PageCopyServiceImplTest {
                 .orElseThrow(() -> new AssertionError("Expected home.hero to be restored"));
         assertThat(restoredHome.getEyebrow()).isEqualTo("个人写作库");
         assertThat(restoredHome.getTitle()).isEqualTo("把项目经验写成可以回看的路标。");
-        verify(mapper, times(16)).insert(any(PageCopy.class));
+        verify(mapper, times(15)).insert(any(PageCopy.class));
     }
 
     @Test

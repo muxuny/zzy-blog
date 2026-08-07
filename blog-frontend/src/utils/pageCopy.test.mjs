@@ -8,7 +8,7 @@ import {
 } from './pageCopy.js'
 
 test('page copy defaults cover the first configurable page scope', () => {
-  assert.equal(PAGE_COPY_DEFAULTS.length, 17)
+  assert.equal(PAGE_COPY_DEFAULTS.length, 16)
   assert.deepEqual(PAGE_COPY_GROUPS, ['公开与用户页', '创作中心', '后台管理'])
   assert.deepEqual(
     PAGE_COPY_DEFAULTS.map(item => item.copyKey),
@@ -23,7 +23,6 @@ test('page copy defaults cover the first configurable page scope', () => {
       'creator.articles',
       'creator.article.create',
       'creator.article.edit',
-      'admin.dashboard',
       'admin.articles',
       'admin.article.create',
       'admin.article.edit',
@@ -61,7 +60,7 @@ test('mergePageCopies overlays known remote copy and ignores unknown keys', () =
     }
   ])
 
-  assert.equal(merged.length, 17)
+  assert.equal(merged.length, 16)
   assert.equal(merged.find(item => item.copyKey === 'home.hero').title, '新的首页标题')
   assert.equal(merged.find(item => item.copyKey === 'home.hero').description, '')
   assert.equal(merged.some(item => item.copyKey === 'unknown.key'), false)
@@ -70,16 +69,16 @@ test('mergePageCopies overlays known remote copy and ignores unknown keys', () =
 test('resolvePageCopy can read from merged remote copy list', () => {
   const merged = mergePageCopies([
     {
-      copyKey: 'admin.dashboard',
+      copyKey: 'admin.articles',
       eyebrow: '自定义概览',
-      title: '自定义仪表盘',
+      title: '自定义文章管理',
       description: '自定义描述'
     }
   ])
 
-  const copy = resolvePageCopy('admin.dashboard', {}, merged)
+  const copy = resolvePageCopy('admin.articles', {}, merged)
 
   assert.equal(copy.eyebrow, '自定义概览')
-  assert.equal(copy.title, '自定义仪表盘')
+  assert.equal(copy.title, '自定义文章管理')
   assert.equal(copy.description, '自定义描述')
 })

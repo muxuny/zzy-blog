@@ -92,15 +92,6 @@ export const PAGE_COPY_DEFAULTS = [
     sortOrder: 130
   },
   {
-    copyKey: 'admin.dashboard',
-    pageName: '后台仪表盘',
-    pageGroup: '后台管理',
-    eyebrow: '概览',
-    title: '仪表盘',
-    description: '全站内容状态、审核队列和资源概览在这里集中查看。',
-    sortOrder: 210
-  },
-  {
     copyKey: 'admin.articles',
     pageName: '后台文章管理',
     pageGroup: '后台管理',
