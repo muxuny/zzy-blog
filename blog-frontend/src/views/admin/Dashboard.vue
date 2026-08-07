@@ -139,7 +139,6 @@
                 </span>
               </div>
               <div v-else class="chart-empty">暂无阅读记录</div>
-              <div class="trend-line"></div>
               <div class="axis-labels">
                 <span v-for="(label, index) in dailyAxis" :key="index">{{ label }}</span>
               </div>
@@ -900,18 +899,6 @@ onMounted(() => {
   place-items: center;
   color: var(--muted-text-color);
   font-size: 13px;
-}
-
-.trend-line {
-  position: absolute;
-  left: 20px;
-  right: 18px;
-  bottom: 92px;
-  height: 3px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--dash-steel), var(--dash-teal), var(--dash-leaf));
-  transform: rotate(-3deg);
-  opacity: 0.66;
 }
 
 .axis-labels {

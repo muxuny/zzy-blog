@@ -76,3 +76,9 @@ test('admin dashboard reading chart uses per-bar hover tooltips instead of a fix
   assert.match(source, /\.bar:hover \.bar-tip/)
   assert.match(source, /\.chart-box\s*\{[^}]*overflow:\s*visible;/)
 })
+
+test('admin dashboard reading chart does not keep the decorative trend line', () => {
+  const source = read('views/admin/Dashboard.vue')
+
+  assert.doesNotMatch(source, /trend-line/)
+})
