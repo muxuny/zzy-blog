@@ -1,21 +1,35 @@
 package com.blog.service;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.blog.common.ArticleStatus;
 import com.blog.dto.AdminDashboardOverview;
 import com.blog.dto.ArticlePageQuery;
+import com.blog.dto.DashboardDateBucket;
+import com.blog.dto.DashboardFavoriteTopArticle;
+import com.blog.dto.DashboardProgressBucket;
+import com.blog.dto.DashboardTopArticle;
 import com.blog.entity.Article;
 import com.blog.entity.Tag;
 import com.blog.entity.User;
+import com.blog.mapper.ArticleFavoriteMapper;
+import com.blog.mapper.ArticleMapper;
+import com.blog.mapper.ArticleReadingHistoryMapper;
+import com.blog.mapper.ImageMapper;
 import com.blog.service.impl.AdminDashboardServiceImpl;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -29,8 +43,30 @@ class AdminDashboardServiceImplTest {
 
     private final TagService tagService = mock(TagService.class);
 
+    private final ArticleMapper articleMapper = mock(ArticleMapper.class);
+
+    private final ArticleReadingHistoryMapper readingHistoryMapper =
+            mock(ArticleReadingHistoryMapper.class);
+
+    private final ArticleFavoriteMapper favoriteMapper = mock(ArticleFavoriteMapper.class);
+
+    private final ImageMapper imageMapper = mock(ImageMapper.class);
+
+    private final ImageService imageService = mock(ImageService.class);
+
     private final AdminDashboardService service = new AdminDashboardServiceImpl(
-            articleService, userService, tagService);
+            articleService, userService, tagService, articleMapper, readingHistoryMapper,
+            favoriteMapper, imageMapper, imageService);
+
+    @BeforeEach
+    void setUp() {
+        TableInfoHelper.initTableInfo(
+                new MapperBuilderAssistant(new MybatisConfiguration(), ""),
+                Article.class);
+        TableInfoHelper.initTableInfo(
+                new MapperBuilderAssistant(new MybatisConfiguration(), ""),
+                User.class);
+    }
 
     @Test
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -45,6 +81,17 @@ class AdminDashboardServiceImplTest {
         when(articleService.getAdminPage(any(ArticlePageQuery.class))).thenReturn(pendingArticles);
         when(articleService.count()).thenReturn(7L);
         when(articleService.count(any(Wrapper.class))).thenReturn(2L, 2L, 2L, 1L, 1L, 1L);
+
+        Article topArticle = new Article();
+        topArticle.setId(40L);
+        topArticle.setTitle("热门文章");
+        topArticle.setViewCount(800);
+        Page<Article> topPage = new Page<>(1, 5);
+        topPage.setTotal(1);
+        topPage.setRecords(Collections.singletonList(topArticle));
+        when(articleService.page(any(Page.class), any(Wrapper.class))).thenReturn(topPage);
+        when(articleMapper.selectTotalViewCount()).thenReturn(1200L);
+        when(articleMapper.selectLowViewArticleCount(anyLong())).thenReturn(2L);
 
         User pendingUser = new User();
         pendingUser.setId(20L);
@@ -65,6 +112,30 @@ class AdminDashboardServiceImplTest {
         tags.setRecords(Collections.singletonList(tag));
         when(tagService.count()).thenReturn(3L);
         when(tagService.getAdminPage(1, 12)).thenReturn(tags);
+
+        when(readingHistoryMapper.selectRecentReadingCount(any(LocalDateTime.class),
+                any(LocalDateTime.class))).thenReturn(96L, 384L);
+        when(readingHistoryMapper.selectActiveReaderCount(any(LocalDateTime.class))).thenReturn(41L);
+        when(readingHistoryMapper.selectAverageProgress(any(LocalDateTime.class))).thenReturn(62L);
+        when(readingHistoryMapper.selectReadingProgressBuckets(any(LocalDateTime.class)))
+                .thenReturn(Collections.singletonList(new DashboardProgressBucket("阅读中", 46, 0)));
+        when(readingHistoryMapper.selectReadingDateBuckets(any(LocalDateTime.class),
+                any(LocalDateTime.class)))
+                .thenReturn(Collections.singletonList(new DashboardDateBucket("2026-08-06", 3)));
+
+        when(favoriteMapper.selectTotalFavoriteCount()).thenReturn(318L);
+        when(favoriteMapper.selectRecentFavoriteCount(any(LocalDateTime.class),
+                any(LocalDateTime.class))).thenReturn(24L);
+        when(favoriteMapper.selectFavoriteTopArticles())
+                .thenReturn(Collections.singletonList(
+                        new DashboardFavoriteTopArticle(50L, "收藏文章", 12)));
+        when(favoriteMapper.selectFavoriteDateBuckets(any(LocalDateTime.class),
+                any(LocalDateTime.class)))
+                .thenReturn(Collections.singletonList(new DashboardDateBucket("2026-08-06", 3)));
+
+        when(imageService.count()).thenReturn(246L);
+        when(imageMapper.selectTotalImageSize()).thenReturn(2576980480L);
+        when(imageMapper.selectRecentImageCount(any(LocalDateTime.class))).thenReturn(18L);
 
         AdminDashboardOverview overview = service.getOverview();
 
@@ -91,7 +162,31 @@ class AdminDashboardServiceImplTest {
         assertThat(overview.getTagSummary().getItems()).extracting(Tag::getName)
                 .containsExactly("Vue");
 
-        ArgumentCaptor<ArticlePageQuery> articleQueryCaptor = ArgumentCaptor.forClass(ArticlePageQuery.class);
+        assertThat(overview.getTrafficSummary().getTotalViews()).isEqualTo(1200);
+        assertThat(overview.getTrafficSummary().getAverageViews()).isEqualTo(600);
+        assertThat(overview.getTrafficSummary().getLowViewArticles()).isEqualTo(2);
+        assertThat(overview.getTrafficSummary().getTopArticles())
+                .extracting(DashboardTopArticle::getTitle).containsExactly("热门文章");
+        assertThat(overview.getReadingSummary().getRecent7Days()).isEqualTo(96);
+        assertThat(overview.getReadingSummary().getRecent30Days()).isEqualTo(384);
+        assertThat(overview.getReadingSummary().getActiveReaders30Days()).isEqualTo(41);
+        assertThat(overview.getReadingSummary().getAverageProgress()).isEqualTo(62);
+        assertThat(overview.getReadingSummary().getProgressBuckets())
+                .extracting(DashboardProgressBucket::getLabel).containsExactly(
+                        "浅读", "阅读中", "接近读完", "已读完");
+        assertThat(overview.getReadingSummary().getDailyReads()).hasSize(30);
+        assertThat(overview.getFavoriteSummary().getTotal()).isEqualTo(318);
+        assertThat(overview.getFavoriteSummary().getRecent7Days()).isEqualTo(24);
+        assertThat(overview.getFavoriteSummary().getTopArticles())
+                .extracting(DashboardFavoriteTopArticle::getTitle).containsExactly("收藏文章");
+        assertThat(overview.getFavoriteSummary().getDailyFavorites()).hasSize(7);
+        assertThat(overview.getResourceSummary().getTotalImages()).isEqualTo(246);
+        assertThat(overview.getResourceSummary().getTotalImageSize()).isEqualTo(2576980480L);
+        assertThat(overview.getResourceSummary().getRecent7DaysImages()).isEqualTo(18);
+        assertThat(overview.getResourceSummary().getTotalTags()).isEqualTo(3);
+
+        ArgumentCaptor<ArticlePageQuery> articleQueryCaptor =
+                ArgumentCaptor.forClass(ArticlePageQuery.class);
         verify(articleService).getAdminPage(articleQueryCaptor.capture());
         assertThat(articleQueryCaptor.getValue().getStatus()).isEqualTo(ArticleStatus.PENDING);
         assertThat(articleQueryCaptor.getValue().getPage()).isEqualTo(1);
