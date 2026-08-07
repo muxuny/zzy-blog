@@ -442,6 +442,32 @@ class DatabaseConfigTest {
         assertTrue(lastAvailableQuery.contains("LIMIT 1"));
     }
 
+    @Test
+    void dashboardIndexMigrationIsIncrementalAndPreservesData() throws IOException {
+        String sql = readString(Paths.get(
+                "src/main/resources/db/migration/2026-08-07-仪表盘聚合索引.sql"));
+        String normalized = normalizeSql(sql);
+
+        assertTrue(normalized.contains("alter table `article`"),
+                "Migration must add article dashboard index");
+        assertTrue(normalized.contains("alter table `article_reading_history`"),
+                "Migration must add reading history dashboard index");
+        assertTrue(normalized.contains("alter table `article_favorite`"),
+                "Migration must add favorite dashboard index");
+        assertTrue(normalized.contains("alter table `image`"),
+                "Migration must add image dashboard index");
+        assertTrue(normalized.contains("add key"),
+                "Migration must only add indexes");
+        assertTrue(!normalized.contains("drop database"),
+                "Migration must not drop databases");
+        assertTrue(!normalized.contains("drop table"),
+                "Migration must not drop tables");
+        assertTrue(!normalized.contains("truncate table"),
+                "Migration must not truncate tables");
+        assertTrue(!normalized.contains("delete from"),
+                "Migration must not delete rows");
+    }
+
     private static String extractMapperStatement(String xml, String element, String id) {
         String withoutComments = xml.replaceAll("(?s)<!--.*?-->", "");
         Pattern pattern = Pattern.compile(
