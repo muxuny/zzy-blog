@@ -687,7 +687,7 @@ test('admin resources merges tag and image management into one prototype board',
   assert.match(source, /class="tag-item"/)
   assert.match(source, /class="mini-image-grid"/)
   assert.match(source, /class="image-card"/)
-  assert.match(source, /class="mini-image"/)
+  assert.match(source, /class="[^"]*\bmini-image\b[^"]*"/)
   assert.match(source, /getAdminTags/)
   assert.match(source, /getImages/)
   assert.match(source, /createTag/)
