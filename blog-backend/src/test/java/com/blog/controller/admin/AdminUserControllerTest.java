@@ -11,7 +11,9 @@ import com.blog.service.UserService;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.web.bind.annotation.RequestParam;
 
+import java.lang.reflect.Method;
 import java.util.Collections;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -47,6 +49,19 @@ class AdminUserControllerTest {
         assertThat(result.getSize()).isEqualTo(5);
         assertThat(result.getData()).hasSize(1);
         assertThat(result.getData().get(0).getPassword()).isNull();
+    }
+
+    @Test
+    void listKeepsRequestParamDefaultsAndOptionalStatus() throws Exception {
+        Method list = AdminUserController.class.getMethod("list", long.class, long.class, String.class);
+
+        RequestParam pageParam = list.getParameters()[0].getAnnotation(RequestParam.class);
+        RequestParam sizeParam = list.getParameters()[1].getAnnotation(RequestParam.class);
+        RequestParam statusParam = list.getParameters()[2].getAnnotation(RequestParam.class);
+
+        assertThat(pageParam.defaultValue()).isEqualTo("1");
+        assertThat(sizeParam.defaultValue()).isEqualTo("10");
+        assertThat(statusParam.required()).isFalse();
     }
 
     @Test
