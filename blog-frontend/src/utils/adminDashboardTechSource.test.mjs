@@ -133,6 +133,8 @@ test('admin dashboard reading range switch uses existing daily reads only', () =
   assert.match(source, /class="range-tabs"\s+aria-label="阅读范围"/)
   assert.match(source, /v-for="option in readingRangeOptions"/)
   assert.match(source, /:class="\{ 'is-active': readingRange === option\.value \}"/)
+  assert.match(source, /:aria-pressed="readingRange === option\.value"/)
+  assert.match(source, /:aria-label="`查看近 \$\{option\.value\} 天阅读记录`"/)
   assert.match(source, /@click="readingRange = option\.value"/)
   assert.match(source, /stats\.value\.readingSummary\.dailyReads\.slice\(-readingRange\.value\)/)
   assert.match(source, /:style="\{ '--bar-count': sampleRows\.length \|\| readingRange \}"/)

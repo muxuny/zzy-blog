@@ -129,6 +129,8 @@
                   :key="option.value"
                   type="button"
                   :class="{ 'is-active': readingRange === option.value }"
+                  :aria-pressed="readingRange === option.value"
+                  :aria-label="`查看近 ${option.value} 天阅读记录`"
                   @click="readingRange = option.value"
                 >
                   {{ option.label }}
