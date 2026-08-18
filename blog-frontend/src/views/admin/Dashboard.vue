@@ -16,7 +16,7 @@
         </button>
       </div>
       <div class="signal-row">
-        <section class="signal-card">
+        <button class="signal-card is-actionable" type="button" @click="goAdminArticles">
           <div class="signal-topline">
             <span class="signal-icon">文</span>
             <span class="signal-code">A-01</span>
@@ -24,9 +24,9 @@
           <small>全站文章</small>
           <strong>{{ stats.metrics.totalArticles }}</strong>
           <span>已发布 {{ stats.metrics.publishedArticles }} / 待审核 {{ stats.metrics.pendingArticles }}</span>
-        </section>
+        </button>
 
-        <section class="signal-card">
+        <button class="signal-card is-actionable" type="button" @click="goPendingQueue">
           <div class="signal-topline">
             <span class="signal-icon">审</span>
             <span class="signal-code">Q-02</span>
@@ -34,9 +34,9 @@
           <small>待处理队列</small>
           <strong>{{ pendingTotal }}</strong>
           <span>文章 {{ stats.metrics.pendingArticles }} / 用户 {{ stats.metrics.pendingUsers }}</span>
-        </section>
+        </button>
 
-        <section class="signal-card">
+        <button class="signal-card is-actionable" type="button" @click="goPublishedPublicArticles">
           <div class="signal-topline">
             <span class="signal-icon">览</span>
             <span class="signal-code">V-03</span>
@@ -44,7 +44,7 @@
           <small>全站浏览</small>
           <strong>{{ formatNumber(stats.trafficSummary.totalViews) }}</strong>
           <span>平均 {{ formatNumber(stats.trafficSummary.averageViews) }} / 篇</span>
-        </section>
+        </button>
 
         <section class="signal-card">
           <div class="signal-topline">
@@ -56,7 +56,7 @@
           <span>登录用户阅读记录</span>
         </section>
 
-        <section class="signal-card">
+        <button class="signal-card is-actionable" type="button" @click="goResources">
           <div class="signal-topline">
             <span class="signal-icon">源</span>
             <span class="signal-code">S-05</span>
@@ -64,7 +64,7 @@
           <small>资源体量</small>
           <strong>{{ formatBytes(stats.resourceSummary.totalImageSize) }}</strong>
           <span>图片 {{ stats.resourceSummary.totalImages }} / 标签 {{ stats.resourceSummary.totalTags }}</span>
-        </section>
+        </button>
       </div>
 
       <div class="dashboard-core">
@@ -81,7 +81,13 @@
             <div class="ring-block">
               <div class="ring" :style="articleRingStyle" data-center="128" aria-label="文章状态分布"></div>
               <div class="legend-list">
-                <div v-for="item in stats.articleStatus" :key="item.key" class="legend-row">
+                <div
+                  v-for="item in stats.articleStatus"
+                  :key="item.key"
+                  class="legend-row"
+                  tabindex="0"
+                  :aria-label="`${item.label}：${item.percent}%`"
+                >
                   <span><i class="legend-dot" :style="{ background: statusColor(item.key) }"></i>{{ item.label }}</span>
                   <strong>{{ item.percent }}%</strong>
                 </div>
@@ -91,9 +97,9 @@
             <div class="ring-block">
               <div class="ring is-visibility" :style="visibilityRingStyle" data-center="可见"></div>
               <div class="legend-list">
-                <div class="legend-row"><span><i class="legend-dot" style="background:var(--dash-teal)"></i>公开文章</span><strong>{{ visibilityPercent.public }}%</strong></div>
-                <div class="legend-row"><span><i class="legend-dot" style="background:var(--dash-plum)"></i>私密文章</span><strong>{{ visibilityPercent.private }}%</strong></div>
-                <div class="legend-row"><span><i class="legend-dot" style="background:var(--dash-amber)"></i>内容维护压力</span><strong>{{ maintenanceLevel }}</strong></div>
+                <div class="legend-row" tabindex="0" :aria-label="`公开文章：${visibilityPercent.public}%`"><span><i class="legend-dot" style="background:var(--dash-teal)"></i>公开文章</span><strong>{{ visibilityPercent.public }}%</strong></div>
+                <div class="legend-row" tabindex="0" :aria-label="`私密文章：${visibilityPercent.private}%`"><span><i class="legend-dot" style="background:var(--dash-plum)"></i>私密文章</span><strong>{{ visibilityPercent.private }}%</strong></div>
+                <div class="legend-row" tabindex="0" :aria-label="`内容维护压力：${maintenanceLevel}`"><span><i class="legend-dot" style="background:var(--dash-amber)"></i>内容维护压力</span><strong>{{ maintenanceLevel }}</strong></div>
               </div>
             </div>
           </div>
@@ -115,17 +121,35 @@
               <span class="panel-kicker">阅读活跃中枢</span>
               <h3>近 30 天阅读记录分布</h3>
             </div>
-            <span class="micro-pill">阅读历史</span>
+            <div class="reading-head-tools">
+              <span class="micro-pill">阅读历史</span>
+              <div class="range-tabs" aria-label="阅读范围">
+                <button
+                  v-for="option in readingRangeOptions"
+                  :key="option.value"
+                  type="button"
+                  :class="{ 'is-active': readingRange === option.value }"
+                  @click="readingRange = option.value"
+                >
+                  {{ option.label }}
+                </button>
+              </div>
+            </div>
           </div>
 
           <div class="activity-grid">
             <div class="chart-box">
-              <div v-if="sampleRows.length" class="chart-bars">
+              <div
+                v-if="sampleRows.length"
+                class="chart-bars"
+                :style="{ '--bar-count': sampleRows.length || readingRange }"
+              >
                 <span
                   v-for="bar in sampleRows"
                   :key="bar.date"
                   class="bar-cell"
-                  :title="`${bar.date}：${bar.count} 次`"
+                  tabindex="0"
+                  :aria-label="`${bar.date}：${bar.count} 次阅读`"
                 >
                   <span class="bar" :style="{ height: `${bar.height}%` }">
                     <span class="bar-tip" aria-hidden="true">{{ bar.date }} · {{ bar.count }} 次</span>
@@ -176,14 +200,29 @@
           </div>
 
           <div v-if="stats.trafficSummary.topArticles.length" class="rank-list">
-            <div v-for="(item, index) in stats.trafficSummary.topArticles" :key="item.id || index" class="rank-item">
-              <span class="rank-no">{{ pad(index + 1) }}</span>
-              <div>
-                <strong>{{ item.title }}</strong>
-                <small>浏览 {{ formatCompact(item.viewCount) }}</small>
+            <template v-for="(item, index) in stats.trafficSummary.topArticles" :key="item.id || index">
+              <button
+                v-if="item.id"
+                class="rank-item is-actionable"
+                type="button"
+                @click="goArticle(item)"
+              >
+                <span class="rank-no">{{ pad(index + 1) }}</span>
+                <div>
+                  <strong>{{ item.title }}</strong>
+                  <small>浏览 {{ formatCompact(item.viewCount) }}</small>
+                </div>
+                <span class="rank-value">{{ formatCompact(item.viewCount) }}</span>
+              </button>
+              <div v-else class="rank-item">
+                <span class="rank-no">{{ pad(index + 1) }}</span>
+                <div>
+                  <strong>{{ item.title }}</strong>
+                  <small>浏览 {{ formatCompact(item.viewCount) }}</small>
+                </div>
+                <span class="rank-value">{{ formatCompact(item.viewCount) }}</span>
               </div>
-              <span class="rank-value">{{ formatCompact(item.viewCount) }}</span>
-            </div>
+            </template>
           </div>
           <div v-else class="empty-state">暂无浏览数据</div>
 
@@ -217,9 +256,14 @@
                 <span
                   v-for="(item, index) in favoriteSpark"
                   :key="item.date || index"
-                  :style="{ height: `${item.height}%` }"
-                  :title="`${item.date}：${item.count} 次`"
-                ></span>
+                  class="spark-cell"
+                  tabindex="0"
+                  :aria-label="`${item.date}：${item.count} 次收藏`"
+                >
+                  <span class="spark-bar" :style="{ height: `${item.height}%` }">
+                    <span class="spark-tip" aria-hidden="true">{{ item.date }} · {{ item.count }} 次</span>
+                  </span>
+                </span>
               </div>
               <div v-else class="empty-state">暂无收藏趋势</div>
             </div>
@@ -301,6 +345,12 @@ const pendingTotal = computed(
 const hasWork = computed(
   () => stats.value.pendingArticles.length > 0 || stats.value.pendingUsers.length > 0
 )
+const readingRange = ref(14)
+const readingRangeOptions = [
+  { value: 7, label: '7 天' },
+  { value: 14, label: '14 天' },
+  { value: 30, label: '30 天' }
+]
 
 const rejectedArticles = computed(() => stats.value.metrics.rejectedArticles)
 const maintenanceLevel = computed(() => {
@@ -381,7 +431,7 @@ const favoriteRingStyle = computed(() => {
 })
 
 const sampleRows = computed(() => {
-  const rows = stats.value.readingSummary.dailyReads.slice(-14)
+  const rows = stats.value.readingSummary.dailyReads.slice(-readingRange.value)
   const max = Math.max(1, ...rows.map(item => item.count))
   return rows.map(item => ({
     date: item.date,
@@ -392,9 +442,13 @@ const sampleRows = computed(() => {
 
 const dailyAxis = computed(() => {
   const rows = sampleRows.value
-  if (!rows.length) return ['01', '04', '07', '10', '14']
-  return [0, 3, 6, 10, 13]
-    .map(index => rows[index]?.date?.slice(5) || '')
+  if (!rows.length) return []
+  const lastIndex = rows.length - 1
+  const pointCount = Math.min(5, rows.length)
+  return Array.from({ length: pointCount }, (_, index) => {
+    const rowIndex = Math.round((lastIndex * index) / Math.max(1, pointCount - 1))
+    return rows[rowIndex]?.date?.slice(5) || ''
+  })
     .filter(Boolean)
 })
 
@@ -473,12 +527,33 @@ async function loadDashboard() {
   loading.value = false
 }
 
+function goAdminArticles() {
+  router.push({ path: '/admin/articles' })
+}
+
+function goPendingQueue() {
+  if (stats.value.metrics.pendingArticles > 0 || stats.value.metrics.pendingUsers === 0) {
+    router.push({ path: '/admin/articles', query: { status: 'pending' } })
+    return
+  }
+  router.push({ path: '/admin/users', query: { status: 'pending' } })
+}
+
+function goPublishedPublicArticles() {
+  router.push({ path: '/admin/articles', query: { status: 'published', visibility: 'public' } })
+}
+
+function goResources() {
+  router.push({ path: '/admin/resources' })
+}
+
 function goArticle(article) {
+  if (!article?.id) return
   router.push(`/admin/articles/edit/${article.id}`)
 }
 
 function goUsers() {
-  router.push('/admin/users')
+  router.push({ path: '/admin/users', query: { status: 'pending' } })
 }
 
 onMounted(() => {
@@ -527,6 +602,18 @@ onMounted(() => {
 .board-toolbar .tool-button {
   min-height: 30px;
   padding: 0 12px;
+}
+
+.board-toolbar .tool-button:hover:not(:disabled),
+.board-toolbar .tool-button:focus-visible {
+  border-color: color-mix(in srgb, var(--dash-teal) 36%, var(--border-color));
+  background: color-mix(in srgb, var(--dash-teal) 10%, var(--panel-bg));
+  transform: translateY(-1px);
+}
+
+.board-toolbar .tool-button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--dash-teal) 62%, transparent);
+  outline-offset: 3px;
 }
 
 .signal-row {
@@ -579,6 +666,50 @@ onMounted(() => {
 .signal-card {
   min-height: 112px;
   padding: 14px;
+}
+
+button.signal-card {
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+}
+
+.is-actionable,
+.board-toolbar .tool-button,
+.queue-item,
+.range-tabs button,
+.legend-row,
+.bar-cell,
+.spark-cell {
+  transition:
+    border-color 0.16s ease,
+    background-color 0.16s ease,
+    box-shadow 0.16s ease,
+    color 0.16s ease,
+    opacity 0.16s ease,
+    transform 0.16s ease;
+}
+
+.is-actionable:hover,
+.is-actionable:focus-visible {
+  border-color: color-mix(in srgb, var(--dash-teal) 42%, var(--border-color));
+  box-shadow:
+    var(--shadow-md),
+    0 0 0 3px color-mix(in srgb, var(--dash-teal) 14%, transparent);
+  transform: translateY(-1px);
+}
+
+.is-actionable:focus-visible,
+.queue-item:focus-visible,
+.range-tabs button:focus-visible,
+.legend-row:focus-visible,
+.bar-cell:focus-visible,
+.spark-cell:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--dash-teal) 62%, transparent);
+  outline-offset: 3px;
 }
 
 .signal-topline {
@@ -684,6 +815,14 @@ onMounted(() => {
   line-height: 1.25;
 }
 
+.reading-head-tools {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .micro-pill {
   display: inline-flex;
   align-items: center;
@@ -698,6 +837,40 @@ onMounted(() => {
   font-size: 12px;
   font-weight: 760;
   white-space: nowrap;
+}
+
+.range-tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--dash-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-bg) 68%, transparent);
+}
+
+.range-tabs button {
+  min-width: 42px;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--muted-text-color);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 760;
+  cursor: pointer;
+}
+
+.range-tabs button:hover,
+.range-tabs button:focus-visible,
+.range-tabs button.is-active {
+  color: var(--text-color);
+  background: color-mix(in srgb, var(--dash-teal) 14%, var(--panel-bg));
+}
+
+.range-tabs button.is-active {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dash-teal) 26%, transparent);
 }
 
 .ring-stack {
@@ -749,8 +922,18 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  min-height: 24px;
+  margin: 0 -5px;
+  padding: 2px 5px;
+  border-radius: 7px;
   color: var(--muted-text-color);
   font-size: 12px;
+}
+
+.legend-row:hover,
+.legend-row:focus-visible {
+  color: var(--text-color);
+  background: color-mix(in srgb, var(--dash-teal) 8%, transparent);
 }
 
 .legend-row span:first-child {
@@ -834,7 +1017,7 @@ onMounted(() => {
   position: absolute;
   inset: 42px 18px 34px;
   display: grid;
-  grid-template-columns: repeat(14, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--bar-count), minmax(0, 1fr));
   align-items: end;
   gap: 8px;
 }
@@ -846,6 +1029,8 @@ onMounted(() => {
   justify-content: center;
   min-width: 0;
   height: 100%;
+  border-radius: 999px;
+  cursor: default;
 }
 
 .chart-bars .bar {
@@ -887,8 +1072,8 @@ onMounted(() => {
   transition: opacity 0.15s ease, visibility 0.15s ease, transform 0.15s ease;
 }
 
-.bar:hover .bar-tip,
-.bar:focus-visible .bar-tip {
+.bar-cell:hover .bar-tip,
+.bar-cell:focus-visible .bar-tip {
   opacity: 1;
   visibility: visible;
   transform: translate(-50%, -2px);
@@ -980,10 +1165,19 @@ onMounted(() => {
   grid-template-columns: 26px minmax(0, 1fr) auto;
   align-items: center;
   gap: 9px;
+  width: 100%;
   padding: 9px;
   border: 1px solid var(--dash-border);
   border-radius: 8px;
+  color: inherit;
   background: color-mix(in srgb, var(--panel-bg) 64%, transparent);
+  text-align: left;
+}
+
+button.rank-item {
+  font: inherit;
+  cursor: pointer;
+  appearance: none;
 }
 
 .rank-no {
@@ -1100,11 +1294,52 @@ onMounted(() => {
   padding: 0 2px;
 }
 
-.sparkline span {
+.spark-cell {
+  position: relative;
+  display: flex;
   flex: 1;
+  align-items: flex-end;
+  justify-content: center;
   min-width: 5px;
+  height: 100%;
+  border-radius: 999px;
+  cursor: default;
+}
+
+.spark-bar {
+  position: relative;
+  width: 100%;
   border-radius: 999px 999px 3px 3px;
   background: linear-gradient(180deg, var(--dash-plum), var(--dash-teal));
+}
+
+.spark-tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 5;
+  padding: 5px 8px;
+  border: 1px solid color-mix(in srgb, var(--dash-plum) 24%, transparent);
+  border-radius: 7px;
+  color: color-mix(in srgb, var(--dash-plum) 86%, var(--text-color));
+  background: color-mix(in srgb, var(--panel-bg) 96%, transparent);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--text-color) 14%, transparent);
+  font-size: 12px;
+  font-weight: 780;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-50%);
+  transition: opacity 0.15s ease, visibility 0.15s ease, transform 0.15s ease;
+}
+
+.spark-cell:hover .spark-tip,
+.spark-cell:focus-visible .spark-tip {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, -2px);
 }
 
 .resource-grid {
@@ -1170,6 +1405,12 @@ onMounted(() => {
   border-color: color-mix(in srgb, var(--dash-steel) 30%, transparent);
 }
 
+.queue-item:hover,
+.queue-item:focus-visible {
+  background: color-mix(in srgb, var(--dash-teal) 8%, var(--panel-bg));
+  transform: translateY(-1px);
+}
+
 .queue-item strong {
   overflow: hidden;
   font-size: 13px;
@@ -1217,6 +1458,34 @@ onMounted(() => {
 
   .chart-bars {
     gap: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .is-actionable,
+  .board-toolbar .tool-button,
+  .queue-item,
+  .range-tabs button,
+  .legend-row,
+  .bar-cell,
+  .spark-cell,
+  .bar-tip,
+  .spark-tip {
+    transition: none;
+    transform: none;
+  }
+
+  .is-actionable:hover,
+  .is-actionable:focus-visible,
+  .board-toolbar .tool-button:hover:not(:disabled),
+  .board-toolbar .tool-button:focus-visible,
+  .queue-item:hover,
+  .queue-item:focus-visible,
+  .bar-cell:hover .bar-tip,
+  .bar-cell:focus-visible .bar-tip,
+  .spark-cell:hover .spark-tip,
+  .spark-cell:focus-visible .spark-tip {
+    transform: none;
   }
 }
 </style>
