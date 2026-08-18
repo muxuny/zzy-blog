@@ -114,6 +114,7 @@ const total = ref(0)
 const loading = ref(false)
 const helpOpen = ref(false)
 const status = ref(normalizeUserStatusQuery(route.query.status))
+let requestVersion = 0
 
 const pendingCount = computed(() => users.value.filter(user => user.status === 'pending').length)
 const showPagination = computed(() => shouldShowPagination(total.value, size.value))
@@ -163,11 +164,13 @@ function normalizeUserStatusQuery(value) {
 }
 
 async function loadUsers() {
+  const requestId = ++requestVersion
   loading.value = true
   try {
     const params = { page: page.value, size: size.value }
     if (status.value) params.status = status.value
     const result = await getUsers(params)
+    if (requestId !== requestVersion) return
     const pageResult = normalizePageResult(result, size.value)
     const maxPage = Math.max(1, Math.ceil(pageResult.total / size.value))
     if (page.value > maxPage) {
@@ -178,7 +181,7 @@ async function loadUsers() {
     users.value = pageResult.records
     total.value = pageResult.total
   } finally {
-    loading.value = false
+    if (requestId === requestVersion) loading.value = false
   }
 }
 

@@ -46,11 +46,25 @@ test('admin users page reads status query and passes status to backend params', 
   assert.match(source, /value: 'active', label: '已启用'/)
   assert.match(source, /value: 'disabled', label: '已禁用'/)
   assert.match(source, /const status = ref\(normalizeUserStatusQuery\(route\.query\.status\)\)/)
+  assert.match(source, /function firstQueryValue\(value\)/)
+  assert.match(source, /Array\.isArray\(value\) \? value\[0\] : value/)
   assert.match(source, /function normalizeUserStatusQuery\(value\)/)
+  assert.match(source, /return userStatusOptions\.some\(item => item\.value === normalized\) \? normalized : ''/)
   assert.match(source, /watch\(\s*\(\) => route\.query\.status/)
+  assert.match(source, /if \(normalized === status\.value\) return/)
+  assert.match(source, /page\.value = 1/)
   assert.match(source, /class="filter-field user-status-filter"/)
   assert.match(source, /aria-label="用户状态"/)
   assert.match(source, /@change="handleFilterChange"/)
+})
+
+test('admin users page ignores stale status-filter responses', () => {
+  const source = read('views/admin/Users.vue')
+
+  assert.match(source, /let requestVersion = 0/)
+  assert.match(source, /const requestId = \+\+requestVersion/)
+  assert.match(source, /if \(requestId !== requestVersion\) return/)
+  assert.match(source, /if \(requestId === requestVersion\) loading\.value = false/)
 })
 
 test('admin resources page pages tags and images separately', () => {
