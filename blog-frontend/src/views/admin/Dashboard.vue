@@ -74,12 +74,30 @@
               <span class="panel-kicker">内容结构</span>
               <h3>状态与可见性</h3>
             </div>
-            <span class="micro-pill">全站</span>
           </div>
 
           <div class="ring-stack">
             <div class="ring-block">
-              <div class="ring" :style="articleRingStyle" data-center="128" aria-label="文章状态分布"></div>
+              <div class="segmented-ring" data-center="128">
+                <svg class="ring-svg" viewBox="0 0 120 120" role="img" aria-label="文章状态分布">
+                  <circle class="ring-track" cx="60" cy="60" r="46" pathLength="100"></circle>
+                  <circle
+                    v-for="segment in articleRingSegments"
+                    :key="segment.key"
+                    class="ring-segment"
+                    cx="60"
+                    cy="60"
+                    r="46"
+                    pathLength="100"
+                    tabindex="0"
+                    :aria-label="segment.ariaLabel"
+                    :style="segment.style"
+                  >
+                    <title>{{ segment.tip }}</title>
+                  </circle>
+                </svg>
+                <span class="ring-center" aria-hidden="true">128</span>
+              </div>
               <div class="legend-list">
                 <div
                   v-for="item in stats.articleStatus"
@@ -95,7 +113,26 @@
             </div>
 
             <div class="ring-block">
-              <div class="ring is-visibility" :style="visibilityRingStyle" data-center="可见"></div>
+              <div class="segmented-ring" data-center="可见">
+                <svg class="ring-svg" viewBox="0 0 120 120" role="img" aria-label="文章可见性分布">
+                  <circle class="ring-track" cx="60" cy="60" r="46" pathLength="100"></circle>
+                  <circle
+                    v-for="segment in visibilityRingSegments"
+                    :key="segment.key"
+                    class="ring-segment"
+                    cx="60"
+                    cy="60"
+                    r="46"
+                    pathLength="100"
+                    tabindex="0"
+                    :aria-label="segment.ariaLabel"
+                    :style="segment.style"
+                  >
+                    <title>{{ segment.tip }}</title>
+                  </circle>
+                </svg>
+                <span class="ring-center" aria-hidden="true">可见</span>
+              </div>
               <div class="legend-list">
                 <div class="legend-row" tabindex="0" :aria-label="`公开文章：${visibilityPercent.public}%`"><span><i class="legend-dot" style="background:var(--dash-teal)"></i>公开文章</span><strong>{{ visibilityPercent.public }}%</strong></div>
                 <div class="legend-row" tabindex="0" :aria-label="`私密文章：${visibilityPercent.private}%`"><span><i class="legend-dot" style="background:var(--dash-plum)"></i>私密文章</span><strong>{{ visibilityPercent.private }}%</strong></div>
@@ -122,7 +159,6 @@
               <h3>近 30 天阅读记录分布</h3>
             </div>
             <div class="reading-head-tools">
-              <span class="micro-pill">阅读历史</span>
               <div class="range-tabs" aria-label="阅读范围">
                 <button
                   v-for="option in readingRangeOptions"
@@ -144,7 +180,7 @@
               <div
                 v-if="sampleRows.length"
                 class="chart-bars"
-                :style="{ '--bar-count': sampleRows.length || readingRange }"
+                :style="readingBarStyle"
               >
                 <span
                   v-for="bar in sampleRows"
@@ -198,7 +234,7 @@
               <span class="panel-kicker">内容热度</span>
               <h3>浏览最高文章</h3>
             </div>
-            <span class="micro-pill">Top 5</span>
+            <span class="panel-badge">Top 5</span>
           </div>
 
           <div v-if="stats.trafficSummary.topArticles.length" class="rank-list">
@@ -243,11 +279,29 @@
               <span class="panel-kicker">收藏反馈</span>
               <h3>读者留存信号</h3>
             </div>
-            <span class="micro-pill">收藏</span>
           </div>
 
           <div class="feedback-chart">
-            <div class="feedback-ring" :style="favoriteRingStyle"></div>
+            <div class="segmented-ring is-large" data-center="收藏">
+              <svg class="ring-svg" viewBox="0 0 120 120" role="img" aria-label="收藏反馈分布">
+                <circle class="ring-track" cx="60" cy="60" r="46" pathLength="100"></circle>
+                <circle
+                  v-for="segment in favoriteRingSegments"
+                  :key="segment.key"
+                  class="ring-segment"
+                  cx="60"
+                  cy="60"
+                  r="46"
+                  pathLength="100"
+                  tabindex="0"
+                  :aria-label="segment.ariaLabel"
+                  :style="segment.style"
+                >
+                  <title>{{ segment.tip }}</title>
+                </circle>
+              </svg>
+              <span class="ring-center" aria-hidden="true">收藏</span>
+            </div>
             <div>
               <div class="small-stat">
                 <span class="mini-label">总收藏</span>
@@ -278,7 +332,7 @@
               <span class="panel-kicker">资源健康</span>
               <h3>图片与标签资产</h3>
             </div>
-            <span class="micro-pill">资源管理</span>
+            <button class="panel-action is-actionable" type="button" @click="goResources">资源管理</button>
           </div>
 
           <div class="resource-grid">
@@ -298,7 +352,7 @@
               <span class="panel-kicker">工作队列</span>
               <h3>优先处理</h3>
             </div>
-            <span class="micro-pill">{{ pendingTotal }} 项</span>
+            <span class="panel-badge">{{ pendingTotal }} 项</span>
           </div>
 
           <div v-if="hasWork" class="queue-list">
@@ -386,50 +440,51 @@ const visibilityPercent = computed(() => {
   }
 })
 
-const articleRingStyle = computed(() => {
-  let cursor = 0
-  const segments = stats.value.articleStatus.map(item => {
-    const start = cursor
-    cursor += Math.max(item.percent, item.count ? 1 : 0)
-    return `${statusColor(item.key)} ${start}% ${cursor}%`
-  })
-  if (!cursor) {
-    return {
-      background:
-        'radial-gradient(circle at center, var(--panel-bg) 0 53%, transparent 54%), conic-gradient(var(--dash-steel) 0 100%)'
-    }
-  }
-  return {
-    background:
-      `radial-gradient(circle at center, var(--panel-bg) 0 53%, transparent 54%), conic-gradient(${segments.join(', ')})`
-  }
-})
+const articleRingSegments = computed(() =>
+  buildRingSegments(
+    stats.value.articleStatus.map(item => ({
+      key: item.key,
+      label: item.label,
+      count: item.count,
+      color: statusColor(item.key)
+    }))
+  )
+)
 
-const visibilityRingStyle = computed(() => {
-  const publicCount = stats.value.metrics.publicPublishedArticles
-  const privateCount = stats.value.metrics.privateArticles
-  const total = publicCount + privateCount
-  if (!total) {
-    return {
-      background:
-        'radial-gradient(circle at center, var(--panel-bg) 0 53%, transparent 54%), conic-gradient(var(--dash-teal) 0 100%)'
+const visibilityRingSegments = computed(() =>
+  buildRingSegments([
+    {
+      key: 'public',
+      label: '公开文章',
+      count: stats.value.metrics.publicPublishedArticles,
+      color: 'var(--dash-teal)'
+    },
+    {
+      key: 'private',
+      label: '私密文章',
+      count: stats.value.metrics.privateArticles,
+      color: 'var(--dash-plum)'
     }
-  }
-  const publicPercent = percent(publicCount, total)
-  return {
-    background:
-      `radial-gradient(circle at center, var(--panel-bg) 0 53%, transparent 54%), conic-gradient(var(--dash-teal) 0 ${publicPercent}%, var(--dash-plum) ${publicPercent}% 100%)`
-  }
-})
+  ])
+)
 
-const favoriteRingStyle = computed(() => {
-  const total = stats.value.favoriteSummary.total
-  const recent = stats.value.favoriteSummary.recent7Days
-  const recentPercent = percent(recent, total)
-  return {
-    background:
-      `radial-gradient(circle at center, var(--panel-bg) 0 54%, transparent 55%), conic-gradient(var(--dash-plum) 0 ${recentPercent}%, var(--dash-teal) ${recentPercent}% 100%)`
-  }
+const favoriteRingSegments = computed(() => {
+  const total = Math.max(0, Number(stats.value.favoriteSummary.total) || 0)
+  const recent = Math.min(total, Math.max(0, Number(stats.value.favoriteSummary.recent7Days) || 0))
+  return buildRingSegments([
+    {
+      key: 'recent',
+      label: '近 7 天新增',
+      count: recent,
+      color: 'var(--dash-plum)'
+    },
+    {
+      key: 'retained',
+      label: '历史收藏',
+      count: Math.max(0, total - recent),
+      color: 'var(--dash-teal)'
+    }
+  ])
 })
 
 const sampleRows = computed(() => {
@@ -440,6 +495,15 @@ const sampleRows = computed(() => {
     count: item.count,
     height: item.count ? Math.max(6, Math.round((item.count / max) * 100)) : 0
   }))
+})
+
+const readingBarStyle = computed(() => {
+  const count = sampleRows.value.length || readingRange.value
+  return {
+    '--bar-count': count,
+    '--bar-gap': count >= 30 ? '3px' : count > 14 ? '5px' : '8px',
+    '--bar-min-width': count >= 30 ? '4px' : count > 14 ? '5px' : '6px'
+  }
 })
 
 const dailyAxis = computed(() => {
@@ -469,6 +533,64 @@ const hasFavoriteTrend = computed(() => favoriteSpark.value.some(item => item.co
 function percent(count, total) {
   if (!total) return 0
   return Math.round((count / total) * 100)
+}
+
+function buildRingSegments(items) {
+  const normalized = items
+    .map((item, index) => ({
+      key: item.key || `${item.label}-${index}`,
+      label: item.label,
+      count: Math.max(0, Number(item.count) || 0),
+      color: item.color || 'var(--dash-steel)'
+    }))
+    .filter(item => item.count > 0)
+
+  if (!normalized.length) {
+    return [
+      {
+        key: 'empty',
+        label: '暂无数据',
+        count: 0,
+        percent: 100,
+        tip: '暂无数据',
+        ariaLabel: '暂无数据',
+        style: {
+          '--segment-color': 'var(--dash-steel)',
+          '--segment-length': '100',
+          '--segment-offset': '0',
+          '--segment-start': '0'
+        }
+      }
+    ]
+  }
+
+  const total = normalized.reduce((sum, item) => sum + item.count, 0)
+  let cursor = 0
+  return normalized.map((item, index) => {
+    const rawLength = index === normalized.length - 1
+      ? Math.max(0, 100 - cursor)
+      : Math.max(1, (item.count / total) * 100)
+    const start = cursor
+    cursor += rawLength
+    const displayPercent = percent(item.count, total)
+    const visualLength = Math.max(1, rawLength - (normalized.length > 1 ? 1.4 : 0))
+    const tip = `${item.label}：${item.count} 项，${displayPercent}%`
+
+    return {
+      key: item.key,
+      label: item.label,
+      count: item.count,
+      percent: displayPercent,
+      tip,
+      ariaLabel: tip,
+      style: {
+        '--segment-color': item.color,
+        '--segment-length': `${Number(visualLength.toFixed(2))}`,
+        '--segment-offset': `${Number((-start).toFixed(2))}`,
+        '--segment-start': `${Number(start.toFixed(2))}`
+      }
+    }
+  })
 }
 
 function statusColor(key) {
@@ -685,7 +807,8 @@ button.signal-card {
 .range-tabs button,
 .legend-row,
 .bar-cell,
-.spark-cell {
+.spark-cell,
+.ring-segment {
   transition:
     border-color 0.16s ease,
     background-color 0.16s ease,
@@ -705,11 +828,13 @@ button.signal-card {
 }
 
 .is-actionable:focus-visible,
+.panel-action:focus-visible,
 .queue-item:focus-visible,
 .range-tabs button:focus-visible,
 .legend-row:focus-visible,
 .bar-cell:focus-visible,
-.spark-cell:focus-visible {
+.spark-cell:focus-visible,
+.ring-segment:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--dash-teal) 62%, transparent);
   outline-offset: 3px;
 }
@@ -825,20 +950,41 @@ button.signal-card {
   flex-wrap: wrap;
 }
 
-.micro-pill {
+.panel-badge,
+.panel-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-width: 56px;
-  height: 28px;
+  min-height: 28px;
   padding: 0 10px;
-  border: 1px solid color-mix(in srgb, var(--accent-color) 20%, transparent);
   border-radius: 999px;
-  color: var(--dash-steel);
-  background: color-mix(in srgb, var(--panel-bg) 70%, transparent);
   font-size: 12px;
   font-weight: 760;
   white-space: nowrap;
+}
+
+.panel-badge {
+  border: 1px solid var(--dash-border-soft);
+  color: var(--muted-text-color);
+  background: color-mix(in srgb, var(--panel-bg) 52%, transparent);
+  cursor: default;
+}
+
+.panel-action {
+  border: 1px solid color-mix(in srgb, var(--dash-teal) 24%, var(--dash-border));
+  color: var(--dash-steel);
+  background: color-mix(in srgb, var(--panel-bg) 70%, transparent);
+  font: inherit;
+  cursor: pointer;
+  appearance: none;
+}
+
+.panel-action:hover,
+.panel-action:focus-visible {
+  border-color: color-mix(in srgb, var(--dash-teal) 42%, var(--border-color));
+  color: var(--text-color);
+  background: color-mix(in srgb, var(--dash-teal) 12%, var(--panel-bg));
 }
 
 .range-tabs {
@@ -892,26 +1038,72 @@ button.signal-card {
   background: color-mix(in srgb, var(--panel-bg) 62%, transparent);
 }
 
-.ring {
+.segmented-ring {
+  --ring-size: 102px;
+  --ring-segment-width: 16px;
+  --ring-segment-active-width: 19px;
   position: relative;
-  width: 102px;
+  width: var(--ring-size);
   aspect-ratio: 1;
   border-radius: 50%;
-  box-shadow:
-    inset 0 0 0 1px var(--dash-border),
-    0 12px 24px color-mix(in srgb, var(--text-color) 10%, transparent);
+  filter: drop-shadow(0 12px 18px color-mix(in srgb, var(--text-color) 10%, transparent));
 }
 
-.ring::after {
-  content: attr(data-center);
+.segmented-ring.is-large {
+  --ring-size: 112px;
+}
+
+.ring-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transform: rotate(-90deg);
+}
+
+.ring-track,
+.ring-segment {
+  fill: none;
+  cx: 60;
+  cy: 60;
+  r: 46;
+}
+
+.ring-track {
+  stroke: var(--dash-border-soft);
+  stroke-width: var(--ring-segment-width);
+}
+
+.ring-segment {
+  stroke: var(--segment-color);
+  stroke-width: var(--ring-segment-width);
+  stroke-linecap: round;
+  stroke-dasharray: var(--segment-length) 100;
+  stroke-dashoffset: var(--segment-offset);
+  cursor: default;
+  opacity: 0.9;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.ring-segment:hover,
+.ring-segment:focus-visible {
+  stroke-width: var(--ring-segment-active-width);
+  filter: drop-shadow(0 6px 8px color-mix(in srgb, var(--segment-color) 34%, transparent));
+  opacity: 1;
+  transform: scale(1.04);
+}
+
+.ring-center {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
+  border-radius: 50%;
   color: var(--text-color);
   font-family: Consolas, "SFMono-Regular", monospace;
   font-size: 13px;
   font-weight: 850;
+  pointer-events: none;
 }
 
 .legend-list {
@@ -1019,9 +1211,9 @@ button.signal-card {
   position: absolute;
   inset: 42px 18px 34px;
   display: grid;
-  grid-template-columns: repeat(var(--bar-count), minmax(0, 1fr));
+  grid-template-columns: repeat(var(--bar-count), minmax(var(--bar-min-width), 1fr));
   align-items: end;
-  gap: 8px;
+  gap: var(--bar-gap);
 }
 
 .chart-bars > .bar-cell {
@@ -1267,26 +1459,6 @@ button.rank-item {
   gap: 12px;
 }
 
-.feedback-ring {
-  position: relative;
-  width: 112px;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  box-shadow:
-    inset 0 0 0 1px var(--dash-border),
-    0 12px 24px color-mix(in srgb, var(--text-color) 10%, transparent);
-}
-
-.feedback-ring::after {
-  content: "收藏";
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: var(--text-color);
-  font-weight: 850;
-}
-
 .sparkline {
   display: flex;
   align-items: end;
@@ -1459,7 +1631,7 @@ button.rank-item {
   }
 
   .chart-bars {
-    gap: 2px;
+    inset: 42px 12px 34px;
   }
 }
 
@@ -1470,7 +1642,8 @@ button.rank-item {
   .range-tabs button,
   .legend-row,
   .bar-cell,
-  .spark-cell {
+  .spark-cell,
+  .ring-segment {
     transition: none;
     transform: none;
   }
@@ -1485,7 +1658,9 @@ button.rank-item {
   .board-toolbar .tool-button:hover:not(:disabled),
   .board-toolbar .tool-button:focus-visible,
   .queue-item:hover,
-  .queue-item:focus-visible {
+  .queue-item:focus-visible,
+  .ring-segment:hover,
+  .ring-segment:focus-visible {
     transform: none;
   }
 

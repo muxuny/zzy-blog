@@ -63,12 +63,40 @@ test('admin dashboard grids adapt to the admin container width', () => {
 
 test('admin dashboard reading chart follows the prototype bar rhythm', () => {
   const source = read('views/admin/Dashboard.vue')
+  const chartBarsRule = source.match(/\.chart-bars\s*\{[^}]*\}/)?.[0] || ''
 
   assert.match(source, /sampleRows/)
-  assert.match(source, /\.chart-bars\s*\{[^}]*grid-template-columns:\s*repeat\(var\(--bar-count\),\s*minmax\(0,\s*1fr\)\)/)
+  assert.match(source, /readingBarStyle/)
+  assert.match(source, /'--bar-gap':/)
+  assert.match(source, /'--bar-min-width':/)
+  assert.match(source, /\.chart-bars\s*\{[^}]*grid-template-columns:\s*repeat\(var\(--bar-count\),\s*minmax\(var\(--bar-min-width\),\s*1fr\)\)/)
+  assert.match(chartBarsRule, /gap:\s*var\(--bar-gap\);/)
   assert.match(source, /\.chart-bars \.bar\s*\{[^}]*min-height:\s*16px;/)
+  assert.doesNotMatch(chartBarsRule, /gap:\s*8px;/)
   assert.doesNotMatch(source, /\.chart-bars\s*\{[^}]*grid-template-columns:\s*repeat\(14,\s*minmax\(0,\s*1fr\)\)/)
   assert.doesNotMatch(source, /\.chart-bars\s*\{[^}]*grid-template-columns:\s*repeat\(30/)
+})
+
+test('admin dashboard circular charts expose focusable segmented ring feedback', () => {
+  const source = read('views/admin/Dashboard.vue')
+
+  assert.match(source, /buildRingSegments/)
+  assert.match(source, /articleRingSegments/)
+  assert.match(source, /visibilityRingSegments/)
+  assert.match(source, /favoriteRingSegments/)
+  assert.match(source, /class="segmented-ring"/)
+  assert.match(source, /class="ring-segment"/)
+  assert.match(source, /tabindex="0"/)
+  assert.match(source, /:aria-label="segment\.ariaLabel"/)
+  assert.match(source, /\.ring-segment:hover/)
+  assert.match(source, /\.ring-segment:focus-visible/)
+  assert.match(source, /transform:\s*scale\(1\.0[2-9]\)/)
+  assert.match(source, /stroke-width:\s*var\(--ring-segment-active-width\);/)
+  assert.doesNotMatch(source, /class="ring"\s+:style="articleRingStyle"/)
+  assert.doesNotMatch(source, /const articleRingStyle/)
+  assert.doesNotMatch(source, /const visibilityRingStyle/)
+  assert.doesNotMatch(source, /const favoriteRingStyle/)
+  assert.doesNotMatch(source, /conic-gradient/)
 })
 
 test('admin dashboard reading chart uses per-bar hover tooltips instead of a fixed peak note', () => {
@@ -137,8 +165,27 @@ test('admin dashboard reading range switch uses existing daily reads only', () =
   assert.match(source, /:aria-label="`查看近 \$\{option\.value\} 天阅读记录`"/)
   assert.match(source, /@click="readingRange = option\.value"/)
   assert.match(source, /stats\.value\.readingSummary\.dailyReads\.slice\(-readingRange\.value\)/)
-  assert.match(source, /:style="\{ '--bar-count': sampleRows\.length \|\| readingRange \}"/)
+  assert.match(source, /const readingBarStyle = computed/)
+  assert.match(source, /sampleRows\.value\.length \|\| readingRange\.value/)
+  assert.match(source, /:style="readingBarStyle"/)
   assert.doesNotMatch(source, /dailyReads\.slice\(-14\)/)
+})
+
+test('admin dashboard panel header affordances separate real actions from passive labels', () => {
+  const source = read('views/admin/Dashboard.vue')
+
+  assert.doesNotMatch(source, /<span class="micro-pill">全站<\/span>/)
+  assert.doesNotMatch(source, /<span class="micro-pill">阅读历史<\/span>/)
+  assert.doesNotMatch(source, /<span class="micro-pill">收藏<\/span>/)
+  assert.match(source, /<button\s+class="panel-action is-actionable"\s+type="button"\s+@click="goResources"[\s\S]*资源管理[\s\S]*<\/button>/)
+  assert.match(source, /<span class="panel-badge">Top 5<\/span>/)
+  assert.match(source, /<span class="panel-badge">\{\{ pendingTotal \}\} 项<\/span>/)
+  assert.match(source, /\.panel-action:hover/)
+  assert.match(source, /\.panel-action:focus-visible/)
+  assert.match(source, /\.panel-badge\s*\{[^}]*cursor:\s*default;/)
+  const badges = source.match(/<span class="panel-badge"[^>]*>/g) || []
+  assert.ok(badges.length >= 2)
+  badges.forEach(badge => assert.doesNotMatch(badge, /@click/))
 })
 
 test('admin dashboard reading and favorite bars use custom focusable tooltips', () => {
@@ -186,6 +233,7 @@ test('admin dashboard reduced motion keeps chart tooltip centering while cancell
   )?.[0] || ''
 
   assert.doesNotMatch(baseResetRule, /\.bar-tip|\.spark-tip/)
+  assert.match(baseResetRule, /\.ring-segment/)
   assert.match(tooltipFocusRule, /transform:\s*translateX\(-50%\);/)
   assert.doesNotMatch(tooltipFocusRule, /transform:\s*none;/)
 })
@@ -198,6 +246,10 @@ test('admin dashboard interaction styles stay theme-token based', () => {
   assert.match(source, /\.is-actionable:focus-visible/)
   assert.match(source, /\.range-tabs button:hover/)
   assert.match(source, /\.range-tabs button:focus-visible/)
+  assert.match(source, /\.panel-action:hover/)
+  assert.match(source, /\.panel-action:focus-visible/)
+  assert.match(source, /\.ring-segment:hover/)
+  assert.match(source, /\.ring-segment:focus-visible/)
   assert.doesNotMatch(source, /#[0-9a-fA-F]{3,8}\b/)
   assert.doesNotMatch(source, /rgba\(255,\s*255,\s*255/)
 })
