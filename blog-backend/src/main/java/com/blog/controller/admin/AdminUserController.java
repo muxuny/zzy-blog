@@ -46,9 +46,8 @@ public class AdminUserController {
         if (status == null || status.trim().isEmpty()) {
             return "";
         }
-        String normalized = status.trim();
-        if ("pending".equals(normalized) || "active".equals(normalized) || "disabled".equals(normalized)) {
-            return normalized;
+        if ("pending".equals(status) || "active".equals(status) || "disabled".equals(status)) {
+            return status;
         }
         throw new BusinessException("用户状态不合法");
     }

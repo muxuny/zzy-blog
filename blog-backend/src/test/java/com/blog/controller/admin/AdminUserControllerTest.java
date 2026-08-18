@@ -119,6 +119,21 @@ class AdminUserControllerTest {
 
     @Test
     @SuppressWarnings({"rawtypes", "unchecked"})
+    void listRejectsWhitespacePaddedStatusBeforeQuerying() {
+        Page<User> page = new Page<>(1, 10);
+        page.setRecords(Collections.emptyList());
+        page.setTotal(0);
+        when(userService.page(any(Page.class), any(Wrapper.class))).thenReturn(page);
+
+        assertThatThrownBy(() -> controller.list(1, 10, " active "))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("用户状态不合法");
+
+        verify(userService, never()).page(any(Page.class), any(Wrapper.class));
+    }
+
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
     void listRejectsOversizedPageBeforeQuerying() {
         assertThatThrownBy(() -> controller.list(1, 101, null))
                 .isInstanceOf(BusinessException.class)
