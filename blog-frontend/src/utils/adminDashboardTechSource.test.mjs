@@ -173,6 +173,23 @@ test('admin dashboard passive legends and queue items have keyboard-friendly fee
   assert.match(source, /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*transform:\s*none;/)
 })
 
+test('admin dashboard reduced motion keeps chart tooltip centering while cancelling movement', () => {
+  const source = read('views/admin/Dashboard.vue')
+  const reducedMotionBlock = source.match(
+    /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\n\}/
+  )?.[0] || ''
+  const baseResetRule = reducedMotionBlock.match(
+    /(?:^|\n)\s*\.is-actionable,[\s\S]*?\{\s*transition:\s*none;\s*transform:\s*none;\s*\}/
+  )?.[0] || ''
+  const tooltipFocusRule = reducedMotionBlock.match(
+    /\.bar-cell:hover \.bar-tip,[\s\S]*?\.spark-cell:focus-visible \.spark-tip\s*\{[\s\S]*?\}/
+  )?.[0] || ''
+
+  assert.doesNotMatch(baseResetRule, /\.bar-tip|\.spark-tip/)
+  assert.match(tooltipFocusRule, /transform:\s*translateX\(-50%\);/)
+  assert.doesNotMatch(tooltipFocusRule, /transform:\s*none;/)
+})
+
 test('admin dashboard interaction styles stay theme-token based', () => {
   const source = read('views/admin/Dashboard.vue')
 

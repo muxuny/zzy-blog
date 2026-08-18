@@ -1470,11 +1470,14 @@ button.rank-item {
   .range-tabs button,
   .legend-row,
   .bar-cell,
-  .spark-cell,
+  .spark-cell {
+    transition: none;
+    transform: none;
+  }
+
   .bar-tip,
   .spark-tip {
     transition: none;
-    transform: none;
   }
 
   .is-actionable:hover,
@@ -1482,12 +1485,15 @@ button.rank-item {
   .board-toolbar .tool-button:hover:not(:disabled),
   .board-toolbar .tool-button:focus-visible,
   .queue-item:hover,
-  .queue-item:focus-visible,
+  .queue-item:focus-visible {
+    transform: none;
+  }
+
   .bar-cell:hover .bar-tip,
   .bar-cell:focus-visible .bar-tip,
   .spark-cell:hover .spark-tip,
   .spark-cell:focus-visible .spark-tip {
-    transform: none;
+    transform: translateX(-50%);
   }
 }
 </style>
