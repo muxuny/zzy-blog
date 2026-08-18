@@ -180,6 +180,7 @@ const loading = ref(false)
 const busyIds = ref(new Set())
 const helpOpen = ref(false)
 const pageCopy = computed(() => pageCopyStore.resolveCopy('admin.articles'))
+let requestVersion = 0
 
 onMounted(() => {
   void pageCopyStore.loadAdminCopies()
@@ -256,6 +257,7 @@ function setBusy(id, busy) {
 }
 
 async function load() {
+  const requestId = ++requestVersion
   loading.value = true
   try {
     const params = { page: page.value, size: size.value }
@@ -263,10 +265,11 @@ async function load() {
     if (visibility.value) params.visibility = visibility.value
     if (keyword.value) params.keyword = keyword.value
     const result = await getAdminArticles(params)
+    if (requestId !== requestVersion) return
     articles.value = result.data || []
     total.value = result.total || 0
   } finally {
-    loading.value = false
+    if (requestId === requestVersion) loading.value = false
   }
 }
 

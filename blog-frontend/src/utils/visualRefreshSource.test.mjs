@@ -684,7 +684,15 @@ test('admin article management initializes filters from dashboard route query', 
   assert.match(source, /Object\.prototype\.hasOwnProperty\.call\(statusMap, normalized\)/)
   assert.match(source, /function normalizeArticleVisibilityQuery\(value\)/)
   assert.match(source, /normalized === 'public' \|\| normalized === 'private'/)
+  assert.match(source, /function firstQueryValue\(value\)/)
+  assert.match(source, /return Array\.isArray\(value\) \? value\[0\] : value/)
   assert.match(source, /watch\(\s*\(\) => \[route\.query\.status, route\.query\.visibility\]/)
+  assert.match(source, /if \(nextStatus === status\.value && nextVisibility === visibility\.value\) return/)
+  assert.match(source, /page\.value = 1\s*void load\(\)/)
+  assert.match(source, /let requestVersion = 0/)
+  assert.match(source, /async function load\(\) \{\s*const requestId = \+\+requestVersion\s*loading\.value = true/)
+  assert.match(source, /const result = await getAdminArticles\(params\)\s*if \(requestId !== requestVersion\) return\s*articles\.value = result\.data \|\| \[\]/)
+  assert.match(source, /finally \{\s*if \(requestId === requestVersion\) loading\.value = false\s*\}/)
 })
 
 test('admin resources merges tag and image management into one prototype board', () => {
