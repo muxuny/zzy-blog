@@ -673,6 +673,20 @@ test('admin article management keeps filters and row actions compact', () => {
   assert.doesNotMatch(source, /190px/)
 })
 
+test('admin article management initializes filters from dashboard route query', () => {
+  const source = read('../views/admin/Articles.vue')
+
+  assert.match(source, /import \{ useRoute \} from 'vue-router'/)
+  assert.match(source, /const route = useRoute\(\)/)
+  assert.match(source, /const status = ref\(normalizeArticleStatusQuery\(route\.query\.status\)\)/)
+  assert.match(source, /const visibility = ref\(normalizeArticleVisibilityQuery\(route\.query\.visibility\)\)/)
+  assert.match(source, /function normalizeArticleStatusQuery\(value\)/)
+  assert.match(source, /Object\.prototype\.hasOwnProperty\.call\(statusMap, normalized\)/)
+  assert.match(source, /function normalizeArticleVisibilityQuery\(value\)/)
+  assert.match(source, /normalized === 'public' \|\| normalized === 'private'/)
+  assert.match(source, /watch\(\s*\(\) => \[route\.query\.status, route\.query\.visibility\]/)
+})
+
 test('admin resources merges tag and image management into one prototype board', () => {
   assert.ok(exists('../views/admin/Resources.vue'))
   const source = read('../views/admin/Resources.vue')
