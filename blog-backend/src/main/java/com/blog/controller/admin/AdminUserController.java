@@ -3,7 +3,9 @@ package com.blog.controller.admin;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.blog.common.BusinessException;
 import com.blog.common.PageResult;
+import com.blog.common.PageQueryValidator;
 import com.blog.common.Result;
 import com.blog.entity.User;
 import com.blog.service.UserService;
@@ -26,11 +28,28 @@ public class AdminUserController {
 
     @GetMapping
     public PageResult<User> list(@RequestParam(defaultValue = "1") long page,
-                                  @RequestParam(defaultValue = "10") long size) {
-        IPage<User> result = userService.page(new Page<>(page, size),
-                new LambdaQueryWrapper<User>().orderByDesc(User::getCreatedAt));
+                                  @RequestParam(defaultValue = "10") long size,
+                                  @RequestParam(required = false) String status) {
+        PageQueryValidator.validate(page, size);
+        String normalizedStatus = normalizeStatus(status);
+        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<User>()
+                .orderByDesc(User::getCreatedAt);
+        if (!normalizedStatus.isEmpty()) {
+            queryWrapper.eq(User::getStatus, normalizedStatus);
+        }
+        IPage<User> result = userService.page(new Page<>(page, size), queryWrapper);
         result.getRecords().forEach(u -> u.setPassword(null));
         return PageResult.success(result);
+    }
+
+    private String normalizeStatus(String status) {
+        if (status == null || status.trim().isEmpty()) {
+            return "";
+        }
+        if ("pending".equals(status) || "active".equals(status) || "disabled".equals(status)) {
+            return status;
+        }
+        throw new BusinessException("用户状态不合法");
     }
 
     @GetMapping("/{id}")

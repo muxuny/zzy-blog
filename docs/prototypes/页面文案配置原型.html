@@ -1,0 +1,1062 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>页面文案配置原型</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg-color: #f5f6f1;
+      --text-color: #252722;
+      --muted-text-color: #6f746d;
+      --card-bg: #ffffff;
+      --panel-bg: #ffffff;
+      --elevated-bg: #ffffff;
+      --code-bg: #eef2ec;
+      --border-color: #d6dbd1;
+      --soft-border-color: #e6eae1;
+      --primary-color: #496b59;
+      --primary-hover-color: #365445;
+      --accent-color: #526f8d;
+      --warning-color: #c89b3c;
+      --danger-color: #b35b46;
+      --info-color: #6f746d;
+      --theme-grid-x: rgba(73, 107, 89, 0.08);
+      --theme-grid-y: rgba(82, 111, 141, 0.07);
+      --shadow-sm: 0 8px 22px rgba(37, 39, 34, 0.07);
+      --shadow-md: 0 18px 44px rgba(37, 39, 34, 0.1);
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --page-width: 1380px;
+    }
+
+    [data-palette="fog"] {
+      --bg-color: #f3f6f8;
+      --text-color: #23282c;
+      --muted-text-color: #66717a;
+      --card-bg: #ffffff;
+      --panel-bg: #ffffff;
+      --elevated-bg: #ffffff;
+      --code-bg: #e9eef2;
+      --border-color: #d1d9df;
+      --soft-border-color: #e1e7ec;
+      --primary-color: #4f6979;
+      --primary-hover-color: #3e5868;
+      --accent-color: #6e83a4;
+      --warning-color: #b3924a;
+      --danger-color: #8f6f5f;
+      --info-color: #66717a;
+      --theme-grid-x: rgba(79, 105, 121, 0.08);
+      --theme-grid-y: rgba(110, 131, 164, 0.07);
+    }
+
+    [data-palette="copper"] {
+      --bg-color: #f4f3ee;
+      --text-color: #2b2925;
+      --muted-text-color: #736f67;
+      --card-bg: #fffdf8;
+      --panel-bg: #fffdf8;
+      --elevated-bg: #fffdf8;
+      --code-bg: #eeefea;
+      --border-color: #ded7cd;
+      --soft-border-color: #e7ded3;
+      --primary-color: #5c6758;
+      --primary-hover-color: #475142;
+      --accent-color: #6b7f91;
+      --warning-color: #c08f35;
+      --danger-color: #b76142;
+      --info-color: #736f67;
+      --theme-grid-x: rgba(92, 103, 88, 0.08);
+      --theme-grid-y: rgba(183, 97, 66, 0.06);
+    }
+
+    [data-theme="dark"] {
+      color-scheme: dark;
+      --bg-color: #151916;
+      --text-color: #edf0e9;
+      --muted-text-color: #aeb8ad;
+      --card-bg: #1d231f;
+      --panel-bg: #1d231f;
+      --elevated-bg: #242c27;
+      --code-bg: #202b26;
+      --border-color: #344138;
+      --soft-border-color: #2a352e;
+      --primary-color: #9bbf9c;
+      --primary-hover-color: #b7d3b5;
+      --accent-color: #9db7d3;
+      --warning-color: #dfbd68;
+      --danger-color: #e08a73;
+      --info-color: #aeb8ad;
+      --theme-grid-x: rgba(155, 191, 156, 0.08);
+      --theme-grid-y: rgba(157, 183, 211, 0.07);
+      --shadow-sm: 0 10px 26px rgba(0, 0, 0, 0.22);
+      --shadow-md: 0 20px 52px rgba(0, 0, 0, 0.3);
+    }
+
+    [data-palette="fog"][data-theme="dark"] {
+      --bg-color: #13181d;
+      --text-color: #edf1f3;
+      --muted-text-color: #a8b3bd;
+      --card-bg: #1b2228;
+      --panel-bg: #1b2228;
+      --elevated-bg: #222b33;
+      --code-bg: #202b33;
+      --border-color: #33414b;
+      --soft-border-color: #2a3640;
+      --primary-color: #9bb3c4;
+      --primary-hover-color: #b8cad6;
+      --accent-color: #b5b7de;
+      --warning-color: #d4bc76;
+      --danger-color: #cf9181;
+      --info-color: #a8b3bd;
+      --theme-grid-x: rgba(155, 179, 196, 0.08);
+      --theme-grid-y: rgba(181, 183, 222, 0.07);
+    }
+
+    [data-palette="copper"][data-theme="dark"] {
+      --bg-color: #181612;
+      --text-color: #f0ece3;
+      --muted-text-color: #b8afa2;
+      --card-bg: #211d18;
+      --panel-bg: #211d18;
+      --elevated-bg: #2a251f;
+      --code-bg: #28231d;
+      --border-color: #3f362c;
+      --soft-border-color: #342d25;
+      --primary-color: #b7c0a6;
+      --primary-hover-color: #d0d6c5;
+      --accent-color: #c1b08b;
+      --warning-color: #e1ba65;
+      --danger-color: #e08a68;
+      --info-color: #b8afa2;
+      --theme-grid-x: rgba(183, 192, 166, 0.08);
+      --theme-grid-y: rgba(224, 138, 104, 0.06);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      background:
+        linear-gradient(90deg, var(--theme-grid-x) 1px, transparent 1px) 0 0 / 42px 42px,
+        linear-gradient(0deg, var(--theme-grid-y) 1px, transparent 1px) 0 0 / 42px 42px,
+        var(--bg-color);
+      color: var(--text-color);
+      font-family: Inter, "Segoe UI", "Microsoft YaHei", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 28px;
+    }
+
+    button,
+    input,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .prototype-shell {
+      display: grid;
+      gap: 20px;
+      max-width: var(--page-width);
+      margin: 0 auto;
+    }
+
+    .prototype-note {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 22px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--panel-bg) 88%, transparent);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .prototype-note h1,
+    .page-head h2,
+    .brand-title,
+    .big-number,
+    .preview-card h1 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-weight: 500;
+    }
+
+    .prototype-note h1 {
+      max-width: 780px;
+      margin: 6px 0 8px;
+      font-size: clamp(30px, 5vw, 58px);
+      line-height: 0.98;
+    }
+
+    .prototype-note p {
+      max-width: 780px;
+      margin: 0;
+      color: var(--muted-text-color);
+      line-height: 1.7;
+    }
+
+    .eyebrow,
+    .brand-eyebrow,
+    .page-eyebrow,
+    .section-eyebrow,
+    .tiny-label {
+      color: var(--muted-text-color);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .theme-switcher {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .theme-button,
+    .tool-button {
+      min-height: 34px;
+      padding: 0 13px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      background: color-mix(in srgb, var(--panel-bg) 84%, transparent);
+      color: var(--text-color);
+      font-size: 13px;
+      font-weight: 760;
+    }
+
+    .theme-button.is-active,
+    .tool-button.is-primary {
+      border-color: var(--primary-color);
+      background: var(--primary-color);
+      color: var(--card-bg);
+    }
+
+    [data-theme="dark"] .theme-button.is-active,
+    [data-theme="dark"] .tool-button.is-primary {
+      color: #111711;
+    }
+
+    .admin-frame {
+      display: grid;
+      grid-template-columns: 248px minmax(0, 1fr);
+      min-height: 720px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--panel-bg) 92%, transparent);
+      box-shadow: var(--shadow-md);
+    }
+
+    .admin-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      padding: 18px;
+      border-right: 1px solid var(--border-color);
+      background:
+        linear-gradient(180deg, color-mix(in srgb, var(--primary-color) 8%, transparent), transparent 42%),
+        color-mix(in srgb, var(--code-bg) 76%, var(--panel-bg));
+    }
+
+    .brand-lockup {
+      display: grid;
+      gap: 7px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--soft-border-color);
+    }
+
+    .brand-title {
+      font-size: 30px;
+      line-height: 1;
+    }
+
+    .brand-subtitle,
+    .sidebar-note p,
+    .row-meta,
+    .field-help,
+    .panel-caption {
+      color: var(--muted-text-color);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .brand-subtitle,
+    .sidebar-note p,
+    .panel-caption {
+      margin: 0;
+    }
+
+    .nav-stack {
+      display: grid;
+      gap: 7px;
+    }
+
+    .nav-item {
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 9px;
+      min-height: 40px;
+      padding: 0 10px;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--muted-text-color);
+      text-align: left;
+    }
+
+    .nav-item.is-active {
+      border-color: var(--border-color);
+      background: var(--panel-bg);
+      color: var(--text-color);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .nav-icon {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-sm);
+      background: color-mix(in srgb, var(--primary-color) 13%, transparent);
+      color: var(--primary-color);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .nav-badge {
+      color: var(--muted-text-color);
+      font-size: 12px;
+    }
+
+    .sidebar-note {
+      margin-top: auto;
+      padding-top: 14px;
+      border-top: 1px solid var(--soft-border-color);
+    }
+
+    .sidebar-note strong {
+      display: block;
+      margin-top: 6px;
+      font-size: 15px;
+    }
+
+    .main-surface {
+      display: grid;
+      align-content: start;
+      gap: 16px;
+      min-width: 0;
+      padding: 18px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      min-height: 48px;
+      padding: 0 0 14px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .topbar strong {
+      font-size: 15px;
+    }
+
+    .topbar span {
+      color: var(--muted-text-color);
+      font-size: 13px;
+    }
+
+    .page-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .page-head h2 {
+      margin: 4px 0 0;
+      font-size: 36px;
+      line-height: 1;
+    }
+
+    .head-actions,
+    .form-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .signal-strip {
+      display: grid;
+      grid-template-columns: 1.35fr repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .signal-primary,
+    .signal-stat,
+    .surface {
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
+    }
+
+    .signal-primary,
+    .signal-stat {
+      min-height: 96px;
+      padding: 16px;
+    }
+
+    .signal-primary {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      background:
+        linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 12%, transparent), transparent 66%),
+        color-mix(in srgb, var(--panel-bg) 94%, transparent);
+    }
+
+    .signal-primary h3,
+    .panel-head h3 {
+      margin: 3px 0 4px;
+      font-size: 17px;
+      font-weight: 800;
+    }
+
+    .big-number,
+    .signal-stat strong {
+      display: block;
+      font-size: 34px;
+      line-height: 1;
+    }
+
+    .signal-stat {
+      display: grid;
+      align-content: center;
+      gap: 7px;
+    }
+
+    .config-grid {
+      display: grid;
+      grid-template-columns: minmax(230px, 0.78fr) minmax(360px, 1.25fr) minmax(280px, 0.92fr);
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .surface {
+      min-width: 0;
+      padding: 16px;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 0 9px;
+      border: 1px solid var(--border-color);
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--panel-bg) 82%, transparent);
+      color: var(--muted-text-color);
+      font-size: 12px;
+      font-weight: 760;
+      white-space: nowrap;
+    }
+
+    .page-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .page-row {
+      display: grid;
+      gap: 5px;
+      width: 100%;
+      min-height: 78px;
+      padding: 11px;
+      border: 1px solid var(--soft-border-color);
+      border-radius: var(--radius-sm);
+      background: color-mix(in srgb, var(--panel-bg) 82%, var(--bg-color));
+      color: var(--text-color);
+      text-align: left;
+    }
+
+    .page-row.is-active {
+      border-color: color-mix(in srgb, var(--primary-color) 64%, var(--border-color));
+      background: color-mix(in srgb, var(--primary-color) 12%, var(--panel-bg));
+    }
+
+    .page-row strong,
+    .page-row span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .page-row strong {
+      font-size: 14px;
+    }
+
+    .page-row span {
+      color: var(--muted-text-color);
+      font-size: 12px;
+    }
+
+    .editor-form {
+      display: grid;
+      gap: 12px;
+    }
+
+    .two-fields {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 10px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    label {
+      color: var(--muted-text-color);
+      font-size: 13px;
+      font-weight: 760;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      background: var(--card-bg);
+      color: var(--text-color);
+      font-size: 14px;
+    }
+
+    input {
+      min-height: 38px;
+      padding: 0 11px;
+    }
+
+    textarea {
+      min-height: 104px;
+      padding: 10px 11px;
+      resize: vertical;
+    }
+
+    input[readonly] {
+      color: var(--muted-text-color);
+      background: color-mix(in srgb, var(--code-bg) 80%, var(--panel-bg));
+    }
+
+    .publish-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding-top: 12px;
+      border-top: 1px solid var(--soft-border-color);
+    }
+
+    .preview-shell {
+      display: grid;
+      gap: 12px;
+    }
+
+    .preview-card {
+      display: grid;
+      align-content: start;
+      gap: 10px;
+      min-height: 230px;
+      padding: 22px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      background:
+        linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 13%, transparent), transparent 62%),
+        color-mix(in srgb, var(--code-bg) 62%, var(--panel-bg));
+    }
+
+    .preview-card h1 {
+      margin: 0;
+      font-size: 42px;
+      line-height: 1.04;
+    }
+
+    .preview-card p {
+      margin: 0;
+      color: var(--muted-text-color);
+      line-height: 1.7;
+    }
+
+    .route-note,
+    .scope-note {
+      display: grid;
+      gap: 8px;
+      padding-top: 12px;
+      border-top: 1px solid var(--soft-border-color);
+    }
+
+    .route-note strong,
+    .scope-note strong {
+      font-size: 14px;
+    }
+
+    .route-note p,
+    .scope-note p {
+      margin: 0;
+      color: var(--muted-text-color);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .config-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .config-table th,
+    .config-table td {
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--soft-border-color);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .config-table th {
+      color: var(--muted-text-color);
+      font-weight: 800;
+    }
+
+    .config-table td:last-child {
+      color: var(--muted-text-color);
+    }
+
+    @media (max-width: 1180px) {
+      .admin-frame,
+      .config-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .admin-sidebar {
+        border-right: 0;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .nav-stack {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .signal-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 720px) {
+      body {
+        padding: 14px;
+      }
+
+      .prototype-note,
+      .page-head,
+      .topbar,
+      .signal-primary,
+      .publish-row {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .nav-stack,
+      .signal-strip,
+      .two-fields {
+        grid-template-columns: 1fr;
+      }
+
+      .head-actions,
+      .form-actions,
+      .theme-switcher {
+        justify-content: stretch;
+      }
+
+      .theme-button,
+      .tool-button {
+        width: 100%;
+      }
+
+      .preview-card h1 {
+        font-size: 32px;
+      }
+    }
+  </style>
+</head>
+<body data-palette="juniper">
+  <div class="prototype-shell">
+    <section class="prototype-note" aria-label="原型说明">
+      <div>
+        <span class="eyebrow">页面文案配置原型</span>
+        <h1>把每个功能页的开场白交给后台维护。</h1>
+        <p>这份原型只展示后台配置页的信息架构和视觉方向，不接入真实数据。页面导语配置覆盖公开页、创作中心和后台功能页；局部模块标题、文章标题和列表空态不进入本期。</p>
+      </div>
+      <div class="theme-switcher" aria-label="主题切换">
+        <button class="theme-button is-active" type="button" data-palette="juniper" data-theme-button>Juniper</button>
+        <button class="theme-button" type="button" data-palette="fog" data-theme-button>Fog</button>
+        <button class="theme-button" type="button" data-palette="copper" data-theme-button>Copper</button>
+        <button class="theme-button" type="button" data-mode="dark" data-theme-button>Dark</button>
+      </div>
+    </section>
+
+    <section class="admin-frame" aria-label="页面文案配置后台原型">
+      <aside class="admin-sidebar">
+        <div class="brand-lockup">
+          <span class="brand-eyebrow">ADMIN CONSOLE</span>
+          <span class="brand-title">管理中枢</span>
+          <p class="brand-subtitle">审核、用户、标签和素材都在这里收口。</p>
+        </div>
+
+        <nav class="nav-stack" aria-label="后台导航">
+          <button class="nav-item" type="button">
+            <span class="nav-icon">D</span>
+            <span>仪表盘</span>
+            <span class="nav-badge">5</span>
+          </button>
+          <button class="nav-item" type="button">
+            <span class="nav-icon">A</span>
+            <span>文章管理</span>
+            <span class="nav-badge">42</span>
+          </button>
+          <button class="nav-item" type="button">
+            <span class="nav-icon">R</span>
+            <span>资源管理</span>
+            <span class="nav-badge">82</span>
+          </button>
+          <button class="nav-item" type="button">
+            <span class="nav-icon">U</span>
+            <span>用户管理</span>
+            <span class="nav-badge">2</span>
+          </button>
+          <button class="nav-item is-active" type="button">
+            <span class="nav-icon">T</span>
+            <span>页面文案</span>
+            <span class="nav-badge">16</span>
+          </button>
+          <button class="nav-item" type="button">
+            <span class="nav-icon">P</span>
+            <span>个人资料</span>
+            <span class="nav-badge">-</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-note">
+          <span class="tiny-label">当前身份</span>
+          <strong>管理员</strong>
+          <p>后台只保留管理动作，内容阅读和创作入口回到前台。</p>
+        </div>
+      </aside>
+
+      <main class="main-surface">
+        <div class="topbar">
+          <div>
+            <strong>站点配置</strong>
+            <span>页面导语维护入口，保持后台现有工作台结构。</span>
+          </div>
+          <span class="chip">未启动实现</span>
+        </div>
+
+        <div class="page-head">
+          <div>
+            <span class="page-eyebrow">站点配置</span>
+            <h2>页面文案</h2>
+          </div>
+          <div class="head-actions">
+            <button class="tool-button" type="button">恢复默认</button>
+            <button class="tool-button is-primary" type="button">保存变更</button>
+          </div>
+        </div>
+
+        <section class="signal-strip" aria-label="配置摘要">
+          <div class="signal-primary">
+            <div>
+              <span class="section-eyebrow">配置范围</span>
+              <h3>页面头部导语统一维护</h3>
+              <p class="panel-caption">只管理页面级 eyebrow、title 和 description，避免把业务内容也做成配置。</p>
+            </div>
+            <strong class="big-number">16</strong>
+          </div>
+          <div class="signal-stat">
+            <span class="tiny-label">公开与用户页</span>
+            <strong>7</strong>
+            <span class="row-meta">首页、登录、阅读等</span>
+          </div>
+          <div class="signal-stat">
+            <span class="tiny-label">创作中心</span>
+            <strong>3</strong>
+            <span class="row-meta">列表、写作、编辑</span>
+          </div>
+          <div class="signal-stat">
+            <span class="tiny-label">后台管理</span>
+            <strong>6</strong>
+            <span class="row-meta">管理功能页</span>
+          </div>
+        </section>
+
+        <section class="config-grid">
+          <div class="surface">
+            <div class="panel-head">
+              <div>
+                <span class="section-eyebrow">页面列表</span>
+                <h3>选择要调整的导语</h3>
+              </div>
+              <span class="chip">按分区排序</span>
+            </div>
+            <div class="page-list" aria-label="可配置页面">
+              <button class="page-row is-active" type="button" data-copy-key="home.hero">
+                <strong>首页</strong>
+                <span>home.hero / 公开阅读入口</span>
+                <span>个人写作库 · 把项目经验写成可以回看的路标。</span>
+              </button>
+              <button class="page-row" type="button" data-copy-key="tag.index">
+                <strong>标签页</strong>
+                <span>tag.index / 保留路由</span>
+                <span>话题索引 · 按标签收束后的文章流</span>
+              </button>
+              <button class="page-row" type="button" data-copy-key="reading.overview">
+                <strong>我的阅读</strong>
+                <span>reading.overview / 用户页</span>
+                <span>Reading desk · 安静的续接台</span>
+              </button>
+              <button class="page-row" type="button" data-copy-key="creator.articles">
+                <strong>创作文章</strong>
+                <span>creator.articles / 创作中心</span>
+                <span>Creator console · 控制台感但触感更轻</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="surface">
+            <div class="panel-head">
+              <div>
+                <span class="section-eyebrow">编辑内容</span>
+                <h3 id="editor-heading">首页导语</h3>
+              </div>
+              <span class="chip" id="editor-scope-chip">公开可见</span>
+            </div>
+            <form class="editor-form">
+              <div class="two-fields">
+                <div class="field">
+                  <label for="copy-key">页面标识</label>
+                  <input id="copy-key" type="text" value="home.hero" readonly>
+                </div>
+                <div class="field">
+                  <label for="copy-group">页面分区</label>
+                  <input id="copy-group" type="text" value="公开阅读">
+                </div>
+              </div>
+              <div class="field">
+                <label for="copy-eyebrow">眉标</label>
+                <input id="copy-eyebrow" type="text" value="个人写作库">
+              </div>
+              <div class="field">
+                <label for="copy-title">主标题</label>
+                <input id="copy-title" type="text" value="把项目经验写成可以回看的路标。">
+              </div>
+              <div class="field">
+                <label for="copy-description">描述</label>
+                <textarea id="copy-description">这里记录开发实践、阅读笔记和阶段性思考。文章不追求热闹，更关心一个问题从出现到解决的过程。</textarea>
+                <span class="field-help">描述为空时页面不显示空行；读取失败时自动回退代码内默认文案。</span>
+              </div>
+              <div class="publish-row">
+                <span class="row-meta">最后更新：2026-08-05 19:20 / admin</span>
+                <div class="form-actions">
+                  <button class="tool-button" type="button">查看默认</button>
+                  <button class="tool-button is-primary" type="button">保存这一页</button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <div class="surface preview-shell">
+            <div class="panel-head">
+              <div>
+                <span class="section-eyebrow">即时预览</span>
+                <h3>页面头部效果</h3>
+              </div>
+            </div>
+            <div class="preview-card" aria-label="页面导语预览">
+              <span class="page-eyebrow" id="preview-eyebrow">个人写作库</span>
+              <h1 id="preview-title">把项目经验写成可以回看的路标。</h1>
+              <p id="preview-description">这里记录开发实践、阅读笔记和阶段性思考。文章不追求热闹，更关心一个问题从出现到解决的过程。</p>
+            </div>
+            <div class="route-note">
+              <strong>标签页处理口径</strong>
+              <p>保留 `/tag/:name` 路由并纳入配置；首页继续使用当前站内标签筛选，本轮不恢复显性跳转入口。</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="surface" aria-label="纳入配置的页面">
+          <div class="panel-head">
+            <div>
+              <span class="section-eyebrow">配置清单</span>
+              <h3>首期纳入页面级导语</h3>
+            </div>
+            <span class="chip">不含局部模块标题</span>
+          </div>
+          <table class="config-table">
+            <thead>
+              <tr>
+                <th>分区</th>
+                <th>页面</th>
+                <th>字段</th>
+                <th>备注</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>公开与用户页</td>
+                <td>首页、标签页、登录、注册、我的阅读、阅读历史、我的收藏</td>
+                <td>eyebrow / title / description</td>
+                <td>标签页保留路由，不新增首页入口</td>
+              </tr>
+              <tr>
+                <td>创作中心</td>
+                <td>创作文章、写文章、编辑文章</td>
+                <td>eyebrow / title / description</td>
+                <td>写作页标题可按创建和编辑状态分别配置</td>
+              </tr>
+              <tr>
+                <td>后台管理</td>
+                <td>文章管理、后台写文章、后台编辑文章、资源管理、用户管理、个人资料</td>
+                <td>eyebrow / title / description</td>
+                <td>当前没有描述的页面可为空，或显示配置后的描述</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      </main>
+    </section>
+  </div>
+
+  <script>
+    const copyPresets = {
+      'home.hero': {
+        heading: '首页导语',
+        group: '公开阅读',
+        scope: '公开可见',
+        eyebrow: '个人写作库',
+        title: '把项目经验写成可以回看的路标。',
+        description: '这里记录开发实践、阅读笔记和阶段性思考。文章不追求热闹，更关心一个问题从出现到解决的过程。'
+      },
+      'tag.index': {
+        heading: '标签页导语',
+        group: '公开阅读',
+        scope: '公开可见',
+        eyebrow: '话题索引',
+        title: '{tagName}',
+        description: '按标签收束后的文章流，只保留同一话题下的公开记录。'
+      },
+      'reading.overview': {
+        heading: '我的阅读导语',
+        group: '用户空间',
+        scope: '登录可见',
+        eyebrow: 'Reading desk',
+        title: '我的阅读更像一个安静的续接台。',
+        description: '这里不负责发现热门内容，只负责把读者和自己的阅读轨迹接起来。轻微动态集中在继续阅读和历史焦点上。'
+      },
+      'creator.articles': {
+        heading: '创作文章导语',
+        group: '创作中心',
+        scope: '创作者可见',
+        eyebrow: 'Creator console',
+        title: '创作空间保留控制台感，但触感更轻。',
+        description: '创作者最需要效率，所以动态只用于聚焦当前行、状态筛选和预览反馈。它应该让后台工作更顺手，而不是更花。'
+      },
+    };
+
+    const fields = {
+      key: document.getElementById('copy-key'),
+      group: document.getElementById('copy-group'),
+      eyebrow: document.getElementById('copy-eyebrow'),
+      title: document.getElementById('copy-title'),
+      description: document.getElementById('copy-description'),
+      editorHeading: document.getElementById('editor-heading'),
+      scopeChip: document.getElementById('editor-scope-chip'),
+      previewEyebrow: document.getElementById('preview-eyebrow'),
+      previewTitle: document.getElementById('preview-title'),
+      previewDescription: document.getElementById('preview-description')
+    };
+
+    function applyCopyPreset(key) {
+      const preset = copyPresets[key];
+      if (!preset) return;
+      fields.key.value = key;
+      fields.group.value = preset.group;
+      fields.eyebrow.value = preset.eyebrow;
+      fields.title.value = preset.title;
+      fields.description.value = preset.description;
+      fields.editorHeading.textContent = preset.heading;
+      fields.scopeChip.textContent = preset.scope;
+      updatePreview();
+    }
+
+    function updatePreview() {
+      fields.previewEyebrow.textContent = fields.eyebrow.value || ' ';
+      fields.previewTitle.textContent = fields.title.value || '未设置标题';
+      fields.previewDescription.textContent = fields.description.value || '描述为空时，正式页面不显示这一行。';
+    }
+
+    document.querySelectorAll('[data-copy-key]').forEach(button => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('[data-copy-key]').forEach(item => item.classList.remove('is-active'));
+        button.classList.add('is-active');
+        applyCopyPreset(button.dataset.copyKey);
+      });
+    });
+
+    [fields.eyebrow, fields.title, fields.description].forEach(field => {
+      field.addEventListener('input', updatePreview);
+    });
+
+    const themeButtons = document.querySelectorAll('[data-theme-button]');
+    themeButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        if (button.dataset.palette) {
+          document.body.dataset.palette = button.dataset.palette;
+        }
+        if (button.dataset.mode) {
+          document.body.dataset.theme = document.body.dataset.theme === 'dark' ? '' : 'dark';
+        }
+        if (button.dataset.palette) {
+          themeButtons.forEach(item => {
+            if (item.dataset.palette) item.classList.toggle('is-active', item === button);
+          });
+        }
+      });
+    });
+  </script>
+</body>
+</html>

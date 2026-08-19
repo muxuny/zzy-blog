@@ -374,11 +374,17 @@ test('reading space keeps the canvas neon wave compact theme-aware and lightly d
 
 test('reading space uses the private reading prototype skeleton', () => {
   const source = read('../views/ReadingSpace.vue')
+  const pageCopyDefaults = read('../utils/pageCopy.js')
 
   assert.match(source, /class="page-head"/)
   assert.match(source, /class="head-meta"/)
-  assert.match(source, /Reading desk/)
-  assert.match(source, /我的阅读更像一个安静的续接台/)
+  assert.match(source, /usePageCopyStore/)
+  assert.match(source, /resolveCopy\('reading\.overview'\)/)
+  assert.match(source, /{{ pageCopy\.eyebrow }}/)
+  assert.match(source, /{{ pageCopy\.title }}/)
+  assert.match(source, /{{ pageCopy\.description }}/)
+  assert.match(pageCopyDefaults, /Reading desk/)
+  assert.match(pageCopyDefaults, /我的阅读更像一个安静的续接台/)
   assert.match(source, /class="reading-layout"/)
   assert.match(source, /class="continue-panel"/)
   assert.match(source, /class="progress-block"/)
@@ -455,6 +461,16 @@ test('reading history summary uses a solid action card', () => {
   assert.doesNotMatch(history, /\.meta-line\s*\{[^}]*border-bottom:/)
 })
 
+test('reading history back link sits on its own row before the eyebrow', () => {
+  const history = read('../views/ReadingHistory.vue')
+
+  assert.match(history, /<RouterLink class="back-link" to="\/reading">/)
+  assert.match(history, /\.back-link\s*\{[^}]*display:\s*flex;/)
+  assert.match(history, /\.back-link\s*\{[^}]*width:\s*fit-content;/)
+  assert.match(history, /\.back-link\s*\{[^}]*margin-bottom:\s*14px;/)
+  assert.doesNotMatch(history, /\.back-link\s*\{[^}]*display:\s*inline-flex;/)
+})
+
 test('reading space isolates its fixed continuation backdrop', () => {
   const source = read('../views/ReadingSpace.vue')
 
@@ -525,10 +541,16 @@ test('secondary public and auth pages no longer expose legacy visual shells', ()
 
 test('login page explains the destination after authentication', () => {
   const login = read('../views/Login.vue')
+  const pageCopyDefaults = read('../utils/pageCopy.js')
 
-  assert.match(login, /登录后继续/)
-  assert.match(login, /接上刚才的阅读和创作。/)
-  assert.match(login, /登录后会优先回到你刚才要打开的页面/)
+  assert.match(login, /usePageCopyStore/)
+  assert.match(login, /resolveCopy\('auth\.login'\)/)
+  assert.match(login, /{{ pageCopy\.eyebrow }}/)
+  assert.match(login, /{{ pageCopy\.title }}/)
+  assert.match(login, /{{ pageCopy\.description }}/)
+  assert.match(pageCopyDefaults, /登录后继续/)
+  assert.match(pageCopyDefaults, /接上刚才的阅读和创作。/)
+  assert.match(pageCopyDefaults, /登录后会优先回到你刚才要打开的页面/)
   assert.match(login, /继续上次阅读位置/)
   assert.match(login, /仅管理员可进入/)
   assert.match(login, /登录后继续访问刚才的页面/)
@@ -651,6 +673,28 @@ test('admin article management keeps filters and row actions compact', () => {
   assert.doesNotMatch(source, /190px/)
 })
 
+test('admin article management initializes filters from dashboard route query', () => {
+  const source = read('../views/admin/Articles.vue')
+
+  assert.match(source, /import \{ useRoute \} from 'vue-router'/)
+  assert.match(source, /const route = useRoute\(\)/)
+  assert.match(source, /const status = ref\(normalizeArticleStatusQuery\(route\.query\.status\)\)/)
+  assert.match(source, /const visibility = ref\(normalizeArticleVisibilityQuery\(route\.query\.visibility\)\)/)
+  assert.match(source, /function normalizeArticleStatusQuery\(value\)/)
+  assert.match(source, /Object\.prototype\.hasOwnProperty\.call\(statusMap, normalized\)/)
+  assert.match(source, /function normalizeArticleVisibilityQuery\(value\)/)
+  assert.match(source, /normalized === 'public' \|\| normalized === 'private'/)
+  assert.match(source, /function firstQueryValue\(value\)/)
+  assert.match(source, /return Array\.isArray\(value\) \? value\[0\] : value/)
+  assert.match(source, /watch\(\s*\(\) => \[route\.query\.status, route\.query\.visibility\]/)
+  assert.match(source, /if \(nextStatus === status\.value && nextVisibility === visibility\.value\) return/)
+  assert.match(source, /page\.value = 1\s*void load\(\)/)
+  assert.match(source, /let requestVersion = 0/)
+  assert.match(source, /async function load\(\) \{\s*const requestId = \+\+requestVersion\s*loading\.value = true/)
+  assert.match(source, /const result = await getAdminArticles\(params\)\s*if \(requestId !== requestVersion\) return\s*articles\.value = result\.data \|\| \[\]/)
+  assert.match(source, /finally \{\s*if \(requestId === requestVersion\) loading\.value = false\s*\}/)
+})
+
 test('admin resources merges tag and image management into one prototype board', () => {
   assert.ok(exists('../views/admin/Resources.vue'))
   const source = read('../views/admin/Resources.vue')
@@ -665,8 +709,8 @@ test('admin resources merges tag and image management into one prototype board',
   assert.match(source, /class="tag-item"/)
   assert.match(source, /class="mini-image-grid"/)
   assert.match(source, /class="image-card"/)
-  assert.match(source, /class="mini-image"/)
-  assert.match(source, /getTags/)
+  assert.match(source, /class="[^"]*\bmini-image\b[^"]*"/)
+  assert.match(source, /getAdminTags/)
   assert.match(source, /getImages/)
   assert.match(source, /createTag/)
   assert.match(source, /deleteTag/)
@@ -681,10 +725,17 @@ test('admin dashboard users profile and editor share the prototype surface syste
   const profile = read('../views/admin/Profile.vue')
   const editor = read('../views/admin/ArticleEdit.vue')
 
-  assert.match(dashboard, /class="signal-strip"/)
-  assert.match(dashboard, /class="surface"/)
-  assert.match(dashboard, /class="status-ledger"/)
-  assert.match(dashboard, /class="review-list"/)
+  assert.match(dashboard, /class="signal-row"/)
+  assert.match(dashboard, /class="tech-board"/)
+  assert.match(dashboard, /class="[^"]*content-structure-panel"/)
+  assert.match(dashboard, /class="[^"]*reading-activity-panel"/)
+  assert.match(dashboard, /class="[^"]*heat-panel"/)
+  assert.match(dashboard, /class="[^"]*favorite-feedback-panel"/)
+  assert.match(dashboard, /class="[^"]*resource-health-panel"/)
+  assert.match(dashboard, /class="[^"]*priority-queue-panel"/)
+  assert.doesNotMatch(dashboard, /class="signal-strip"/)
+  assert.doesNotMatch(dashboard, /class="status-ledger"/)
+  assert.doesNotMatch(dashboard, /class="review-list"/)
   assert.doesNotMatch(dashboard, /class="stat-card"/)
 
   assert.match(users, /class="page-head"/)

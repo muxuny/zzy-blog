@@ -150,4 +150,51 @@
         WHERE user_id = #{userId}
           AND deleted = 0
     </update>
+
+    <select id="selectRecentReadingCount" resultType="long">
+        SELECT COUNT(1)
+        FROM article_reading_history h
+        WHERE h.deleted = 0
+          AND h.last_read_at &gt;= #{start}
+          AND h.last_read_at &lt;= #{end}
+    </select>
+
+    <select id="selectActiveReaderCount" resultType="long">
+        SELECT COUNT(DISTINCT h.user_id)
+        FROM article_reading_history h
+        WHERE h.deleted = 0
+          AND h.last_read_at &gt;= #{start}
+    </select>
+
+    <select id="selectAverageProgress" resultType="long">
+        SELECT COALESCE(ROUND(AVG(h.progress_percent)), 0)
+        FROM article_reading_history h
+        WHERE h.deleted = 0
+          AND h.last_read_at &gt;= #{start}
+    </select>
+
+    <select id="selectReadingDateBuckets" resultType="com.blog.dto.DashboardDateBucket">
+        SELECT DATE_FORMAT(h.last_read_at, '%Y-%m-%d') AS date,
+               COUNT(1) AS count
+        FROM article_reading_history h
+        WHERE h.deleted = 0
+          AND h.last_read_at &gt;= #{start}
+          AND h.last_read_at &lt; #{end}
+        GROUP BY DATE_FORMAT(h.last_read_at, '%Y-%m-%d')
+        ORDER BY date ASC
+    </select>
+
+    <select id="selectReadingProgressBuckets" resultType="com.blog.dto.DashboardProgressBucket">
+        SELECT CASE
+            WHEN h.progress_percent &gt;= 90 THEN '已读完'
+            WHEN h.progress_percent &gt;= 60 THEN '接近读完'
+            WHEN h.progress_percent &gt;= 25 THEN '阅读中'
+            ELSE '浅读'
+        END AS label,
+        COUNT(1) AS count
+        FROM article_reading_history h
+        WHERE h.deleted = 0
+          AND h.last_read_at &gt;= #{start}
+        GROUP BY label
+    </select>
 </mapper>

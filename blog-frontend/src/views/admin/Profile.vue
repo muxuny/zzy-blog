@@ -2,8 +2,9 @@
   <div class="profile-page">
     <div class="page-head">
       <div>
-        <span class="page-eyebrow">个人资料</span>
-        <h2>个人资料</h2>
+        <span class="page-eyebrow">{{ pageCopy.eyebrow }}</span>
+        <h2>{{ pageCopy.title }}</h2>
+        <p v-if="pageCopy.description" class="page-description">{{ pageCopy.description }}</p>
       </div>
     </div>
 
@@ -65,11 +66,13 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useAuthStore } from '../../stores/auth'
+import { usePageCopyStore } from '../../stores/pageCopy'
 import { formatDate } from '../../utils'
 
 const authStore = useAuthStore()
+const pageCopyStore = usePageCopyStore()
 const user = computed(() => authStore.user)
 
 const displayName = computed(() => user.value?.nickname || user.value?.username || '管理员')
@@ -87,6 +90,11 @@ const userStatusText = computed(() => {
   if (user.value?.status === 'pending') return '待审核'
   if (user.value?.status === 'disabled') return '已禁用'
   return user.value?.status || '-'
+})
+const pageCopy = computed(() => pageCopyStore.resolveCopy('admin.profile'))
+
+onMounted(() => {
+  void pageCopyStore.loadAdminCopies()
 })
 </script>
 

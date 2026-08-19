@@ -80,4 +80,41 @@
         </if>
         ORDER BY f.created_at DESC, f.id DESC
     </select>
+
+    <select id="selectTotalFavoriteCount" resultType="long">
+        SELECT COUNT(1)
+        FROM article_favorite f
+        WHERE f.deleted = 0
+    </select>
+
+    <select id="selectRecentFavoriteCount" resultType="long">
+        SELECT COUNT(1)
+        FROM article_favorite f
+        WHERE f.deleted = 0
+          AND f.created_at &gt;= #{start}
+          AND f.created_at &lt;= #{end}
+    </select>
+
+    <select id="selectFavoriteTopArticles" resultType="com.blog.dto.DashboardFavoriteTopArticle">
+        SELECT f.article_id AS articleId,
+               COALESCE(a.title, f.title_snapshot) AS title,
+               COUNT(1) AS favoriteCount
+        FROM article_favorite f
+        LEFT JOIN article a ON a.id = f.article_id
+        WHERE f.deleted = 0
+        GROUP BY f.article_id, COALESCE(a.title, f.title_snapshot)
+        ORDER BY favoriteCount DESC, f.article_id DESC
+        LIMIT 5
+    </select>
+
+    <select id="selectFavoriteDateBuckets" resultType="com.blog.dto.DashboardDateBucket">
+        SELECT DATE_FORMAT(f.created_at, '%Y-%m-%d') AS date,
+               COUNT(1) AS count
+        FROM article_favorite f
+        WHERE f.deleted = 0
+          AND f.created_at &gt;= #{start}
+          AND f.created_at &lt; #{end}
+        GROUP BY DATE_FORMAT(f.created_at, '%Y-%m-%d')
+        ORDER BY date ASC
+    </select>
 </mapper>

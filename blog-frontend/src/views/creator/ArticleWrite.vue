@@ -4,9 +4,9 @@
     <el-main class="compose-shell">
       <header class="page-head">
         <div class="head-copy">
-          <span class="eyebrow">创作中心</span>
-          <h1>{{ isEdit ? '编辑文章' : '写文章' }}</h1>
-          <p>把标题、摘要、分组和正文放在同一个工作流里，状态动作保持在明确的底部区域。</p>
+          <span class="eyebrow">{{ pageCopy.eyebrow }}</span>
+          <h1>{{ pageCopy.title }}</h1>
+          <p v-if="pageCopy.description">{{ pageCopy.description }}</p>
         </div>
       </header>
 
@@ -189,9 +189,11 @@ import { createMyArticle, getMyArticle, updateMyArticle } from '../../api/myArti
 import { ARTICLE_VISIBILITY_PRIVATE, ARTICLE_VISIBILITY_PUBLIC, normalizeArticleVisibility } from '../../utils/articleVisibility'
 import { buildArticleGroupIdsForSave, getFirstArticleGroupId } from '../../utils/articleGroups'
 import { getReadingStats, normalizeArticleMarkdown } from '../../utils/reading'
+import { usePageCopyStore } from '../../stores/pageCopy'
 
 const route = useRoute()
 const router = useRouter()
+const pageCopyStore = usePageCopyStore()
 const isEdit = computed(() => !!route.params.id)
 const tags = ref([])
 const articleGroups = ref([])
@@ -221,6 +223,9 @@ const visibilityOptions = [
   { label: '仅自己可见', value: ARTICLE_VISIBILITY_PRIVATE }
 ]
 const writingStats = computed(() => getReadingStats(form.content || ''))
+const pageCopy = computed(() => pageCopyStore.resolveCopy(
+  isEdit.value ? 'creator.article.edit' : 'creator.article.create'
+))
 const preflightChecks = computed(() => [
   {
     key: 'title',
@@ -250,6 +255,7 @@ const preflightChecks = computed(() => [
 const preflightReadyCount = computed(() => preflightChecks.value.filter(item => item.done).length)
 
 onMounted(() => {
+  void pageCopyStore.loadPublicCopies()
   loadTags()
   loadArticleGroups()
   if (isEdit.value) loadArticle()

@@ -2,8 +2,9 @@
   <div class="users-page">
     <div class="page-head">
       <div>
-        <span class="page-eyebrow">账号审核</span>
-        <h2>用户管理</h2>
+        <span class="page-eyebrow">{{ pageCopy.eyebrow }}</span>
+        <h2>{{ pageCopy.title }}</h2>
+        <p v-if="pageCopy.description" class="page-description">{{ pageCopy.description }}</p>
       </div>
     </div>
 
@@ -29,9 +30,20 @@
             </span>
           </div>
         </div>
-        <span class="chip" :class="{ 'is-warning': pendingCount > 0, 'is-success': pendingCount === 0 }">
-          {{ pendingCount }} 个待审核
-        </span>
+        <div class="user-panel-actions">
+          <label class="filter-field user-status-filter">
+            状态
+            <select v-model="status" aria-label="用户状态" @change="handleFilterChange">
+              <option value="">全部状态</option>
+              <option v-for="item in userStatusOptions" :key="item.value" :value="item.value">
+                {{ item.label }}
+              </option>
+            </select>
+          </label>
+          <span class="chip" :class="{ 'is-warning': pendingCount > 0, 'is-success': pendingCount === 0 }">
+            本页 {{ pendingCount }} 个待审核
+          </span>
+        </div>
       </div>
 
       <div v-if="users.length" class="row-list">
@@ -66,21 +78,63 @@
       </div>
       <div v-else class="empty-state">暂无用户</div>
     </section>
+
+    <el-pagination
+      v-if="showPagination"
+      v-model:current-page="page"
+      :total="total"
+      :page-size="size"
+      layout="prev,pager,next"
+      class="admin-pagination"
+      @current-change="handlePageChange"
+    />
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useRoute } from 'vue-router'
 import { approveUser, disableUser, getUsers } from '../../api/user'
+import { normalizePageResult, shouldShowPagination } from '../../utils/pagination'
+import { usePageCopyStore } from '../../stores/pageCopy'
 
+const userStatusOptions = [
+  { value: 'pending', label: '待审核' },
+  { value: 'active', label: '已启用' },
+  { value: 'disabled', label: '已禁用' }
+]
+
+const route = useRoute()
+const pageCopyStore = usePageCopyStore()
 const users = ref([])
+const page = ref(1)
+const size = ref(10)
+const total = ref(0)
 const loading = ref(false)
 const helpOpen = ref(false)
+const status = ref(normalizeUserStatusQuery(route.query.status))
+let requestVersion = 0
 
 const pendingCount = computed(() => users.value.filter(user => user.status === 'pending').length)
+const showPagination = computed(() => shouldShowPagination(total.value, size.value))
+const pageCopy = computed(() => pageCopyStore.resolveCopy('admin.users'))
 
-onMounted(loadUsers)
+onMounted(() => {
+  void pageCopyStore.loadAdminCopies()
+  loadUsers()
+})
+
+watch(
+  () => route.query.status,
+  nextStatus => {
+    const normalized = normalizeUserStatusQuery(nextStatus)
+    if (normalized === status.value) return
+    status.value = normalized
+    page.value = 1
+    void loadUsers()
+  }
+)
 
 function isAdminUser(user) {
   return user.role?.toLowerCase() === 'admin'
@@ -100,14 +154,45 @@ function userStatusClass(status) {
   return ''
 }
 
+function firstQueryValue(value) {
+  return Array.isArray(value) ? value[0] : value
+}
+
+function normalizeUserStatusQuery(value) {
+  const normalized = firstQueryValue(value)
+  return userStatusOptions.some(item => item.value === normalized) ? normalized : ''
+}
+
 async function loadUsers() {
+  const requestId = ++requestVersion
   loading.value = true
   try {
-    const result = await getUsers({ size: 100 })
-    users.value = result.data || []
+    const params = { page: page.value, size: size.value }
+    if (status.value) params.status = status.value
+    const result = await getUsers(params)
+    if (requestId !== requestVersion) return
+    const pageResult = normalizePageResult(result, size.value)
+    const maxPage = Math.max(1, Math.ceil(pageResult.total / size.value))
+    if (page.value > maxPage) {
+      page.value = maxPage
+      await loadUsers()
+      return
+    }
+    users.value = pageResult.records
+    total.value = pageResult.total
   } finally {
-    loading.value = false
+    if (requestId === requestVersion) loading.value = false
   }
+}
+
+function handleFilterChange() {
+  page.value = 1
+  void loadUsers()
+}
+
+function handlePageChange(nextPage) {
+  page.value = nextPage
+  void loadUsers()
 }
 
 async function handleApprove(id) {
@@ -137,6 +222,18 @@ async function handleDisable(id) {
 
 .row-list .row-actions {
   justify-content: flex-end;
+}
+
+.user-panel-actions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.user-status-filter select {
+  width: 132px;
 }
 
 @media (max-width: 780px) {

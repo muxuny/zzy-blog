@@ -43,6 +43,7 @@ public class SecurityConfig {
                 .antMatchers("/api/auth/**").permitAll()
                 .antMatchers(HttpMethod.GET, "/api/articles/**").permitAll()
                 .antMatchers(HttpMethod.GET, "/api/tags").permitAll()
+                .antMatchers(HttpMethod.GET, "/api/page-copies").permitAll()
                 .antMatchers("/uploads/**").permitAll()
                 .antMatchers("/api/my/**").hasAnyRole("USER", "ADMIN")
                 .antMatchers("/api/admin/upload/**").hasAnyRole("USER", "ADMIN")

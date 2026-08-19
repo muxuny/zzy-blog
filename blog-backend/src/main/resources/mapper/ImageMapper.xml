@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.blog.mapper.ImageMapper">
+    <select id="selectTotalImageSize" resultType="long">
+        SELECT COALESCE(SUM(i.size), 0)
+        FROM image i
+        WHERE i.deleted = 0
+    </select>
+
+    <select id="selectRecentImageCount" resultType="long">
+        SELECT COUNT(1)
+        FROM image i
+        WHERE i.deleted = 0
+          AND i.created_at &gt;= #{start}
+    </select>
+</mapper>

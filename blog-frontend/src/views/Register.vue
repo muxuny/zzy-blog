@@ -1,9 +1,9 @@
 <template>
   <main class="auth-shell">
     <section class="auth-copy">
-      <span class="eyebrow">新入口</span>
-      <h1>给自己的内容留一个稳定身份。</h1>
-      <p>注册后等待审核，通过后就可以继续阅读、写文章和进入对应的管理入口。</p>
+      <span class="eyebrow">{{ pageCopy.eyebrow }}</span>
+      <h1>{{ pageCopy.title }}</h1>
+      <p v-if="pageCopy.description">{{ pageCopy.description }}</p>
       <div class="auth-index" aria-label="注册后可使用的区域">
         <div class="meta-line">
           <span class="meta-label">阅读</span>
@@ -44,12 +44,15 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { computed, ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { register } from '../api/auth'
+import { usePageCopyStore } from '../stores/pageCopy'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter(), loading = ref(false), formRef = ref(null)
+const pageCopyStore = usePageCopyStore()
+const pageCopy = computed(() => pageCopyStore.resolveCopy('auth.register'))
 const form = reactive({ username: '', password: '', nickname: '' })
 const rules = {
   username: [
@@ -74,6 +77,8 @@ async function handleRegister() {
     loading.value = false
   }
 }
+
+void pageCopyStore.loadPublicCopies()
 </script>
 
 <style scoped>

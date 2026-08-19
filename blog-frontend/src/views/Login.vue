@@ -1,9 +1,9 @@
 <template>
   <main class="auth-shell">
     <section class="auth-copy">
-      <span class="eyebrow">登录后继续</span>
-      <h1>接上刚才的阅读和创作。</h1>
-      <p>登录后会优先回到你刚才要打开的页面；没有指定入口时，会进入首页，管理员可直接进入后台。</p>
+      <span class="eyebrow">{{ pageCopy.eyebrow }}</span>
+      <h1>{{ pageCopy.title }}</h1>
+      <p v-if="pageCopy.description">{{ pageCopy.description }}</p>
       <div class="auth-index" aria-label="登录后的去向">
         <div class="meta-line">
           <span class="meta-label">阅读</span>
@@ -40,14 +40,17 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { computed, ref, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { login } from '../api/auth'
 import { useAuthStore } from '../stores/auth'
+import { usePageCopyStore } from '../stores/pageCopy'
 import { resolveLoginRedirect } from '../utils/authRedirect'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter(), route = useRoute(), authStore = useAuthStore(), loading = ref(false), formRef = ref(null)
+const pageCopyStore = usePageCopyStore()
+const pageCopy = computed(() => pageCopyStore.resolveCopy('auth.login'))
 const form = reactive({ username: '', password: '' })
 const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
@@ -68,6 +71,8 @@ async function handleLogin() {
     loading.value = false
   }
 }
+
+void pageCopyStore.loadPublicCopies()
 </script>
 
 <style scoped>

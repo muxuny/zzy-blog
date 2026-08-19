@@ -2,8 +2,9 @@
   <div class="articles-page">
     <div class="page-head">
       <div>
-        <span class="page-eyebrow">内容审核</span>
-        <h2>文章管理</h2>
+        <span class="page-eyebrow">{{ pageCopy.eyebrow }}</span>
+        <h2>{{ pageCopy.title }}</h2>
+        <p v-if="pageCopy.description" class="page-description">{{ pageCopy.description }}</p>
       </div>
       <button class="tool-button is-primary" type="button" @click="$router.push('/admin/articles/create')">
         新建文章
@@ -146,11 +147,13 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { approveArticle, deleteAdminArticle, getAdminArticles, rejectArticle } from '../../api/article'
 import { articleVisibilityText, normalizeArticleVisibility } from '../../utils/articleVisibility'
 import { formatDate } from '../../utils'
+import { usePageCopyStore } from '../../stores/pageCopy'
 
 const statusMap = {
   draft: { text: '草稿', tone: 'neutral' },
@@ -164,18 +167,52 @@ const statusOptions = Object.entries(statusMap).map(([value, item]) => ({
   label: item.text,
 }))
 
+const pageCopyStore = usePageCopyStore()
+const route = useRoute()
 const articles = ref([])
 const page = ref(1)
 const size = ref(10)
 const total = ref(0)
-const status = ref('')
-const visibility = ref('')
+const status = ref(normalizeArticleStatusQuery(route.query.status))
+const visibility = ref(normalizeArticleVisibilityQuery(route.query.visibility))
 const keyword = ref('')
 const loading = ref(false)
 const busyIds = ref(new Set())
 const helpOpen = ref(false)
+const pageCopy = computed(() => pageCopyStore.resolveCopy('admin.articles'))
+let requestVersion = 0
 
-onMounted(() => load())
+onMounted(() => {
+  void pageCopyStore.loadAdminCopies()
+  load()
+})
+
+watch(
+  () => [route.query.status, route.query.visibility],
+  () => {
+    const nextStatus = normalizeArticleStatusQuery(route.query.status)
+    const nextVisibility = normalizeArticleVisibilityQuery(route.query.visibility)
+    if (nextStatus === status.value && nextVisibility === visibility.value) return
+    status.value = nextStatus
+    visibility.value = nextVisibility
+    page.value = 1
+    void load()
+  }
+)
+
+function firstQueryValue(value) {
+  return Array.isArray(value) ? value[0] : value
+}
+
+function normalizeArticleStatusQuery(value) {
+  const normalized = firstQueryValue(value)
+  return Object.prototype.hasOwnProperty.call(statusMap, normalized) ? normalized : ''
+}
+
+function normalizeArticleVisibilityQuery(value) {
+  const normalized = firstQueryValue(value)
+  return normalized === 'public' || normalized === 'private' ? normalized : ''
+}
 
 function statusText(value) {
   return statusMap[value]?.text || value || '-'
@@ -220,6 +257,7 @@ function setBusy(id, busy) {
 }
 
 async function load() {
+  const requestId = ++requestVersion
   loading.value = true
   try {
     const params = { page: page.value, size: size.value }
@@ -227,10 +265,11 @@ async function load() {
     if (visibility.value) params.visibility = visibility.value
     if (keyword.value) params.keyword = keyword.value
     const result = await getAdminArticles(params)
+    if (requestId !== requestVersion) return
     articles.value = result.data || []
     total.value = result.total || 0
   } finally {
-    loading.value = false
+    if (requestId === requestVersion) loading.value = false
   }
 }
 

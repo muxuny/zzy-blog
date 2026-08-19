@@ -3,11 +3,14 @@ package com.blog.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.blog.dto.DashboardDateBucket;
+import com.blog.dto.DashboardFavoriteTopArticle;
 import com.blog.dto.FavoriteRelationRow;
 import com.blog.entity.ArticleFavorite;
 import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public interface ArticleFavoriteMapper extends BaseMapper<ArticleFavorite> {
 
@@ -30,4 +33,14 @@ public interface ArticleFavoriteMapper extends BaseMapper<ArticleFavorite> {
                                                    @Param("userId") Long userId,
                                                    @Param("keyword") String keyword,
                                                    @Param("tagId") Long tagId);
+
+    long selectTotalFavoriteCount();
+
+    long selectRecentFavoriteCount(@Param("start") LocalDateTime start,
+                                   @Param("end") LocalDateTime end);
+
+    List<DashboardFavoriteTopArticle> selectFavoriteTopArticles();
+
+    List<DashboardDateBucket> selectFavoriteDateBuckets(@Param("start") LocalDateTime start,
+                                                        @Param("end") LocalDateTime end);
 }

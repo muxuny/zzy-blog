@@ -1,0 +1,1132 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>后台仪表盘科技控制台原型</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg-color: #f3f6f8;
+      --text-color: #23282c;
+      --muted-text-color: #66717a;
+      --panel-bg: #ffffff;
+      --border-color: #d1d9df;
+      --soft-border-color: #e1e7ec;
+      --primary-color: #4f6979;
+      --accent-color: #6e83a4;
+      --warning-color: #b3924a;
+      --danger-color: #8f6f5f;
+      --success-color: #668f70;
+      --shadow-md: 0 18px 44px rgba(37, 39, 34, 0.1);
+      --radius-md: 8px;
+      font-family: Inter, "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--text-color);
+      background:
+        linear-gradient(90deg, rgba(79, 105, 121, 0.07) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(110, 131, 164, 0.06) 1px, transparent 1px),
+        var(--bg-color);
+      background-size: 28px 28px;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .admin-shell {
+      display: grid;
+      grid-template-columns: 228px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      padding: 18px 14px;
+      border-right: 1px solid var(--border-color);
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(16px);
+    }
+
+    .brand {
+      padding: 8px 10px 18px;
+      border-bottom: 1px solid var(--soft-border-color);
+    }
+
+    .brand strong {
+      display: block;
+      font-size: 18px;
+    }
+
+    .brand span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted-text-color);
+      font-size: 12px;
+    }
+
+    .nav {
+      display: grid;
+      gap: 6px;
+      margin-top: 18px;
+    }
+
+    .nav span {
+      display: block;
+      padding: 10px 11px;
+      border-radius: var(--radius-md);
+      color: var(--muted-text-color);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .nav .active {
+      color: #fff;
+      background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+      box-shadow: 0 12px 26px rgba(79, 105, 121, 0.24);
+    }
+
+    .main {
+      padding: 18px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 13px 16px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: 0 10px 28px rgba(37, 39, 34, 0.06);
+    }
+
+    .topbar span {
+      color: var(--muted-text-color);
+      font-size: 13px;
+    }
+
+    .page-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 20px;
+      margin-top: 18px;
+    }
+
+    .eyebrow,
+    .panel-kicker,
+    .mini-label {
+      display: block;
+      color: var(--muted-text-color);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .page-head h1 {
+      margin: 5px 0 0;
+      color: var(--text-color);
+      font-size: 30px;
+      letter-spacing: 0;
+      line-height: 1.2;
+    }
+
+    .page-head p {
+      max-width: 760px;
+      margin: 7px 0 0;
+      color: var(--muted-text-color);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .tool-button {
+      height: 34px;
+      padding: 0 14px;
+      border: 1px solid rgba(79, 105, 121, 0.24);
+      border-radius: var(--radius-md);
+      color: var(--primary-color);
+      background: rgba(255, 255, 255, 0.76);
+      font-weight: 760;
+    }
+
+    .tech-board {
+      display: grid;
+      gap: 14px;
+      margin-top: 16px;
+      padding: 18px;
+      border: 1px solid rgba(47, 65, 88, 0.14);
+      border-radius: 14px;
+      background:
+        linear-gradient(135deg, rgba(22, 160, 160, 0.08), transparent 28%),
+        linear-gradient(180deg, #f8fafc, #eef3f6);
+      color: var(--text-color);
+    }
+
+    .signal-row {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .signal-card,
+    .dash-panel {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(47, 65, 88, 0.14);
+      border-radius: 10px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(247, 250, 252, 0.86)),
+        var(--panel-bg);
+      box-shadow: var(--shadow-md);
+    }
+
+    .signal-card::before,
+    .signal-card::after,
+    .dash-panel::before,
+    .dash-panel::after {
+      content: "";
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      pointer-events: none;
+    }
+
+    .signal-card::before,
+    .dash-panel::before {
+      left: -1px;
+      top: -1px;
+      border-left: 2px solid rgba(22, 160, 160, 0.62);
+      border-top: 2px solid rgba(22, 160, 160, 0.62);
+      border-radius: 10px 0 0 0;
+    }
+
+    .signal-card::after,
+    .dash-panel::after {
+      right: -1px;
+      bottom: -1px;
+      border-right: 2px solid rgba(66, 106, 134, 0.5);
+      border-bottom: 2px solid rgba(66, 106, 134, 0.5);
+      border-radius: 0 0 10px 0;
+    }
+
+    .signal-card {
+      min-height: 112px;
+      padding: 14px;
+    }
+
+    .signal-topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .signal-icon {
+      display: grid;
+      place-items: center;
+      width: 38px;
+      aspect-ratio: 1;
+      border-radius: 999px;
+      color: #fff;
+      background:
+        radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.42), transparent 32%),
+        linear-gradient(135deg, var(--primary-color), #16a0a0);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .signal-card:nth-child(2) .signal-icon {
+      background:
+        radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.42), transparent 32%),
+        linear-gradient(135deg, var(--warning-color), #d7af62);
+    }
+
+    .signal-card:nth-child(3) .signal-icon {
+      background:
+        radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.42), transparent 32%),
+        linear-gradient(135deg, #16a0a0, #6fbab1);
+    }
+
+    .signal-card:nth-child(4) .signal-icon {
+      background:
+        radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.42), transparent 32%),
+        linear-gradient(135deg, #6e6aa8, #8e84c6);
+    }
+
+    .signal-card:nth-child(5) .signal-icon {
+      background:
+        radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.42), transparent 32%),
+        linear-gradient(135deg, var(--success-color), #82a989);
+    }
+
+    .signal-code {
+      color: rgba(35, 40, 44, 0.22);
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .signal-card strong {
+      display: block;
+      margin-top: 12px;
+      color: var(--text-color);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 28px;
+      font-weight: 520;
+      line-height: 1;
+    }
+
+    .signal-card span:last-child {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted-text-color);
+      font-size: 12px;
+    }
+
+    .dashboard-core {
+      display: grid;
+      grid-template-columns: minmax(230px, 0.9fr) minmax(380px, 1.55fr) minmax(250px, 0.95fr);
+      gap: 12px;
+    }
+
+    .dash-panel {
+      padding: 15px;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 13px;
+    }
+
+    .panel-head h2,
+    .panel-head h3 {
+      margin: 3px 0 0;
+      color: var(--text-color);
+      font-size: 16px;
+      line-height: 1.25;
+    }
+
+    .micro-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 56px;
+      height: 28px;
+      padding: 0 10px;
+      border: 1px solid rgba(79, 105, 121, 0.2);
+      border-radius: 999px;
+      color: var(--primary-color);
+      background: rgba(255, 255, 255, 0.7);
+      font-size: 12px;
+      font-weight: 760;
+      white-space: nowrap;
+    }
+
+    .ring-stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .ring-block {
+      display: grid;
+      grid-template-columns: 106px minmax(0, 1fr);
+      align-items: center;
+      gap: 13px;
+      min-height: 134px;
+      padding: 12px;
+      border: 1px solid rgba(47, 65, 88, 0.1);
+      border-radius: 9px;
+      background: rgba(255, 255, 255, 0.62);
+    }
+
+    .ring {
+      position: relative;
+      width: 102px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at center, #f7fafc 0 53%, transparent 54%),
+        conic-gradient(var(--primary-color) 0 55%, var(--warning-color) 55% 64%, var(--success-color) 64% 87%, var(--danger-color) 87% 100%);
+      box-shadow:
+        inset 0 0 0 1px rgba(47, 65, 88, 0.1),
+        0 12px 24px rgba(34, 48, 70, 0.1);
+    }
+
+    .ring.is-visibility {
+      background:
+        radial-gradient(circle at center, #f7fafc 0 53%, transparent 54%),
+        conic-gradient(#16a0a0 0 78%, #6e6aa8 78% 100%);
+    }
+
+    .ring::after {
+      content: attr(data-center);
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: var(--text-color);
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .legend-list {
+      display: grid;
+      gap: 7px;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--muted-text-color);
+      font-size: 12px;
+    }
+
+    .legend-row span:first-child {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+    }
+
+    .maintenance-summary {
+      display: grid;
+      gap: 9px;
+      margin-top: 10px;
+      padding: 11px;
+      border: 1px solid rgba(47, 65, 88, 0.1);
+      border-radius: var(--radius-md);
+      background:
+        linear-gradient(135deg, rgba(179, 146, 74, 0.09), transparent 72%),
+        rgba(255, 255, 255, 0.62);
+    }
+
+    .maintenance-summary p {
+      margin: 0;
+      color: var(--text-color);
+      font-size: 13px;
+      font-weight: 760;
+      line-height: 1.45;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .summary-cell {
+      min-height: 58px;
+      padding: 8px;
+      border: 1px solid rgba(47, 65, 88, 0.09);
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.68);
+    }
+
+    .summary-cell strong {
+      display: block;
+      margin-top: 5px;
+      color: var(--text-color);
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .activity-panel {
+      min-height: 382px;
+    }
+
+    .activity-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 132px;
+      gap: 12px;
+    }
+
+    .chart-box {
+      position: relative;
+      min-height: 258px;
+      overflow: hidden;
+      border: 1px solid rgba(47, 65, 88, 0.1);
+      border-radius: 10px;
+      background:
+        linear-gradient(180deg, transparent 24%, rgba(47, 65, 88, 0.06) 24% 25%, transparent 25% 49%, rgba(47, 65, 88, 0.06) 49% 50%, transparent 50% 74%, rgba(47, 65, 88, 0.06) 74% 75%, transparent 75%),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.52), rgba(22, 160, 160, 0.07)),
+        rgba(255, 255, 255, 0.62);
+    }
+
+    .chart-bars {
+      position: absolute;
+      inset: 42px 18px 34px;
+      display: grid;
+      grid-template-columns: repeat(14, minmax(0, 1fr));
+      align-items: end;
+      gap: 8px;
+    }
+
+    .chart-bars span {
+      min-height: 16px;
+      border-radius: 999px 999px 4px 4px;
+      background: linear-gradient(180deg, #16a0a0, var(--primary-color));
+      box-shadow: 0 8px 18px rgba(22, 160, 160, 0.18);
+    }
+
+    .chart-bars span:nth-child(4n) {
+      background: linear-gradient(180deg, var(--warning-color), var(--primary-color));
+    }
+
+    .chart-bars span:nth-child(5n) {
+      background: linear-gradient(180deg, var(--success-color), #16a0a0);
+    }
+
+    .trend-line {
+      position: absolute;
+      left: 20px;
+      right: 18px;
+      bottom: 92px;
+      height: 3px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--primary-color), #16a0a0, var(--success-color));
+      transform: rotate(-3deg);
+      opacity: 0.66;
+    }
+
+    .peak-note {
+      position: absolute;
+      left: 132px;
+      top: 22px;
+      padding: 5px 8px;
+      border: 1px solid rgba(22, 160, 160, 0.2);
+      border-radius: 7px;
+      color: #168c8c;
+      background: rgba(255, 255, 255, 0.86);
+      font-size: 12px;
+      font-weight: 780;
+    }
+
+    .axis-labels {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      color: rgba(104, 117, 134, 0.8);
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 11px;
+    }
+
+    .activity-side {
+      display: grid;
+      gap: 9px;
+    }
+
+    .small-stat {
+      min-height: 78px;
+      padding: 11px;
+      border: 1px solid rgba(47, 65, 88, 0.1);
+      border-radius: 9px;
+      background: rgba(255, 255, 255, 0.66);
+    }
+
+    .small-stat strong {
+      display: block;
+      margin-top: 6px;
+      color: var(--text-color);
+      font-size: 21px;
+      line-height: 1;
+    }
+
+    .small-stat small {
+      color: var(--muted-text-color);
+      font-size: 12px;
+    }
+
+    .progress-lanes {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .lane {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr) 36px;
+      align-items: center;
+      gap: 9px;
+      color: var(--muted-text-color);
+      font-size: 12px;
+    }
+
+    .lane-track {
+      height: 8px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(47, 65, 88, 0.09);
+    }
+
+    .lane-track span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--primary-color), #16a0a0);
+    }
+
+    .rank-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .rank-item {
+      display: grid;
+      grid-template-columns: 26px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 9px;
+      padding: 9px;
+      border: 1px solid rgba(47, 65, 88, 0.1);
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.64);
+    }
+
+    .rank-no {
+      display: grid;
+      place-items: center;
+      width: 24px;
+      aspect-ratio: 1;
+      border-radius: 7px;
+      color: #fff;
+      background: var(--primary-color);
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .rank-item:nth-child(1) .rank-no {
+      background: var(--warning-color);
+    }
+
+    .rank-item:nth-child(2) .rank-no {
+      background: #16a0a0;
+    }
+
+    .rank-item strong {
+      display: block;
+      overflow: hidden;
+      color: var(--text-color);
+      font-size: 13px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .rank-item small {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted-text-color);
+      font-size: 11px;
+    }
+
+    .rank-value {
+      color: var(--primary-color);
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .heat-summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 7px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(47, 65, 88, 0.09);
+    }
+
+    .heat-cell {
+      min-height: 64px;
+      padding: 9px 8px;
+      border: 1px solid rgba(47, 65, 88, 0.1);
+      border-radius: var(--radius-md);
+      background:
+        linear-gradient(135deg, rgba(22, 160, 160, 0.08), transparent 72%),
+        rgba(255, 255, 255, 0.66);
+    }
+
+    .heat-cell strong {
+      display: block;
+      margin-top: 6px;
+      color: var(--text-color);
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 15px;
+      line-height: 1;
+    }
+
+    .lower-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 0.98fr) minmax(0, 1fr) minmax(280px, 0.9fr);
+      gap: 12px;
+    }
+
+    .feedback-chart {
+      display: grid;
+      grid-template-columns: 116px minmax(0, 1fr);
+      align-items: center;
+      gap: 12px;
+    }
+
+    .feedback-ring {
+      position: relative;
+      width: 112px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at center, #f7fafc 0 54%, transparent 55%),
+        conic-gradient(#6e6aa8 0 42%, #16a0a0 42% 75%, var(--warning-color) 75% 100%);
+    }
+
+    .feedback-ring::after {
+      content: "收藏";
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: var(--text-color);
+      font-weight: 850;
+    }
+
+    .sparkline {
+      display: flex;
+      align-items: end;
+      gap: 6px;
+      height: 48px;
+      margin-top: 10px;
+      padding: 0 2px;
+    }
+
+    .sparkline span {
+      flex: 1;
+      min-width: 5px;
+      border-radius: 999px 999px 3px 3px;
+      background: linear-gradient(180deg, #6e6aa8, #16a0a0);
+    }
+
+    .resource-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .resource-cell {
+      min-height: 82px;
+      padding: 10px;
+      border: 1px solid rgba(47, 65, 88, 0.1);
+      border-radius: var(--radius-md);
+      background:
+        linear-gradient(135deg, rgba(102, 143, 112, 0.1), transparent 70%),
+        rgba(255, 255, 255, 0.64);
+    }
+
+    .resource-cell strong {
+      display: block;
+      margin-top: 8px;
+      color: var(--text-color);
+      font-size: 21px;
+    }
+
+    .tag-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 12px;
+    }
+
+    .tag-strip span {
+      padding: 6px 9px;
+      border: 1px solid rgba(79, 105, 121, 0.14);
+      border-radius: 999px;
+      color: #425267;
+      background: rgba(255, 255, 255, 0.68);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .queue-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .queue-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      padding: 9px 10px;
+      border: 1px solid rgba(47, 65, 88, 0.1);
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.66);
+    }
+
+    .queue-item strong {
+      overflow: hidden;
+      color: var(--text-color);
+      font-size: 13px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .queue-item span {
+      color: var(--muted-text-color);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .prototype-note {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border: 1px solid rgba(22, 160, 160, 0.16);
+      border-radius: 10px;
+      color: #435166;
+      background: rgba(22, 160, 160, 0.07);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    @media (max-width: 1180px) {
+      .admin-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        display: none;
+      }
+
+      .signal-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .dashboard-core,
+      .lower-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .main {
+        padding: 12px;
+      }
+
+      .topbar,
+      .page-head,
+      .activity-grid,
+      .feedback-chart,
+      .ring-block {
+        grid-template-columns: 1fr;
+        align-items: start;
+      }
+
+      .page-head,
+      .topbar {
+        display: grid;
+      }
+
+      .signal-row,
+      .resource-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="admin-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <strong>个人博客后台</strong>
+        <span>Admin workbench</span>
+      </div>
+      <nav class="nav" aria-label="后台导航">
+        <span class="active">仪表盘</span>
+        <span>文章管理</span>
+        <span>资源管理</span>
+        <span>用户管理</span>
+        <span>页面文案</span>
+        <span>个人资料</span>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <strong>后台管理</strong>
+        <span>科技博客内容运营监控台</span>
+      </div>
+
+      <div class="page-head">
+        <div>
+          <span class="eyebrow">Admin overview</span>
+          <h1>仪表盘</h1>
+          <p>面向科技博客维护者的总览：既看内容状态，也看读者行为、收藏反馈和资源增长，让后台首页真正成为每日巡检入口。</p>
+        </div>
+        <button class="tool-button" type="button">刷新数据</button>
+      </div>
+
+      <section class="tech-board">
+        <div class="signal-row">
+          <section class="signal-card">
+            <div class="signal-topline">
+              <div class="signal-icon">文</div>
+              <span class="signal-code">A-01</span>
+            </div>
+            <small>全站文章</small>
+            <strong>128</strong>
+            <span>已发布 84 / 待审核 9</span>
+          </section>
+
+          <section class="signal-card">
+            <div class="signal-topline">
+              <div class="signal-icon">审</div>
+              <span class="signal-code">Q-02</span>
+            </div>
+            <small>待处理队列</small>
+            <strong>12</strong>
+            <span>文章 9 / 用户 3</span>
+          </section>
+
+          <section class="signal-card">
+            <div class="signal-topline">
+              <div class="signal-icon">览</div>
+              <span class="signal-code">V-03</span>
+            </div>
+            <small>全站浏览</small>
+            <strong>92,416</strong>
+            <span>平均 1,100 / 篇</span>
+          </section>
+
+          <section class="signal-card">
+            <div class="signal-topline">
+              <div class="signal-icon">读</div>
+              <span class="signal-code">R-04</span>
+            </div>
+            <small>30 日阅读活跃</small>
+            <strong>384</strong>
+            <span>登录用户阅读记录</span>
+          </section>
+
+          <section class="signal-card">
+            <div class="signal-topline">
+              <div class="signal-icon">源</div>
+              <span class="signal-code">S-05</span>
+            </div>
+            <small>资源体量</small>
+            <strong>2.4 GB</strong>
+            <span>图片 246 / 标签 36</span>
+          </section>
+        </div>
+
+        <div class="dashboard-core">
+          <section class="dash-panel">
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">内容结构</span>
+                <h2>状态与可见性</h2>
+              </div>
+              <span class="micro-pill">全站</span>
+            </div>
+
+            <div class="ring-stack">
+              <div class="ring-block">
+                <div class="ring" data-center="128"></div>
+                <div class="legend-list">
+                  <div class="legend-row"><span><i class="legend-dot" style="background:var(--primary-color)"></i>已发布</span><strong>55%</strong></div>
+                  <div class="legend-row"><span><i class="legend-dot" style="background:var(--success-color)"></i>草稿</span><strong>23%</strong></div>
+                  <div class="legend-row"><span><i class="legend-dot" style="background:var(--warning-color)"></i>待审核</span><strong>9%</strong></div>
+                  <div class="legend-row"><span><i class="legend-dot" style="background:var(--danger-color)"></i>驳回</span><strong>13%</strong></div>
+                </div>
+              </div>
+
+              <div class="ring-block">
+                <div class="ring is-visibility" data-center="可见"></div>
+                <div class="legend-list">
+                  <div class="legend-row"><span><i class="legend-dot" style="background:#16a0a0"></i>公开文章</span><strong>78%</strong></div>
+                  <div class="legend-row"><span><i class="legend-dot" style="background:#6e6aa8"></i>私密文章</span><strong>22%</strong></div>
+                  <div class="legend-row"><span><i class="legend-dot" style="background:var(--warning-color)"></i>内容维护压力</span><strong>中</strong></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="maintenance-summary">
+              <p>当前需关注：待审核积压较轻，驳回内容需要作者回看。</p>
+              <div class="summary-grid">
+                <div class="summary-cell"><span class="mini-label">待审核</span><strong>9 篇</strong></div>
+                <div class="summary-cell"><span class="mini-label">驳回</span><strong>4 篇</strong></div>
+                <div class="summary-cell"><span class="mini-label">私密</span><strong>19 篇</strong></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="dash-panel activity-panel">
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">阅读活跃中枢</span>
+                <h2>近 30 天阅读记录分布</h2>
+              </div>
+              <span class="micro-pill">阅读历史</span>
+            </div>
+
+            <div class="activity-grid">
+              <div class="chart-box">
+                <div class="peak-note">峰值：第 18 天</div>
+                <div class="chart-bars">
+                  <span style="height:38%"></span>
+                  <span style="height:46%"></span>
+                  <span style="height:32%"></span>
+                  <span style="height:60%"></span>
+                  <span style="height:52%"></span>
+                  <span style="height:74%"></span>
+                  <span style="height:43%"></span>
+                  <span style="height:68%"></span>
+                  <span style="height:40%"></span>
+                  <span style="height:82%"></span>
+                  <span style="height:57%"></span>
+                  <span style="height:76%"></span>
+                  <span style="height:49%"></span>
+                  <span style="height:64%"></span>
+                </div>
+                <div class="trend-line"></div>
+                <div class="axis-labels"><span>01</span><span>07</span><span>14</span><span>21</span><span>30</span></div>
+              </div>
+
+              <div class="activity-side">
+                <div class="small-stat">
+                  <span class="mini-label">近 7 天</span>
+                  <strong>96</strong>
+                  <small>阅读记录</small>
+                </div>
+                <div class="small-stat">
+                  <span class="mini-label">活跃读者</span>
+                  <strong>41</strong>
+                  <small>登录用户</small>
+                </div>
+                <div class="small-stat">
+                  <span class="mini-label">平均进度</span>
+                  <strong>62%</strong>
+                  <small>最近阅读</small>
+                </div>
+              </div>
+            </div>
+
+            <div class="progress-lanes">
+              <div class="lane"><span>浅读</span><div class="lane-track"><span style="width:24%"></span></div><strong>24%</strong></div>
+              <div class="lane"><span>阅读中</span><div class="lane-track"><span style="width:46%"></span></div><strong>46%</strong></div>
+              <div class="lane"><span>接近读完</span><div class="lane-track"><span style="width:19%"></span></div><strong>19%</strong></div>
+              <div class="lane"><span>已读完</span><div class="lane-track"><span style="width:11%"></span></div><strong>11%</strong></div>
+            </div>
+          </section>
+
+          <section class="dash-panel">
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">内容热度</span>
+                <h2>浏览最高文章</h2>
+              </div>
+              <span class="micro-pill">Top 5</span>
+            </div>
+
+            <div class="rank-list">
+              <div class="rank-item"><span class="rank-no">01</span><div><strong>Spring Boot 上传链路复盘</strong><small>后端实践</small></div><span class="rank-value">12.8k</span></div>
+              <div class="rank-item"><span class="rank-no">02</span><div><strong>Vue 主题变量拆分记录</strong><small>前端体验</small></div><span class="rank-value">9.6k</span></div>
+              <div class="rank-item"><span class="rank-no">03</span><div><strong>MySQL 索引与阅读历史</strong><small>数据库</small></div><span class="rank-value">7.4k</span></div>
+              <div class="rank-item"><span class="rank-no">04</span><div><strong>Markdown 目录定位方案</strong><small>阅读体验</small></div><span class="rank-value">6.1k</span></div>
+              <div class="rank-item"><span class="rank-no">05</span><div><strong>后台资源管理改造</strong><small>管理后台</small></div><span class="rank-value">4.9k</span></div>
+            </div>
+
+            <div class="heat-summary">
+              <div class="heat-cell"><span class="mini-label">总浏览</span><strong>92.4k</strong></div>
+              <div class="heat-cell"><span class="mini-label">平均</span><strong>1.1k</strong></div>
+              <div class="heat-cell"><span class="mini-label">长尾</span><strong>18 篇</strong></div>
+            </div>
+          </section>
+        </div>
+
+        <div class="lower-grid">
+          <section class="dash-panel">
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">收藏反馈</span>
+                <h2>读者留存信号</h2>
+              </div>
+              <span class="micro-pill">收藏</span>
+            </div>
+
+            <div class="feedback-chart">
+              <div class="feedback-ring"></div>
+              <div>
+                <div class="small-stat">
+                  <span class="mini-label">总收藏</span>
+                  <strong>318</strong>
+                  <small>近 7 天新增 24</small>
+                </div>
+                <div class="sparkline">
+                  <span style="height:32%"></span><span style="height:58%"></span><span style="height:42%"></span><span style="height:76%"></span><span style="height:51%"></span><span style="height:68%"></span><span style="height:84%"></span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="dash-panel">
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">资源健康</span>
+                <h2>图片与标签资产</h2>
+              </div>
+              <span class="micro-pill">资源管理</span>
+            </div>
+
+            <div class="resource-grid">
+              <div class="resource-cell"><span class="mini-label">图片数</span><strong>246</strong></div>
+              <div class="resource-cell"><span class="mini-label">存储占用</span><strong>2.4 GB</strong></div>
+              <div class="resource-cell"><span class="mini-label">7 天上传</span><strong>18</strong></div>
+            </div>
+            <div class="tag-strip">
+              <span>Spring</span><span>Vue</span><span>MySQL</span><span>工程化</span><span>阅读体验</span><span>部署</span>
+            </div>
+          </section>
+
+          <section class="dash-panel">
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">工作队列</span>
+                <h2>优先处理</h2>
+              </div>
+              <span class="micro-pill">12 项</span>
+            </div>
+
+            <div class="queue-list">
+              <div class="queue-item"><strong>重新整理 Spring Boot 上传链路</strong><span>文章审核</span></div>
+              <div class="queue-item"><strong>新用户 muxuny 等待通过</strong><span>用户审核</span></div>
+              <div class="queue-item"><strong>Vue 主题变量拆分记录</strong><span>文章审核</span></div>
+              <div class="queue-item"><strong>资源封面图命名整理</strong><span>资源维护</span></div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <div class="prototype-note">
+        原型说明：最终实现不使用静态假数据，所有统计由后台 overview 聚合接口返回。发布时间趋势暂不纳入首版，因为当前没有独立 published_at 字段。
+      </div>
+    </main>
+  </div>
+</body>
+</html>

@@ -115,6 +115,23 @@ class ArticleServiceImplTest {
     }
 
     @Test
+    void articlePages_shouldRejectInvalidPagingBeforeQuerying() {
+        assertInvalidArticlePage("public", query -> articleService.getPublicPage(query));
+        assertInvalidArticlePage("mine", query -> articleService.getMyPage(query, "alice"));
+        assertInvalidArticlePage("admin", query -> articleService.getAdminPage(query));
+    }
+
+    private static void assertInvalidArticlePage(String label, java.util.function.Consumer<ArticlePageQuery> action) {
+        ArticlePageQuery query = new ArticlePageQuery();
+        query.setSize(101);
+
+        assertThatThrownBy(() -> action.accept(query))
+                .as(label)
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("分页参数不合法");
+    }
+
+    @Test
     void publicDetail_shouldRejectNonPublishedArticle() {
         Article article = article(1L, "alice", ArticleStatus.DRAFT);
         articleService.put(article);

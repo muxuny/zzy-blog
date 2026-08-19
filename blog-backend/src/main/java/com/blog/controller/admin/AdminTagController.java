@@ -1,5 +1,6 @@
 package com.blog.controller.admin;
 
+import com.blog.common.PageResult;
 import com.blog.common.Result;
 import com.blog.entity.Tag;
 import com.blog.service.TagService;
@@ -20,6 +21,12 @@ public class AdminTagController {
 
     public AdminTagController(TagService tagService) {
         this.tagService = tagService;
+    }
+
+    @GetMapping
+    public PageResult<Tag> list(@RequestParam(defaultValue = "1") long page,
+                                @RequestParam(defaultValue = "20") long size) {
+        return PageResult.success(tagService.getAdminPage(page, size));
     }
 
     @PostMapping

@@ -2,26 +2,27 @@
   <div class="resources-page">
     <div class="page-head">
       <div>
-        <span class="page-eyebrow">内容资源</span>
-        <h2>资源管理</h2>
+        <span class="page-eyebrow">{{ pageCopy.eyebrow }}</span>
+        <h2>{{ pageCopy.title }}</h2>
+        <p v-if="pageCopy.description" class="page-description">{{ pageCopy.description }}</p>
       </div>
     </div>
 
     <div class="resource-summary">
       <section class="resource-tile">
         <span class="tiny-label">标签数量</span>
-        <strong>{{ tags.length }}</strong>
+        <strong>{{ tagTotal }}</strong>
         <div class="row-meta">用于首页筛选和文章归类</div>
       </section>
       <section class="resource-tile">
         <span class="tiny-label">图片素材</span>
-        <strong>{{ images.length }}</strong>
+        <strong>{{ imageTotal }}</strong>
         <div class="row-meta">封面和正文图片</div>
       </section>
       <section class="resource-tile">
         <span class="tiny-label">最近上传</span>
         <strong>{{ recentUploadCount }}</strong>
-        <div class="row-meta">近 7 天变化</div>
+        <div class="row-meta">本页近 7 天</div>
       </section>
       <section class="resource-tile">
         <span class="tiny-label">资源操作</span>
@@ -54,6 +55,16 @@
           </div>
         </div>
         <div v-else class="empty-state">暂无标签</div>
+
+        <el-pagination
+          v-if="showTagPagination"
+          v-model:current-page="tagPage"
+          :total="tagTotal"
+          :page-size="tagSize"
+          layout="prev,pager,next"
+          class="resource-pagination"
+          @current-change="handleTagPageChange"
+        />
       </section>
 
       <section class="surface">
@@ -76,34 +87,127 @@
 
         <div v-if="images.length" class="mini-image-grid" aria-label="图片缩略预览">
           <div v-for="image in images" :key="image.id || image.url" class="image-card">
-            <span class="mini-image" :style="imageBackground(image)" aria-hidden="true" />
+            <button
+              class="mini-image preview-thumb-button"
+              type="button"
+              :style="imageBackground(image)"
+              :aria-label="`预览图片：${getImageName(image)}`"
+              @click="openImagePreview(image)"
+            >
+              <span class="visually-hidden-text">预览图片</span>
+            </button>
             <div>
-              <div class="image-name">{{ image.originalName || image.name || '未命名图片' }}</div>
-              <div class="row-meta">{{ imageSize(image.size) }} / {{ image.createdBy || '未知' }}</div>
+              <div class="image-name">{{ getImageName(image) }}</div>
+              <div class="row-meta">{{ formatImageSize(image.size) }} / {{ image.createdBy || '未知' }}</div>
             </div>
-            <button class="row-action-button is-danger" type="button" @click="handleDeleteImage(image.id)">删除</button>
+            <div class="image-card-actions">
+              <button class="row-action-button" type="button" @click="openImagePreview(image)">预览</button>
+              <button class="row-action-button is-danger" type="button" @click="handleDeleteImage(image.id)">删除</button>
+            </div>
           </div>
         </div>
         <div v-else class="empty-state">暂无图片素材</div>
+
+        <el-pagination
+          v-if="showImagePagination"
+          v-model:current-page="imagePage"
+          :total="imageTotal"
+          :page-size="imageSize"
+          layout="prev,pager,next"
+          class="resource-pagination"
+          @current-change="handleImagePageChange"
+        />
       </section>
     </div>
+
+    <el-dialog
+      v-model="previewDialog.visible"
+      class="image-preview-dialog"
+      :title="previewImageName"
+      width="min(920px, 92vw)"
+      align-center
+      @closed="closeImagePreview"
+    >
+      <div v-if="previewImage" class="image-preview-content">
+        <div class="image-preview-stage" :class="{ 'is-error': previewDialog.loadError }">
+          <img
+            v-if="previewImage.url && !previewDialog.loadError"
+            :src="previewImage.url"
+            :alt="previewImageName"
+            @error="previewDialog.loadError = true"
+          >
+          <div v-else class="image-preview-error">图片无法预览</div>
+        </div>
+
+        <dl class="image-preview-meta">
+          <div>
+            <dt>文件名</dt>
+            <dd>{{ previewImageName }}</dd>
+          </div>
+          <div>
+            <dt>文件大小</dt>
+            <dd>{{ formatImageSize(previewImage.size) }}</dd>
+          </div>
+          <div>
+            <dt>上传人</dt>
+            <dd>{{ previewImage.createdBy || '未知' }}</dd>
+          </div>
+          <div>
+            <dt>上传时间</dt>
+            <dd>{{ formatDate(previewImage.createdAt) || '暂无时间' }}</dd>
+          </div>
+          <div class="image-url-row">
+            <dt>图片地址</dt>
+            <dd>{{ previewImage.url || '暂无地址' }}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <template #footer>
+        <div class="image-preview-footer">
+          <button class="tool-button" type="button" :disabled="!previewImage?.url" @click="copyImageUrl">复制地址</button>
+          <button class="tool-button is-danger" type="button" :disabled="!previewImage?.id" @click="handleDeletePreviewImage">删除图片</button>
+          <button class="tool-button is-primary" type="button" @click="previewDialog.visible = false">关闭</button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { createTag, deleteTag, getTags } from '../../api/tag'
+import { createTag, deleteTag, getAdminTags } from '../../api/tag'
 import { deleteImage, getImages, uploadImage } from '../../api/image'
 import { formatDate } from '../../utils'
+import {
+  getPageAfterSingleDeletion,
+  normalizePageResult,
+  shouldShowPagination
+} from '../../utils/pagination'
+import { usePageCopyStore } from '../../stores/pageCopy'
 
+const pageCopyStore = usePageCopyStore()
 const tags = ref([])
 const images = ref([])
+const tagPage = ref(1)
+const tagSize = ref(10)
+const tagTotal = ref(0)
+const imagePage = ref(1)
+const imageSize = ref(12)
+const imageTotal = ref(0)
 const newName = ref('')
 const creating = ref(false)
 const uploading = ref(false)
 const fileInput = ref(null)
+const previewDialog = ref({
+  visible: false,
+  image: null,
+  loadError: false
+})
 
+const showTagPagination = computed(() => shouldShowPagination(tagTotal.value, tagSize.value))
+const showImagePagination = computed(() => shouldShowPagination(imageTotal.value, imageSize.value))
 const recentUploadCount = computed(() => {
   const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
   return images.value.filter(image => {
@@ -111,16 +215,53 @@ const recentUploadCount = computed(() => {
     return Number.isFinite(time) && time >= sevenDaysAgo
   }).length
 })
+const pageCopy = computed(() => pageCopyStore.resolveCopy('admin.resources'))
+const previewImage = computed(() => previewDialog.value.image)
+const previewImageName = computed(() => getImageName(previewImage.value))
 
-onMounted(loadResources)
+onMounted(() => {
+  void pageCopyStore.loadAdminCopies()
+  loadResources()
+})
 
 async function loadResources() {
-  const [tagResult, imageResult] = await Promise.all([
-    getTags(),
-    getImages({ page: 1, size: 100 })
-  ])
-  tags.value = tagResult.data || []
-  images.value = imageResult.data || []
+  await Promise.all([loadTags(), loadImages()])
+}
+
+async function loadTags() {
+  const result = await getAdminTags({ page: tagPage.value, size: tagSize.value })
+  const pageResult = normalizePageResult(result, tagSize.value)
+  const maxPage = Math.max(1, Math.ceil(pageResult.total / tagSize.value))
+  if (tagPage.value > maxPage) {
+    tagPage.value = maxPage
+    await loadTags()
+    return
+  }
+  tags.value = pageResult.records
+  tagTotal.value = pageResult.total
+}
+
+async function loadImages() {
+  const result = await getImages({ page: imagePage.value, size: imageSize.value })
+  const pageResult = normalizePageResult(result, imageSize.value)
+  const maxPage = Math.max(1, Math.ceil(pageResult.total / imageSize.value))
+  if (imagePage.value > maxPage) {
+    imagePage.value = maxPage
+    await loadImages()
+    return
+  }
+  images.value = pageResult.records
+  imageTotal.value = pageResult.total
+}
+
+function handleTagPageChange(nextPage) {
+  tagPage.value = nextPage
+  void loadTags()
+}
+
+function handleImagePageChange(nextPage) {
+  imagePage.value = nextPage
+  void loadImages()
 }
 
 async function handleCreate() {
@@ -131,8 +272,8 @@ async function handleCreate() {
     await createTag({ name })
     ElMessage.success('创建成功')
     newName.value = ''
-    const result = await getTags()
-    tags.value = result.data || []
+    tagPage.value = 1
+    await loadTags()
   } finally {
     creating.value = false
   }
@@ -142,7 +283,12 @@ async function handleDeleteTag(id) {
   if (!id) return
   await deleteTag(id)
   ElMessage.success('删除成功')
-  tags.value = tags.value.filter(tag => tag.id !== id)
+  tagPage.value = getPageAfterSingleDeletion({
+    page: tagPage.value,
+    size: tagSize.value,
+    total: tagTotal.value
+  })
+  await loadTags()
 }
 
 function openUpload() {
@@ -156,20 +302,72 @@ async function handleUpload(event) {
   try {
     await uploadImage(file)
     ElMessage.success('上传成功')
-    const result = await getImages({ page: 1, size: 100 })
-    images.value = result.data || []
+    imagePage.value = 1
+    await loadImages()
   } finally {
     uploading.value = false
     event.target.value = ''
   }
 }
 
-async function handleDeleteImage(id) {
+async function handleDeleteImage(id, options = {}) {
   if (!id) return
   await deleteImage(id)
   ElMessage.success('删除成功')
-  const result = await getImages({ page: 1, size: 100 })
-  images.value = result.data || []
+  if (options.closePreview) {
+    closeImagePreview()
+  }
+  imagePage.value = getPageAfterSingleDeletion({
+    page: imagePage.value,
+    size: imageSize.value,
+    total: imageTotal.value
+  })
+  await loadImages()
+}
+
+function getImageName(image) {
+  return image?.originalName || image?.filename || image?.name || '未命名图片'
+}
+
+function openImagePreview(image) {
+  if (!image?.url) {
+    ElMessage.warning('图片地址不可用')
+    return
+  }
+  previewDialog.value = {
+    visible: true,
+    image,
+    loadError: false
+  }
+}
+
+function closeImagePreview() {
+  previewDialog.value = {
+    visible: false,
+    image: null,
+    loadError: false
+  }
+}
+
+async function copyImageUrl() {
+  const url = previewImage.value?.url
+  if (!url) {
+    ElMessage.warning('图片地址不可用')
+    return
+  }
+  try {
+    if (!navigator.clipboard?.writeText) {
+      throw new Error('Clipboard API unavailable')
+    }
+    await navigator.clipboard.writeText(url)
+    ElMessage.success('图片地址已复制')
+  } catch (error) {
+    ElMessage.error('复制失败')
+  }
+}
+
+async function handleDeletePreviewImage() {
+  await handleDeleteImage(previewImage.value?.id, { closePreview: true })
 }
 
 function imageBackground(image) {
@@ -177,7 +375,7 @@ function imageBackground(image) {
   return { backgroundImage: `url("${image.url}")` }
 }
 
-function imageSize(size) {
+function formatImageSize(size) {
   if (!Number.isFinite(Number(size))) return '未知大小'
   return `${(Number(size) / 1024).toFixed(1)} KB`
 }
@@ -292,6 +490,123 @@ function imageSize(size) {
   pointer-events: none;
 }
 
+.preview-thumb-button {
+  position: relative;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.preview-thumb-button:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.preview-thumb-button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary-color) 72%, white);
+  outline-offset: 2px;
+}
+
+.visually-hidden-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.image-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+:global(.image-preview-dialog .el-dialog__body) {
+  padding-top: 10px;
+}
+
+.image-preview-content {
+  display: grid;
+  gap: 16px;
+}
+
+.image-preview-stage {
+  display: grid;
+  place-items: center;
+  min-height: 280px;
+  max-height: min(62vh, 620px);
+  overflow: hidden;
+  border: 1px solid var(--soft-border-color);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 8%, transparent), transparent 64%),
+    color-mix(in srgb, var(--code-bg) 74%, var(--panel-bg));
+}
+
+.image-preview-stage img {
+  display: block;
+  max-width: 100%;
+  max-height: min(62vh, 620px);
+  object-fit: contain;
+}
+
+.image-preview-error {
+  color: var(--muted-color);
+}
+
+.image-preview-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.image-preview-meta div {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--soft-border-color);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--panel-bg) 78%, transparent);
+}
+
+.image-preview-meta dt {
+  margin-bottom: 4px;
+  color: var(--muted-color);
+  font-size: 12px;
+}
+
+.image-preview-meta dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-color);
+  font-weight: 680;
+}
+
+.image-url-row {
+  grid-column: 1 / -1;
+}
+
+.image-preview-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.image-preview-footer .tool-button.is-danger {
+  border-color: color-mix(in srgb, var(--danger-color) 52%, transparent);
+  color: var(--danger-color);
+}
+
+.resource-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
 @media (max-width: 1080px) {
   .resource-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -311,6 +626,23 @@ function imageSize(size) {
   .tag-item,
   .image-card {
     grid-template-columns: 1fr;
+  }
+
+  .image-card-actions,
+  .image-preview-footer {
+    justify-content: flex-start;
+  }
+
+  .image-preview-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .image-preview-stage {
+    min-height: 220px;
+  }
+
+  .resource-pagination {
+    justify-content: center;
   }
 }
 </style>

@@ -280,6 +280,51 @@ class DatabaseConfigTest {
     }
 
     @Test
+    void pageCopySchemaIncludesConfigAndCommonFields() throws IOException {
+        String migration = readString(Paths.get(
+                "src/main/resources/db/migration/2026-08-05-新增页面文案配置.sql"));
+        String initSql = readString(Paths.get("src/main/resources/db/init.sql"));
+        String migrationDefinition = normalizeSql(extractPageCopyTableDefinition(migration, "migration"));
+        String initDefinition = normalizeSql(extractPageCopyTableDefinition(initSql, "init.sql"));
+
+        for (String columnDefinition : Arrays.asList(
+                "`id` bigint not null comment '雪花id',",
+                "`copy_key` varchar(80) not null comment '页面文案标识',",
+                "`page_name` varchar(80) not null comment '页面名称',",
+                "`page_group` varchar(50) not null comment '页面分区',",
+                "`eyebrow` varchar(80) not null default '' comment '页面眉标',",
+                "`title` varchar(160) not null comment '页面主标题',",
+                "`description` varchar(500) not null default '' comment '页面描述',",
+                "`sort_order` int not null default 0 comment '排序值',",
+                "`created_by` varchar(50) default null comment '创建人',",
+                "`created_at` datetime default null comment '创建时间',",
+                "`updated_by` varchar(50) default null comment '更新人',",
+                "`updated_at` datetime default null comment '更新时间',",
+                "`deleted` tinyint(1) not null default 0 comment '逻辑删除：0未删除，1已删除',",
+                "`version` int not null default 0 comment '乐观锁版本号',")) {
+            assertTrue(migrationDefinition.contains(columnDefinition),
+                    "Missing page_copy migration column definition " + columnDefinition);
+            assertTrue(initDefinition.contains(columnDefinition),
+                    "Missing page_copy init column definition " + columnDefinition);
+        }
+        assertTrue(migrationDefinition.contains("primary key (`id`)"));
+        assertTrue(initDefinition.contains("primary key (`id`)"));
+        assertTrue(migrationDefinition.contains("unique key `uk_page_copy_key` (`copy_key`)"));
+        assertTrue(initDefinition.contains("unique key `uk_page_copy_key` (`copy_key`)"));
+        assertTrue(migrationDefinition.contains(
+                "key `idx_page_copy_deleted_sort` (`deleted`, `sort_order`, `id`)"));
+        assertTrue(initDefinition.contains(
+                "key `idx_page_copy_deleted_sort` (`deleted`, `sort_order`, `id`)"));
+
+        String normalizedMigration = normalizeSql(migration);
+        assertEquals(migrationDefinition, normalizedMigration,
+                "Page copy migration must contain only its CREATE TABLE statement");
+        assertTrue(!normalizedMigration.contains("drop "));
+        assertTrue(!normalizedMigration.contains("delete from"));
+        assertTrue(!normalizedMigration.contains("truncate "));
+    }
+
+    @Test
     void readingHistoryInitSchemaIncludesPositionFieldsWithoutAuditReuse() throws IOException {
         String initSql = readString(Paths.get("src/main/resources/db/init.sql"));
         String initDefinition = normalizeSql(extractReadingHistoryTableDefinition(initSql, "init.sql"));
@@ -397,6 +442,72 @@ class DatabaseConfigTest {
         assertTrue(lastAvailableQuery.contains("LIMIT 1"));
     }
 
+    @Test
+    void dashboardIndexMigrationIsIncrementalAndPreservesData() throws IOException {
+        String sql = readString(Paths.get(
+                "src/main/resources/db/migration/2026-08-07-仪表盘聚合索引.sql"));
+        String normalized = normalizeSql(sql);
+
+        assertTrue(normalized.contains("alter table `article`"),
+                "Migration must add article dashboard index");
+        assertTrue(normalized.contains("alter table `article_reading_history`"),
+                "Migration must add reading history dashboard index");
+        assertTrue(normalized.contains("alter table `article_favorite`"),
+                "Migration must add favorite dashboard index");
+        assertTrue(normalized.contains("alter table `image`"),
+                "Migration must add image dashboard index");
+        assertTrue(normalized.contains("add key"),
+                "Migration must only add indexes");
+        assertTrue(!normalized.contains("drop database"),
+                "Migration must not drop databases");
+        assertTrue(!normalized.contains("drop table"),
+                "Migration must not drop tables");
+        assertTrue(!normalized.contains("truncate table"),
+                "Migration must not truncate tables");
+        assertTrue(!normalized.contains("delete from"),
+                "Migration must not delete rows");
+    }
+
+    @Test
+    void dashboardMapperStatementsFilterDeletedRowsExplicitly() throws IOException {
+        String article = readString(Paths.get("src/main/resources/mapper/ArticleMapper.xml"));
+        String articleViews = extractMapperStatement(article, "select", "selectTotalViewCount");
+        assertTrue(articleViews.contains("WHERE a.deleted = 0"));
+
+        String articleLow = extractMapperStatement(article, "select", "selectLowViewArticleCount");
+        assertTrue(articleLow.contains("WHERE a.deleted = 0"));
+        assertTrue(articleLow.contains("a.status = 'published'"));
+        assertTrue(articleLow.contains("(a.visibility = 'public' OR a.visibility IS NULL)"));
+
+        String history = readString(Paths.get("src/main/resources/mapper/ArticleReadingHistoryMapper.xml"));
+        assertTrue(extractMapperStatement(history, "select", "selectRecentReadingCount")
+                .contains("h.deleted = 0"));
+        assertTrue(extractMapperStatement(history, "select", "selectActiveReaderCount")
+                .contains("COUNT(DISTINCT h.user_id)"));
+        assertTrue(extractMapperStatement(history, "select", "selectAverageProgress")
+                .contains("AVG(h.progress_percent)"));
+        assertTrue(extractMapperStatement(history, "select", "selectReadingDateBuckets")
+                .contains("GROUP BY DATE_FORMAT(h.last_read_at, '%Y-%m-%d')"));
+        assertTrue(extractMapperStatement(history, "select", "selectReadingProgressBuckets")
+                .contains("h.progress_percent"));
+
+        String favorite = readString(Paths.get("src/main/resources/mapper/ArticleFavoriteMapper.xml"));
+        assertTrue(extractMapperStatement(favorite, "select", "selectTotalFavoriteCount")
+                .contains("f.deleted = 0"));
+        assertTrue(extractMapperStatement(favorite, "select", "selectRecentFavoriteCount")
+                .contains("f.deleted = 0"));
+        assertTrue(extractMapperStatement(favorite, "select", "selectFavoriteTopArticles")
+                .contains("COUNT(1)"));
+        assertTrue(extractMapperStatement(favorite, "select", "selectFavoriteDateBuckets")
+                .contains("GROUP BY DATE_FORMAT(f.created_at, '%Y-%m-%d')"));
+
+        String image = readString(Paths.get("src/main/resources/mapper/ImageMapper.xml"));
+        assertTrue(extractMapperStatement(image, "select", "selectTotalImageSize")
+                .contains("SUM(i.size)"));
+        assertTrue(extractMapperStatement(image, "select", "selectRecentImageCount")
+                .contains("deleted = 0"));
+    }
+
     private static String extractMapperStatement(String xml, String element, String id) {
         String withoutComments = xml.replaceAll("(?s)<!--.*?-->", "");
         Pattern pattern = Pattern.compile(
@@ -435,6 +546,17 @@ class DatabaseConfigTest {
         Matcher matcher = pattern.matcher(sql);
         assertTrue(matcher.find(),
                 "Expected to find complete article_reading_history CREATE TABLE block in " + source);
+        return matcher.group();
+    }
+
+    private static String extractPageCopyTableDefinition(String sql, String source) {
+        Pattern pattern = Pattern.compile(
+                "CREATE\\s+TABLE\\s+IF\\s+NOT\\s+EXISTS\\s+`page_copy`\\s*"
+                        + "\\(.*?\\)\\s*ENGINE\\s*=\\s*InnoDB\\s+DEFAULT\\s+CHARSET\\s*=\\s*utf8mb4\\s+"
+                        + "COLLATE\\s*=\\s*utf8mb4_unicode_ci\\s+COMMENT\\s*=\\s*'页面文案配置表'\\s*;",
+                Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+        Matcher matcher = pattern.matcher(sql);
+        assertTrue(matcher.find(), "Expected to find complete page_copy CREATE TABLE block in " + source);
         return matcher.group();
     }
 

@@ -9,9 +9,9 @@
 
       <header class="page-head">
         <div class="head-copy">
-          <span class="eyebrow">Pinned index</span>
-          <h1>我的收藏</h1>
-          <p>把值得回看的文章收进一个轻量索引，筛选仍然服务于快速返回内容本身。</p>
+          <span class="eyebrow">{{ pageCopy.eyebrow }}</span>
+          <h1>{{ pageCopy.title }}</h1>
+          <p v-if="pageCopy.description">{{ pageCopy.description }}</p>
         </div>
         <aside class="head-meta" aria-label="收藏摘要">
           <div class="meta-line">
@@ -105,7 +105,9 @@ import FavoriteArticleItem from '../components/FavoriteArticleItem.vue'
 import { getFavorites, unfavoriteArticle } from '../api/favorite'
 import { getTags } from '../api/tag'
 import { buildFavoriteListParams } from '../utils/favorite'
+import { usePageCopyStore } from '../stores/pageCopy'
 
+const pageCopyStore = usePageCopyStore()
 const items = ref([])
 const tags = ref([])
 const page = ref(1)
@@ -131,8 +133,10 @@ const hasFilters = computed(() => {
   return 'keyword' in params || 'tagId' in params
 })
 const emptyDescription = computed(() => hasFilters.value ? '当前筛选无结果' : '尚未收藏文章')
+const pageCopy = computed(() => pageCopyStore.resolveCopy('favorites.index'))
 
 onMounted(() => {
+  void pageCopyStore.loadPublicCopies()
   void loadTags()
   void load()
 })

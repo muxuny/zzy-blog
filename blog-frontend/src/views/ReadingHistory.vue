@@ -8,9 +8,9 @@
             <el-icon><ArrowLeft /></el-icon>
             <span>返回阅读空间</span>
           </RouterLink>
-          <span class="eyebrow">Reading trail</span>
-          <h1>阅读历史</h1>
-          <p>按时间回看读过的文章，保留标题快照，也允许清理不再需要的单条记录。</p>
+          <span class="eyebrow">{{ pageCopy.eyebrow }}</span>
+          <h1>{{ pageCopy.title }}</h1>
+          <p v-if="pageCopy.description">{{ pageCopy.description }}</p>
         </div>
         <aside class="head-meta" aria-label="阅读历史摘要">
           <div class="meta-line">
@@ -103,7 +103,9 @@ import {
   getPageAfterHistoryDeletion,
   groupReadingHistory
 } from '../utils/readingHistory'
+import { usePageCopyStore } from '../stores/pageCopy'
 
+const pageCopyStore = usePageCopyStore()
 const page = ref(1)
 const size = ref(10)
 const total = ref(0)
@@ -119,8 +121,10 @@ let requestVersion = 0
 let dayRefreshTimer = null
 
 const groups = computed(() => groupReadingHistory(items.value, groupingNow.value))
+const pageCopy = computed(() => pageCopyStore.resolveCopy('reading.history'))
 
 onMounted(() => {
+  void pageCopyStore.loadPublicCopies()
   void load()
   scheduleNextDayRefresh()
 })
@@ -296,9 +300,10 @@ async function clearAllHistory() {
 }
 
 .back-link {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 5px;
+  width: fit-content;
   min-height: 36px;
   margin-bottom: 14px;
   color: var(--muted-text-color);
